@@ -6,6 +6,10 @@ abstract class Routes {
   static const SPLASH_SCREEN = _Paths.SPLASH_SCREEN;
   static const SIGN_IN = _Paths.SIGN_IN;
   static const HOME = _Paths.HOME;
+  static const VEHICLES = _Paths.VEHICLES;
+  static const FLEET_TYPE = _Paths.FLEET_TYPE;
+  static const ARRIVALS = _Paths.ARRIVALS;
+
 }
 
 abstract class _Paths {
@@ -13,4 +17,7 @@ abstract class _Paths {
   static const SPLASH_SCREEN = '/splash-screen';
   static const SIGN_IN = '/sign-in';
   static const HOME = '/home';
+  static const VEHICLES = '/vehicles';
+  static const FLEET_TYPE = '/fleet-type';
+  static const ARRIVALS = '/arrivals';
 }

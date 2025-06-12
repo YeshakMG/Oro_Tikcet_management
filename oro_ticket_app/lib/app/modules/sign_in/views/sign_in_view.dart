@@ -5,6 +5,7 @@ import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/dimensions.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 
+
 class SignInView extends StatelessWidget {
   final SignInController controller = Get.put(SignInController());
 

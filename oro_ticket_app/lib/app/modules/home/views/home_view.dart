@@ -17,7 +17,7 @@ class HomeView extends GetView<HomeController> {
     return Scaffold(
       extendBodyBehindAppBar: false,
       drawer: CustomDrawer(
-        userName: 'Tensae Tefera',
+        userName: 'Employee Name',
         onItemSelected: (item) {
           switch (item) {
             case 'Vehicles':
@@ -44,7 +44,7 @@ class HomeView extends GetView<HomeController> {
                       onPressed: () => Scaffold.of(context).openDrawer(),
                     ),
                   ),
-                  const Text('OTA', style: AppTextStyles.subtitle1),
+                  const Text('Oromia Transport Agency', style: AppTextStyles.subtitle1),
                   Row(
                     children: [
                       Container(
@@ -71,8 +71,8 @@ class HomeView extends GetView<HomeController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
-                  Text('GUZO ET', style: AppTextStyles.heading1),
-                  Text('Agent Name', style: AppTextStyles.button),
+                  Text('Company Name', style: AppTextStyles.heading1),
+                  Text('Employee Name', style: AppTextStyles.button),
                 ],
               ),
             ),

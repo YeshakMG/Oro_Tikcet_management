@@ -8,11 +8,11 @@ class DrawerItems {
       'icon': Icons.directions_car,
     },
     {
-      'title': 'Fleet Type',
+      'title': 'Vehicle categories',
       'icon': Icons.directions_bus,
     },
     {
-      'title': 'Departure Name',
+      'title': 'Terminal Name',
       'icon': Icons.location_on,
     },
     {
