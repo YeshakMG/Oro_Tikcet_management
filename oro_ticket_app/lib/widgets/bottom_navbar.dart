@@ -31,11 +31,11 @@ class _BottomNavBarState extends State<BottomNavBar> {
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.receipt_long),
-          label: "Sales",
+          label: "Ticket",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: "Profile",
+          icon: Icon(Icons.history),
+          label: "History",
         ),
       ],
     );

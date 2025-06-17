@@ -7,6 +7,16 @@ import '../modules/sign_in/views/sign_in_view.dart';
 import '../modules/splash_screen/bindings/splash_screen_binding.dart';
 import '../modules/splash_screen/views/splash_screen_view.dart';
 
+import '../modules/vehicles/bindings/vehicles_bindings.dart';
+import '../modules/vehicles/views/vehicles_view.dart';
+
+import '../modules/fleettype/bindings/fleettype_bindings.dart';
+import '../modules/fleettype/views/fleettype_view.dart';
+
+import '../modules/arrivals/bindings/arrival_bindings.dart';
+import '../modules/arrivals/views/arrival_view.dart';
+
+
 part 'app_routes.dart';
 
 class AppPages {
@@ -31,5 +41,19 @@ class AppPages {
       page: () => const HomeView(),
       binding: HomeBinding(),
     ),
+    GetPage(
+      name: _Paths.VEHICLES, 
+      page: () => VehiclesView(),
+      binding: VehiclesBindings(),
+      
+      ),
+    GetPage(name: _Paths.FLEET_TYPE, 
+      page: () => FleetTypeView(), 
+      binding: FleetTypeBindings(), 
+      ),
+
+
+
+
   ];
 }
