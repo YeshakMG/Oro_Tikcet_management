@@ -46,7 +46,7 @@ class SignInView extends StatelessWidget {
               // Subtitle
               Text(
                 'Enter your email and password to log in',
-                style: AppTextStyles.subtitle3,
+                style: AppTextStyles.caption2,
               ),
 
               SizedBox(height: AppDimensions.verticalSpacingMedium),

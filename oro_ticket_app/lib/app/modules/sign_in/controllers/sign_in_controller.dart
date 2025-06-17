@@ -25,7 +25,7 @@ class SignInController extends GetxController {
     isLoading.value = true;
 
     //API call 
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 1), () {
       isLoading.value = false;
 
       Get.snackbar('Success', 'You have logged in successfully');
