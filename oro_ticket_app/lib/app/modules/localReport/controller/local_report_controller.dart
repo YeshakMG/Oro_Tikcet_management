@@ -54,6 +54,7 @@ void sortByArrival() {
   filteredReports.sort((a, b) {
     final depA = a['departure']?.toLowerCase() ?? '';
     final depB = b['departure']?.toLowerCase() ?? '';
+    
     return sortAsc.value ? depA.compareTo(depB) : depB.compareTo(depA);
   });
   filteredReports.refresh(); // important for reactivity
