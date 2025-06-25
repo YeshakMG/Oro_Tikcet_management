@@ -13,7 +13,7 @@ class VehiclesView extends GetView<VehiclesController> {
       title: 'Vehicles',
       userName: 'Employee Name',
       showBottomNavBar: true,
-      currentBottomNavIndex: 1,
+      currentBottomNavIndex: 0,
       actions: const [
         Icon(Icons.more_horiz, color: Colors.white),
         SizedBox(width: 16),

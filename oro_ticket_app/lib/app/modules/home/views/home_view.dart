@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
+import 'package:oro_ticket_app/app/modules/sync/view/sync_view.dart';
+import 'package:oro_ticket_app/app/modules/ticket/view/ticket_view.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
@@ -36,7 +40,9 @@ class HomeView extends StatelessWidget {
                   Row(
                     children: [
                       ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Get.to(SyncView());
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white.withValues(alpha: 0.3),
                           foregroundColor: Colors.white,

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../../../data/models/ticket_model.dart';
-
-
-
 
 class TicketDetailView extends StatelessWidget {
   final Ticket ticket;
@@ -12,8 +10,11 @@ class TicketDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Ticket Detail"), backgroundColor: Colors.green),
+    return AppScaffold(
+      title: "Ticket Details",
+      userName: "Employee Name",
+      currentBottomNavIndex: 1,
+      showBottomNavBar: true,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(

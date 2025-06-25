@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/app/modules/arrivals/views/arrival_view.dart';
 import 'package:oro_ticket_app/app/modules/localReport/view/local_report_view.dart';
+import 'package:oro_ticket_app/app/modules/ticket/view/ticket_view.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/widgets/bottom_navbar.dart';
 import 'package:oro_ticket_app/widgets/custom_drawer.dart';
@@ -48,7 +50,7 @@ class _AppScaffoldState extends State<AppScaffold> {
               Get.toNamed('/fleet-type');
               break;
             case 'Arrival Terminal':
-              Get.toNamed('/arrivals');
+              Get.to(ArrivalLocationView());
               break;
           }
         },
@@ -91,12 +93,11 @@ class _AppScaffoldState extends State<AppScaffold> {
                         Get.offAllNamed('/home');
                         break;
                       case 1:
-                        Get.offAllNamed('/vehicles');
+                        Get.to(TicketView());
                         break;
                       case 2:
                         Get.to(LocalReportView());
                         break;
-                    
                     }
                   },
             )

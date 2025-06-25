@@ -24,4 +24,20 @@ class Ticket {
     required this.status,
     required this.employeeName,
   });
+
+  static Ticket dummyTicket() {
+    return Ticket(
+      plateNumber: '3ABC123',
+      region: 'Oromia',
+      level: '2',
+      seatCapacity: 36,
+      tripId: 'TRP-2023-0875',
+      departure: 'Addis Ababa',
+      destination: 'Jimma',
+      date: '2023-11-15',
+      time: '08:30 AM',
+      status: 'Confirmed',
+      employeeName: 'Tensae Tefera',
+    );
+  }
 }

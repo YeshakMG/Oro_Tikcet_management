@@ -1,37 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../controller/sync_controller.dart';
 import '../../ticketdetail/view/ticket_detail_view.dart';
 import '../../../data/models/ticket_model.dart';
 
 class SyncView extends StatelessWidget {
-  final controller = Get.find<SyncController>();
-
+  final SyncController controller = Get.put(SyncController());
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sync'),
-        backgroundColor: Colors.green,
-        leading: const Icon(Icons.menu),
-        actions: const [Icon(Icons.more_vert)],
-      ),
+    return AppScaffold(
+      title: "Sync",
+      userName: "Employee Name",
       body: Column(
         children: [
           _buildTopBar(),
           Expanded(
             child: Obx(() => RefreshIndicator(
-              onRefresh: controller.refreshTickets,
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: controller.filteredTickets.length,
-                itemBuilder: (context, index) {
-                  final ticket = controller.filteredTickets[index];
-                return _buildTicketCard(ticket);
-                
-                },
-              ),
-            )),
+                  onRefresh: controller.refreshTickets,
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: controller.filteredTickets.length,
+                    itemBuilder: (context, index) {
+                      final ticket = controller.filteredTickets[index];
+                      return _buildTicketCard(ticket);
+                    },
+                  ),
+                )),
           ),
         ],
       ),
@@ -49,7 +44,8 @@ class SyncView extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: "Search by Plate, Trip, Employee...",
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),
@@ -68,10 +64,11 @@ class SyncView extends StatelessWidget {
   Widget _buildTicketCard(Ticket ticket) {
     return GestureDetector(
       key: Key(ticket.tripId), // Ensure each card has a unique key
-      
-      
+
       onTap: () {
-        Get.to(() => TicketDetailView(ticket: ticket), transition: Transition.rightToLeft, duration: const Duration(milliseconds: 300));
+        Get.to(() => TicketDetailView(ticket: ticket),
+            transition: Transition.rightToLeft,
+            duration: const Duration(milliseconds: 300));
       },
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -89,7 +86,8 @@ class SyncView extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: ticket.status == "Completed"
                           ? Colors.green[100]
@@ -111,7 +109,9 @@ class SyncView extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Expanded(child: Text("${ticket.departure} → ${ticket.destination}")),
+                  Expanded(
+                      child:
+                          Text("${ticket.departure} → ${ticket.destination}")),
                   const SizedBox(width: 8),
                   Text(ticket.time),
                 ],
