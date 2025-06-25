@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../controllers/fleettype_controllers.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 
@@ -10,13 +11,10 @@ class FleetTypeView extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.find<FleetTypeController>();
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        title: const Text('Fleet Type'),
-        centerTitle: true,
-      ),
+    return AppScaffold(
+      title: 'Fleet Type',
+      userName: 'Employee Name',
+      showBottomNavBar: true,
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -37,7 +35,6 @@ class FleetTypeView extends StatelessWidget {
                 Expanded(
                   child: TextField(
                     onChanged: controller.filterFleetType,
-                    
                     decoration: const InputDecoration(
                       hintText: 'Search',
                       prefixIcon: Icon(Icons.search),
@@ -68,7 +65,8 @@ class FleetTypeView extends StatelessWidget {
                     itemBuilder: (_, index) {
                       final item = controller.fleetTypes[index];
                       return Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 8),
                         decoration: BoxDecoration(
                           border: Border(
                             bottom: BorderSide(color: AppColors.divider),
@@ -78,7 +76,9 @@ class FleetTypeView extends StatelessWidget {
                           children: [
                             Expanded(flex: 2, child: Text(item['name'] ?? '')),
                             Expanded(flex: 2, child: Text(item['level'] ?? '')),
-                            Expanded(flex: 1, child: Text(item['totalSeat'].toString())),
+                            Expanded(
+                                flex: 1,
+                                child: Text(item['totalSeat'].toString())),
                           ],
                         ),
                       );

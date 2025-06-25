@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/core/constants/colors.dart';
+import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../controller/local_report_controller.dart';
 
-class LocalReportView extends GetView<LocalReportController> {
-  const LocalReportView({Key? key}) : super(key: key);
+class LocalReportView extends StatelessWidget {
+  final LocalReportController controller = Get.put(LocalReportController());
+  LocalReportView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Local Report"),
-        backgroundColor: Colors.green,
-      ),
+    return AppScaffold(
+      title: 'Local Report',
+      userName: 'Employee Name',
+      currentBottomNavIndex: 2,
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
                   icon: const Icon(Icons.download),
@@ -25,7 +28,7 @@ class LocalReportView extends GetView<LocalReportController> {
                     // Download logic
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: AppColors.primary,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -52,47 +55,53 @@ class LocalReportView extends GetView<LocalReportController> {
           ),
           Obx(() => Expanded(
                 child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: DataTable(
-                    columns: [
-                      DataColumn(
-                        label: Row(
-                          children: [
-                            const Text("Trip ID"),
-                            IconButton(
-                              icon: const Icon(Icons.sort),
-                              onPressed: controller.sortByArrival,
-                            ),
-                          ],
-                        ),
-                      ),
-                      DataColumn(
-                        label: Row(
-                          children: [
-                            const Text("Departure Location"),
-                            IconButton(
-                              icon: const Icon(Icons.sort),
-                              onPressed: controller.sortById,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const DataColumn(label: Text("View")),
-                    ],
-                    rows: controller.filteredReports.map((report) {
-                      return DataRow(cells: [
-                        DataCell(Text(report['tripId']!)),
-                        DataCell(Text(report['departure']!)),
-                        DataCell(
-                          IconButton(
-                            icon: const Icon(Icons.remove_red_eye_outlined),
-                            onPressed: () {
-                              // View logic
-                            },
+                  scrollDirection: Axis.horizontal,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: DataTable(
+                      columnSpacing: 12, // Add spacing between columns
+                      dataRowMinHeight: 48, // Set consistent row height
+                      headingRowHeight: 56,
+                      columns: [
+                        DataColumn(
+                          label: Row(
+                            children: [
+                              const Text("Trip ID"),
+                              IconButton(
+                                icon: const Icon(Icons.sort),
+                                onPressed: controller.sortByArrival,
+                              ),
+                            ],
                           ),
                         ),
-                      ]);
-                    }).toList(),
+                        DataColumn(
+                          label: Row(
+                            children: [
+                              const Text("Departure Location"),
+                              IconButton(
+                                icon: const Icon(Icons.sort),
+                                onPressed: controller.sortById,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const DataColumn(label: Text("View")),
+                      ],
+                      rows: controller.filteredReports.map((report) {
+                        return DataRow(cells: [
+                          DataCell(Text(report['tripId']!)),
+                          DataCell(Text(report['departure']!)),
+                          DataCell(
+                            IconButton(
+                              icon: const Icon(Icons.remove_red_eye_outlined),
+                              onPressed: () {
+                                // View logic
+                              },
+                            ),
+                          ),
+                        ]);
+                      }).toList(),
+                    ),
                   ),
                 ),
               )),
