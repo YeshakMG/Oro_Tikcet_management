@@ -4,6 +4,8 @@ class AppColors {
   static const Color primary = Color(0xFF009900); // Primary Button
   static const Color primaryHover = Color(0xFF007700); // Primary Button hover
 
+  static const Color syncButton =
+      Color.fromARGB(255, 175, 243, 171); // Sync Button
   static const Color secondary = Color(0xFF31394D);
   static const Color secondaryPressed = Color(0xFF748AA1);
 
@@ -21,4 +23,7 @@ class AppColors {
   static const Color success = Color(0xFF2ECC71); // Success message (green)
 
   static const Color divider = Color(0xFFE0E0E0); // Border/Divider
+
+  static const Color bottomNavSelected = Color(0xFF2E7D32);
+  static const Color bottomNavUnselected = Color(0xFF757575);
 }

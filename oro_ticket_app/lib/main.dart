@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/theme/app_theme.dart';
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await HiveBoxes.init();
   runApp(const MyApp());
 }
 

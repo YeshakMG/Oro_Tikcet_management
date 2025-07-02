@@ -75,6 +75,13 @@ class AppTextStyles {
     color: Colors.white,
   );
 
+  static const TextStyle companyName = TextStyle(
+    fontFamily: 'Poppins',
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    color: Colors.white70,
+  );
+
   // Status indicators
   static const TextStyle success = TextStyle(
     fontFamily: 'Poppins',
@@ -110,5 +117,11 @@ class AppTextStyles {
     fontSize: 12,
     fontWeight: FontWeight.w500,
     color: AppColors.secondary,
+  );
+  static const TextStyle caption2 = TextStyle(
+    fontFamily: 'Poppins',
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: AppColors.secondaryPressed,
   );
 }

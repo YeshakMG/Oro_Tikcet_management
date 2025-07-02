@@ -12,7 +12,6 @@ class CustomDrawer extends StatelessWidget {
     super.key,
     required this.userName,
     this.onItemSelected,
-    
   });
 
   @override
@@ -55,7 +54,7 @@ class CustomDrawerHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 300,
+      height: 250,
       decoration: const BoxDecoration(
         color: AppColors.backgroundAlt,
       ),
