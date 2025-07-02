@@ -41,6 +41,7 @@ class TariffView extends StatelessWidget {
                         .map((tariff) => DataRow(cells: [
                               DataCell(Text(tariff['level'] ?? '')),
                               DataCell(Text(tariff['fleet_category'] ?? '')),
+                              
                             ]))
                         .toList(),
                   ),
