@@ -36,12 +36,13 @@ class TariffView extends StatelessWidget {
                     columns: const [
                       DataColumn(label: Text('Level')),
                       DataColumn(label: Text('Fleet Category')),
+                      DataColumn(label: Text('Price')),
                     ],
-                    rows: controller.tariffs
+                    rows: controller.filteredTariffs
                         .map((tariff) => DataRow(cells: [
                               DataCell(Text(tariff['level'] ?? '')),
                               DataCell(Text(tariff['fleet_category'] ?? '')),
-                              
+                              DataCell(Text('${tariff['price']}')),
                             ]))
                         .toList(),
                   ),

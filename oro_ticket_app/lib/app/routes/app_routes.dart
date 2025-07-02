@@ -20,4 +20,6 @@ abstract class _Paths {
   static const VEHICLES = '/vehicles';
   static const FLEET_TYPE = '/fleet-type';
   static const ARRIVALS = '/arrivals';
+  static const TARIFF = '/tariff';
+  static const TICKET = '/ticket';
 }
