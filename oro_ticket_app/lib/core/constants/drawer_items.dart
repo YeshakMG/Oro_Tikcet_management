@@ -20,6 +20,10 @@ class DrawerItems {
       'icon': Icons.place,
     },
     {
+      'title': 'Tariff',
+      'icon': Icons.price_change,
+    },
+    {
       'title': 'Logout',
       'icon': Icons.logout,
       'isDividerNeeded': true,

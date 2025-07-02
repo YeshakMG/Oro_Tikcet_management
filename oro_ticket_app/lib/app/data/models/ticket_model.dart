@@ -23,5 +23,6 @@ class Ticket {
     required this.time,
     required this.status,
     required this.employeeName,
+    
   });
 }

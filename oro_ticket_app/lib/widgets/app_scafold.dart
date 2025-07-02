@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/app/modules/Tarrif/view/tariif_view.dart';
 import 'package:oro_ticket_app/app/modules/arrivals/views/arrival_view.dart';
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
 import 'package:oro_ticket_app/app/modules/localReport/view/local_report_view.dart';
@@ -63,6 +64,9 @@ class _AppScaffoldState extends State<AppScaffold> {
                 break;
               case 'Arrival Terminal':
                 Get.to(ArrivalLocationView());
+                break;
+              case 'Tariff':
+                Get.to(TariffView());
                 break;
               case 'Logout':
                 confirmLogout();
