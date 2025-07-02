@@ -5,7 +5,6 @@ import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/dimensions.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 
-
 class SignInView extends StatelessWidget {
   final SignInController controller = Get.put(SignInController());
 
@@ -38,21 +37,34 @@ class SignInView extends StatelessWidget {
 
               // Title
               Text(
-                'Sign in to your\nAccount',
+                'Sign in to your \nAccount',
                 style: AppTextStyles.heading1,
               ),
 
               SizedBox(height: AppDimensions.verticalSpacingMedium),
 
-              // Subtitle
               Text(
                 'Enter your email and password to log in',
                 style: AppTextStyles.caption2,
               ),
 
-              SizedBox(height: AppDimensions.verticalSpacingMedium),
+              SizedBox(height: AppDimensions.verticalSpacingLarge),
 
-              // Email Field
+              // Error Message
+              Obx(() {
+                if (controller.loginError.value.isNotEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      controller.loginError.value,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
+                return SizedBox.shrink();
+              }),
+
+              // Email
               TextField(
                 controller: controller.emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -69,47 +81,52 @@ class SignInView extends StatelessWidget {
 
               SizedBox(height: AppDimensions.verticalSpacingMedium),
 
-              // Password Field
+              // Password
               Obx(() => TextField(
                     controller: controller.passwordController,
-                    obscureText: controller.isPasswordVisible.value,
+                    obscureText: !controller.isPasswordVisible.value,
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      border: OutlineInputBorder(
+                      border: const OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(12))),
                       hoverColor: AppColors.primary,
-                      focusedBorder: OutlineInputBorder(
+                      focusedBorder: const OutlineInputBorder(
                           borderSide: BorderSide(color: AppColors.primaryHover),
                           borderRadius: BorderRadius.all(Radius.circular(12))),
                       suffixIcon: IconButton(
                         icon: Icon(controller.isPasswordVisible.value
-                            ? Icons.visibility_off
-                            : Icons.visibility),
+                            ? Icons.visibility
+                            : Icons.visibility_off),
                         onPressed: controller.togglePasswordVisibility,
                       ),
                     ),
                   )),
 
-              SizedBox(height: AppDimensions.verticalSpacingMedium),
+              SizedBox(height: AppDimensions.verticalSpacingLarge),
 
               // Login Button
-              SizedBox(
-                height: AppDimensions.buttonHeight,
-                child: ElevatedButton(
-                  onPressed: controller.login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppDimensions.borderRadius),
+              Obx(() => SizedBox(
+                    height: AppDimensions.buttonHeight,
+                    child: ElevatedButton(
+                      onPressed:
+                          controller.isLoading.value ? null : controller.login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppDimensions.borderRadius),
+                        ),
+                      ),
+                      child: controller.isLoading.value
+                          ? const CircularProgressIndicator(
+                              color: Colors.white,
+                            )
+                          : Text(
+                              'Log In',
+                              style: AppTextStyles.button,
+                            ),
                     ),
-                  ),
-                  child: Text(
-                    'Log In',
-                    style: AppTextStyles.button,
-                  ),
-                ),
-              ),
+                  )),
             ],
           ),
         ),

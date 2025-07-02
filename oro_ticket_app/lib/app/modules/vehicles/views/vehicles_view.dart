@@ -66,12 +66,14 @@ class VehiclesView extends GetView<VehiclesController> {
                       DataColumn(label: Text('Dep Terminal')),
                       DataColumn(label: Text('')),
                     ],
-                    rows: controller.vehicles.map((vehicle) {
+                    rows: controller.filteredVehicles.map((vehicle) {
                       return DataRow(
                         cells: [
-                          DataCell(Text(vehicle['level'] ?? '')),
-                          DataCell(Text(vehicle['seat'] ?? '')),
-                          DataCell(Text(vehicle['terminal'] ?? '')),
+                          DataCell(Text(vehicle
+                              .vehicleLevelId)), 
+                          DataCell(Text('${vehicle.seatCapacity}')),
+                          DataCell(Text(vehicle
+                              .associationId)), 
                           const DataCell(Icon(Icons.remove_red_eye_outlined,
                               color: AppColors.secondary)),
                         ],

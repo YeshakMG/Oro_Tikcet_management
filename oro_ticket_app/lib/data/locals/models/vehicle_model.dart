@@ -11,49 +11,85 @@ class VehicleModel extends HiveObject {
   final String plateNumber;
 
   @HiveField(2)
-  final String fleetTypeId;
+  final String plateRegion;
 
   @HiveField(3)
-  final String vehicleLevelId;
+  final String fleetTypeId;
 
   @HiveField(4)
-  final String companyId;
+  final String vehicleLevelId;
 
   @HiveField(5)
-  final int seatCapacity;
+  final String associationId;
 
   @HiveField(6)
+  final int seatCapacity;
+
+  @HiveField(7)
   final String status;
+
+  @HiveField(8)
+  final String? assignedTerminalId;
+
+  @HiveField(9)
+  final String? createdBy;
+
+  @HiveField(10)
+  final String? updatedBy;
+
+  @HiveField(11)
+  final String? createdAt;
+
+  @HiveField(12)
+  final String? updatedAt;
 
   VehicleModel({
     required this.id,
     required this.plateNumber,
+    required this.plateRegion,
     required this.fleetTypeId,
     required this.vehicleLevelId,
-    required this.companyId,
+    required this.associationId,
     required this.seatCapacity,
     required this.status,
+    this.assignedTerminalId,
+    this.createdBy,
+    this.updatedBy,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
     return VehicleModel(
       id: json['id'],
       plateNumber: json['plate_number'],
+      plateRegion: json['plate_region'] ?? '',
       fleetTypeId: json['fleet_type_id'],
       vehicleLevelId: json['vehicle_level_id'],
-      companyId: json['company_id'],
-      seatCapacity: json['seat_capacity'],
-      status: json['status'],
+      associationId: json['association_id'],
+      seatCapacity: json['seat_capacity'] ?? 0,
+      status: json['status'] ?? 'active',
+      assignedTerminalId: json['assigned_terminal_id'],
+      createdBy: json['created_by'],
+      updatedBy: json['updated_by'],
+      createdAt: json['created_at'],
+      updatedAt: json['updated_at'],
     );
   }
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'plate_number': plateNumber,
+        'plate_region': plateRegion,
         'fleet_type_id': fleetTypeId,
         'vehicle_level_id': vehicleLevelId,
-        'company_id': companyId,
+        'association_id': associationId,
         'seat_capacity': seatCapacity,
         'status': status,
+        'assigned_terminal_id': assignedTerminalId,
+        'created_by': createdBy,
+        'updated_by': updatedBy,
+        'created_at': createdAt,
+        'updated_at': updatedAt,
       };
 }

@@ -14,6 +14,10 @@ class TicketView extends StatelessWidget {
       userName: "Employee Name",
       currentBottomNavIndex: 1,
       showBottomNavBar: true,
+      actions: const [
+        Icon(Icons.more_horiz, color: Colors.white),
+        SizedBox(width: 16),
+      ],
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
