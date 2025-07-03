@@ -7,7 +7,8 @@ class TicketController extends GetxController {
   final timeFrom = "12:00 AM".obs;
   final timeTo = "02:00 PM".obs;
   final plateNumber = "23758".obs;
-  final seatNo = "S11".obs;
+  final seatNo = "11".obs;
+  final level = "Level 1".obs;
   final dateTime = "19/09/2016 10:23:14".obs;
   final km = "240".obs;
   final tariff = "89 ETB".obs;
