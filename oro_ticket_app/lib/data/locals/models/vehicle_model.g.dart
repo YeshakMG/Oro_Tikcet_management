@@ -19,32 +19,50 @@ class VehicleModelAdapter extends TypeAdapter<VehicleModel> {
     return VehicleModel(
       id: fields[0] as String,
       plateNumber: fields[1] as String,
-      fleetTypeId: fields[2] as String,
-      vehicleLevelId: fields[3] as String,
-      companyId: fields[4] as String,
-      seatCapacity: fields[5] as int,
-      status: fields[6] as String,
+      plateRegion: fields[2] as String,
+      fleetTypeId: fields[3] as String,
+      vehicleLevelId: fields[4] as String,
+      associationId: fields[5] as String,
+      seatCapacity: fields[6] as int,
+      status: fields[7] as String,
+      assignedTerminalId: fields[8] as String?,
+      createdBy: fields[9] as String?,
+      updatedBy: fields[10] as String?,
+      createdAt: fields[11] as String?,
+      updatedAt: fields[12] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, VehicleModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.plateNumber)
       ..writeByte(2)
-      ..write(obj.fleetTypeId)
+      ..write(obj.plateRegion)
       ..writeByte(3)
-      ..write(obj.vehicleLevelId)
+      ..write(obj.fleetTypeId)
       ..writeByte(4)
-      ..write(obj.companyId)
+      ..write(obj.vehicleLevelId)
       ..writeByte(5)
-      ..write(obj.seatCapacity)
+      ..write(obj.associationId)
       ..writeByte(6)
-      ..write(obj.status);
+      ..write(obj.seatCapacity)
+      ..writeByte(7)
+      ..write(obj.status)
+      ..writeByte(8)
+      ..write(obj.assignedTerminalId)
+      ..writeByte(9)
+      ..write(obj.createdBy)
+      ..writeByte(10)
+      ..write(obj.updatedBy)
+      ..writeByte(11)
+      ..write(obj.createdAt)
+      ..writeByte(12)
+      ..write(obj.updatedAt);
   }
 
   @override

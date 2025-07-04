@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
 import 'package:oro_ticket_app/core/constants/app_graphs.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 
 class DashboardCard extends StatefulWidget {
-  const DashboardCard({super.key});
+  final HomeController controller = Get.put(HomeController());
+  DashboardCard({super.key});
 
   @override
   State<DashboardCard> createState() => _DashboardCardState();
 }
 
-
 class _DashboardCardState extends State<DashboardCard> {
   @override
   Widget build(BuildContext context) {
+    final user = widget.controller.user.value;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -33,8 +37,9 @@ class _DashboardCardState extends State<DashboardCard> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text("Tensae Tefera", style: AppTextStyles.subtitle2),
+              children: [
+                Text(user?.fullName ?? "Employee Name",
+                    style: AppTextStyles.subtitle2),
                 SizedBox(height: 8),
                 Text("946 ETB", style: AppTextStyles.displayMedium),
                 SizedBox(height: 4),

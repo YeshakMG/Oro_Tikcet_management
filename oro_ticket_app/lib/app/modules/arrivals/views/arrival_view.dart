@@ -14,6 +14,10 @@ class ArrivalLocationView extends StatelessWidget {
     return AppScaffold(
       title: "Arrival Location",
       userName: "Employee Name",
+      actions: const [
+        Icon(Icons.more_horiz, color: Colors.white),
+        SizedBox(width: 16),
+      ],
       body: SingleChildScrollView(
         child: Column(
           children: [
