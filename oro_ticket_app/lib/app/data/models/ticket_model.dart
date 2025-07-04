@@ -1,4 +1,5 @@
-class Ticket {
+class 
+Ticket {
   String plateNumber;
   String region;
   String level;
