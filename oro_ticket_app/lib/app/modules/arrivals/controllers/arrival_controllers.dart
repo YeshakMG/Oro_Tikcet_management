@@ -29,8 +29,8 @@ class ArrivalLocationController extends GetxController {
       print('Arrival: ${item.id} - ${item.name}');
     }
 
-    allLocations.value = list;
-    Locations.value = list;
+    // allLocations.value = list;
+    // Locations.value = list;
   }
 
   void filterLocations(String query) {
