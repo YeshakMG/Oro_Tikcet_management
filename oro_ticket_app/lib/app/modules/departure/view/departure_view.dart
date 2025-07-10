@@ -79,18 +79,18 @@ class DepartureView extends GetView<DepartureControllers> {
                           DataColumn(
                               label: Text(
                             'No',
-                            style: AppTextStyles.subtitle4,
+                            style: AppTextStyles.buttonMedium,
                           )),
                           DataColumn(
                               label: Text('Departure Terminal Name',
-                                  style: AppTextStyles.subtitle4)),
+                                  style: AppTextStyles.buttonMedium)),
                         ],
                         rows: [
                           DataRow(cells: [
                             const DataCell(
-                                Text('1', style: AppTextStyles.subtitle4)),
+                                Text('1', style: AppTextStyles.buttonMedium)),
                             DataCell(Text(terminal.name,
-                                style: AppTextStyles.subtitle4)),
+                                style: AppTextStyles.buttonMedium)),
                           ])
                         ],
                       ),

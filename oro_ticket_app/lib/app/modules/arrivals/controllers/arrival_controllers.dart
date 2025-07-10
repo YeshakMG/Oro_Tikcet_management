@@ -1,37 +1,44 @@
 import 'package:get/get.dart';
+import 'package:hive/hive.dart';
+import 'package:oro_ticket_app/data/locals/models/arrival_model.dart';
+import 'package:oro_ticket_app/data/locals/service/arrival_storage_service.dart';
+import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
+
+import '../../../../data/locals/hive_boxes.dart';
 
 class ArrivalLocationController extends GetxController {
-  var Locations = <Map<String, dynamic>>[].obs;
-
-  final allLocations = [
-    {"id": 1, "name": "Autobis tera"},
-    {"id": 2, "name": "Shashmanee"},
-    {"id": 3, "name": "Maqqii"},
-    {"id": 4, "name": "Autobis tera"},
-    {"id": 5, "name": "Shashmanee"},
-    {"id": 6, "name": "Maqqii"},
-    {"id": 7, "name": "Autobis tera"},
-    {"id": 8, "name": "Shashmanee"},
-    {"id": 9, "name": "Maqqii"},
-    {"id": 10, "name": "Autobis tera"},
-    {"id": 11, "name": "Shashmanee"},
-    {"id": 12, "name": "Maqqii"},
-  ];
+  var Locations = <ArrivalModel>[].obs;
+  var allLocations = <ArrivalModel>[].obs;
 
   @override
-  void onInit() {
-    Locations.value = List.from(allLocations);
+  void onInit() async {
     super.onInit();
+    final syncRepo = SyncRepository();
+    await syncRepo.syncCompanyUserVehicles();
+    await loadLocations();
+  }
+
+  Future<void> loadLocations() async {
+    final service = ArrivalStorageService();
+    // final list = await service();
+
+    // Debug outputt
+    final box = Hive.box<ArrivalModel>(HiveBoxes.arrivalTerminalsBox);
+    print('Hive Box Arrival Items Count: ${box.length}');
+    for (var item in box.values) {
+      print('Arrival: ${item.id} - ${item.name}');
+    }
+
+    allLocations.value = list;
+    Locations.value = list;
   }
 
   void filterLocations(String query) {
     if (query.isEmpty) {
-      Locations.value = List.from(allLocations);
+      Locations.value = allLocations;
     } else {
       Locations.value = allLocations.where((item) {
-        final location = item['name'];
-        return location != null &&
-            location.toString().toLowerCase().contains(query.toLowerCase());
+        return item.name.toLowerCase().contains(query.toLowerCase());
       }).toList();
     }
   }

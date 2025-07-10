@@ -71,8 +71,8 @@ class ArrivalLocationView extends StatelessWidget {
                           ],
                           rows: controller.Locations.map((loc) {
                             return DataRow(cells: [
-                              DataCell(Text('${loc['id']}')),
-                              DataCell(Text(loc['name'] ?? '')),
+                              DataCell(Text(loc.id)),
+                              DataCell(Text(loc.name)),
                             ]);
                           }).toList(),
                         ),
