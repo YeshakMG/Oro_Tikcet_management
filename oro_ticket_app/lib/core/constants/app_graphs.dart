@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 
+
+
 class AppGraphs {
   // Default bubble chart configuration
   static BubbleChartLayout defaultChartLayout({
@@ -61,14 +63,4 @@ class AppGraphs {
       ),
     ];
   }
-
-  // static BubbleNode randomBubble() {
-  //   final random = Random();
-  //   return BubbleNode.leaf(
-  //     value: max(1, random.nextInt(10)),
-  //     options: BubbleOptions(
-  //       color: Colors.primaries[random.nextInt(Colors.primaries.length)],
-  //     ),
-  //   );
-  // }
 }

@@ -75,6 +75,13 @@ class AppTextStyles {
     color: Colors.white,
   );
 
+  static const TextStyle buttonMedium = TextStyle(
+    fontFamily: 'Poppins',
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+    color: Colors.black,
+  );
+
   static const TextStyle companyName = TextStyle(
     fontFamily: 'Poppins',
     fontSize: 13,

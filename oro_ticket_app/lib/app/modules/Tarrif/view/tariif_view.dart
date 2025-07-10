@@ -1,15 +1,24 @@
 // tariff_view.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../controller/tarrif_controller.dart';
 
 class TariffView extends StatelessWidget {
-  final TariffController controller = Get.find<TariffController>();
+  final TariffController controller = Get.put(TariffController());
+
+  TariffView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Tariff Management')),
+    return AppScaffold(
+      title: 'Tariff Management',
+      userName: '',
+      currentBottomNavIndex: 0,
+      actions: const [
+        Icon(Icons.more_horiz, color: Colors.white),
+        SizedBox(width: 16),
+      ],
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

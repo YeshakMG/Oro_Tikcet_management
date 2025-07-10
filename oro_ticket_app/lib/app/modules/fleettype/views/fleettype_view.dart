@@ -15,6 +15,10 @@ class FleetTypeView extends StatelessWidget {
       title: 'Fleet Type',
       userName: 'Employee Name',
       showBottomNavBar: true,
+      actions: const [
+        Icon(Icons.more_horiz, color: Colors.white),
+        SizedBox(width: 16),
+      ],
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

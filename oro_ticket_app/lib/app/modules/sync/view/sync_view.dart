@@ -5,6 +5,8 @@ import '../controller/sync_controller.dart';
 import '../../ticketdetail/view/ticket_detail_view.dart';
 import '../../../data/models/ticket_model.dart';
 
+
+
 class SyncView extends StatelessWidget {
   final SyncController controller = Get.put(SyncController());
   @override
@@ -13,6 +15,7 @@ class SyncView extends StatelessWidget {
       title: "Sync",
       userName: "Employee Name",
       body: Column(
+        
         children: [
           _buildTopBar(),
           Expanded(
