@@ -32,6 +32,13 @@ class AppTextStyles {
     color: AppColors.card,
   );
 
+  static const TextStyle subtitle4 = TextStyle(
+    fontFamily: 'Poppins',
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    color: AppColors.secondary,
+  );
+
   static const TextStyle subtitle2 = TextStyle(
     fontFamily: 'Poppins',
     fontSize: 14,

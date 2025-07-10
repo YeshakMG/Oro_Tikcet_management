@@ -48,6 +48,7 @@ class SignInController extends GetxController {
 
       if (result['success'] == true) {
         final UserModel user = result['user'];
+        await _authService.fetchAndStoreProfileData();
         Get.snackbar(
           'Success',
           'Login Successful.',
@@ -60,7 +61,7 @@ class SignInController extends GetxController {
         _handleLoginError(result);
       }
     } catch (e) {
-
+      print("Error:$e");
       Get.snackbar(
         'Login Error',
         'An unexpected error occurred. Please try again.',

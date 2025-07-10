@@ -7,10 +7,10 @@ class DrawerItems {
       'title': 'Vehicles',
       'icon': Icons.directions_car,
     },
-    {
-      'title': 'Vehicle categories',
-      'icon': Icons.directions_bus,
-    },
+    // {
+    //   'title': 'Vehicle categories',
+    //   'icon': Icons.directions_bus,
+    // },
     {
       'title': 'Terminal Name',
       'icon': Icons.location_on,
