@@ -1,44 +1,53 @@
+// lib/controllers/arrival_controllers.dart
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:hive/hive.dart';
-import 'package:oro_ticket_app/data/locals/models/arrival_model.dart';
-import 'package:oro_ticket_app/data/locals/service/arrival_storage_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
-
-import '../../../../data/locals/hive_boxes.dart';
+import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 
 class ArrivalLocationController extends GetxController {
-  var Locations = <ArrivalModel>[].obs;
-  var allLocations = <ArrivalModel>[].obs;
+  final SyncRepository syncRepo = Get.put(SyncRepository());
+  var locations = <ArrivalTerminalModel>[].obs;
+  var filteredLocations = <ArrivalTerminalModel>[].obs;
 
   @override
-  void onInit() async {
+  void onInit() {
     super.onInit();
-    final syncRepo = SyncRepository();
-    await syncRepo.syncCompanyUserVehicles();
-    await loadLocations();
+    loadLocations();
   }
 
   Future<void> loadLocations() async {
-    final service = ArrivalStorageService();
-    // final list = await service();
+    // Load from local storage first
+    locations.value = syncRepo.getLocalArrivalTerminals();
+    filteredLocations.value = List.from(locations);
 
-    // Debug outputt
-    final box = Hive.box<ArrivalModel>(HiveBoxes.arrivalTerminalsBox);
-    print('Hive Box Arrival Items Count: ${box.length}');
-    for (var item in box.values) {
-      print('Arrival: ${item.id} - ${item.name}');
+    // Then try to sync from API
+    await syncLocations();
+    List<ArrivalTerminalModel> localArrivals =
+        syncRepo.getLocalArrivalTerminals();
+    print('Number of arrivals stored: ${localArrivals.length}');
+    for (var arrival in localArrivals) {
+      print(arrival.toJson());
     }
+  }
 
-    // allLocations.value = list;
-    // Locations.value = list;
+  Future<void> syncLocations() async {
+    try {
+      await syncRepo.syncCompanyUserArrivalTerminals();
+      locations.value = syncRepo.getLocalArrivalTerminals();
+      filteredLocations.value = List.from(locations);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error Failed to sync arrival locations: $e');
+      }
+    }
   }
 
   void filterLocations(String query) {
     if (query.isEmpty) {
-      Locations.value = allLocations;
+      filteredLocations.value = List.from(locations);
     } else {
-      Locations.value = allLocations.where((item) {
-        return item.name.toLowerCase().contains(query.toLowerCase());
+      filteredLocations.value = locations.where((terminal) {
+        return terminal.name.toLowerCase().contains(query.toLowerCase());
       }).toList();
     }
   }

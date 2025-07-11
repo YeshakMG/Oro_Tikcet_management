@@ -13,11 +13,11 @@ class DrawerItems {
     // },
     {
       'title': 'Terminal Name',
-      'icon': Icons.location_on,
+      'icon': Icons.departure_board_rounded,
     },
     {
       'title': 'Arrival Terminal',
-      'icon': Icons.place,
+      'icon': Icons.share_arrival_time,
     },
     {
       'title': 'Tariff',
