@@ -14,6 +14,10 @@ class SyncView extends StatelessWidget {
     return AppScaffold(
       title: "Sync",
       userName: "Employee Name",
+      actions: const [
+        Icon(Icons.more_horiz, color: Colors.white),
+        SizedBox(width: 16),
+      ],
       body: Column(
         
         children: [

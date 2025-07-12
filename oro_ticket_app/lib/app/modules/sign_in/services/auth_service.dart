@@ -1,15 +1,18 @@
 import 'dart:convert';
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
+import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 import '../models/user_model.dart';
 
 class AuthService {
   static final _storage = const FlutterSecureStorage();
   static const _tokenKey = 'auth_token';
   static const _userKey = 'auth_user';
+  final SyncRepository syncRepo = Get.put(SyncRepository());
 
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? '';
 
@@ -36,7 +39,12 @@ class AuthService {
 
       await _storage.write(key: _tokenKey, value: token);
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
-
+      try {
+        await syncRepo.syncCommissionRules();
+        print('✅ Commission rules synced after login.');
+      } catch (e) {
+        print('❌ Failed to sync commission rules after login: $e');
+      }
       return {'success': true, 'user': user, 'token': token};
     } else {
       return {

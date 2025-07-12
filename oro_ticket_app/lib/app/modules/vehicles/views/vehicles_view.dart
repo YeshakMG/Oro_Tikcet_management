@@ -66,29 +66,31 @@ class VehiclesView extends StatelessWidget {
                   columnSpacing: 16,
                   columns: const [
                     DataColumn(
-                        label:
-                            Text('Plate No', style: AppTextStyles.subtitle4)),
-                    DataColumn(
-                        label: Text('Seats', style: AppTextStyles.subtitle4)),
-                    DataColumn(
-                        label: Text('Level', style: AppTextStyles.subtitle4)),
+                        label: Text('Plate No',
+                            style: AppTextStyles.buttonMedium)),
                     DataColumn(
                         label:
-                            Text('Fleet Type', style: AppTextStyles.subtitle4)),
+                            Text('Seats', style: AppTextStyles.buttonMedium)),
+                    DataColumn(
+                        label:
+                            Text('Level', style: AppTextStyles.buttonMedium)),
+                    DataColumn(
+                        label: Text('Fleet Type',
+                            style: AppTextStyles.buttonMedium)),
                   ],
                   rows: controller.filteredVehicles.map((vehicle) {
                     return DataRow(
                       cells: [
                         DataCell(Text(
                           '${vehicle.plateRegion}-${vehicle.plateNumber}',
-                          style: AppTextStyles.subtitle4,
+                          style: AppTextStyles.buttonMedium,
                         )),
                         DataCell(Text('${vehicle.seatCapacity}',
-                            style: AppTextStyles.subtitle4)),
+                            style: AppTextStyles.buttonMedium)),
                         DataCell(Text(vehicle.vehicleLevel,
-                            style: AppTextStyles.subtitle4)),
+                            style: AppTextStyles.buttonMedium)),
                         DataCell(Text(vehicle.fleetType,
-                            style: AppTextStyles.subtitle4)),
+                            style: AppTextStyles.buttonMedium)),
                         // You can replace this with the actual level name if joined
                       ],
                     );

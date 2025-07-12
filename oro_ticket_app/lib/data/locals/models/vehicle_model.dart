@@ -43,6 +43,12 @@ class VehicleModel extends HiveObject {
   @HiveField(12)
   final String? updatedAt;
 
+  @HiveField(13)
+  final List<String>? arrivalTerminals;
+
+  @HiveField(14)
+  final List<String>? tariffs;
+
   VehicleModel({
     required this.id,
     required this.plateNumber,
@@ -53,6 +59,8 @@ class VehicleModel extends HiveObject {
     required this.seatCapacity,
     required this.status,
     this.assignedTerminalId,
+    required this.arrivalTerminals,
+    required this.tariffs,
     this.createdBy,
     this.updatedBy,
     this.createdAt,
@@ -74,6 +82,9 @@ class VehicleModel extends HiveObject {
       updatedBy: json['updated_by'],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
+      arrivalTerminals:
+          (json['arrival_terminals'] as List?)?.cast<String>() ?? [],
+      tariffs: (json['tariffs'] as List?)?.cast<String>() ?? [],
     );
   }
 
@@ -91,5 +102,7 @@ class VehicleModel extends HiveObject {
         'updated_by': updatedBy,
         'created_at': createdAt,
         'updated_at': updatedAt,
+        'arrival_terminals': arrivalTerminals ?? [],
+        'tariffs': tariffs ?? [],
       };
 }
