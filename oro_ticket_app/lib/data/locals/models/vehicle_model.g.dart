@@ -20,8 +20,8 @@ class VehicleModelAdapter extends TypeAdapter<VehicleModel> {
       id: fields[0] as String,
       plateNumber: fields[1] as String,
       plateRegion: fields[2] as String,
-      fleetTypeId: fields[3] as String,
-      vehicleLevelId: fields[4] as String,
+      fleetType: fields[3] as String,
+      vehicleLevel: fields[4] as String,
       associationId: fields[5] as String,
       seatCapacity: fields[6] as int,
       status: fields[7] as String,
@@ -44,9 +44,9 @@ class VehicleModelAdapter extends TypeAdapter<VehicleModel> {
       ..writeByte(2)
       ..write(obj.plateRegion)
       ..writeByte(3)
-      ..write(obj.fleetTypeId)
+      ..write(obj.fleetType)
       ..writeByte(4)
-      ..write(obj.vehicleLevelId)
+      ..write(obj.vehicleLevel)
       ..writeByte(5)
       ..write(obj.associationId)
       ..writeByte(6)

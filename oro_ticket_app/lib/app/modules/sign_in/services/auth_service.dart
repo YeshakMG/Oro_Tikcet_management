@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
 import '../models/user_model.dart';
 
 class AuthService {
@@ -11,13 +13,11 @@ class AuthService {
 
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? '';
 
-
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
-    // required String terminalId,
   }) async {
-    final url = Uri.parse('$baseUrl/auth/login');
+    final url = Uri.parse('$baseUrl/auth/company-user/login');
 
     final response = await http.post(
       url,
@@ -25,7 +25,6 @@ class AuthService {
       body: jsonEncode({
         'email': email,
         'password': password,
-        // 'terminal_id': terminalId,
       }),
     );
 
@@ -76,4 +75,30 @@ class AuthService {
   }
 
   Future<bool> isLoggedIn() async => (await getToken()) != null;
+
+  Future<void> fetchAndStoreProfileData() async {
+    final token = await getToken();
+    if (token == null) return;
+
+    final url = Uri.parse('$baseUrl/auth/company-user/profile');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final terminalJson = data['data']['terminal'];
+
+      if (terminalJson != null) {
+        final terminal = DepartureTerminalModel.fromJson(terminalJson);
+        await DepartureTerminalStorageService.saveTerminal(terminal);
+      }
+    } else {
+      throw Exception('Failed to fetch profile data');
+    }
+  }
 }

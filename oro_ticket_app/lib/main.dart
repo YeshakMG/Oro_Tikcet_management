@@ -5,11 +5,15 @@ import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/theme/app_theme.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
+import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await HiveBoxes.init();
+
+ 
+
   Get.put(AuthService());
   runApp(const MyApp());
 }

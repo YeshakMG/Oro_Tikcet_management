@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:oro_ticket_app/app/modules/Tarrif/view/tariif_view.dart';
 import 'package:oro_ticket_app/app/modules/arrivals/views/arrival_view.dart';
+import 'package:oro_ticket_app/app/modules/departure/view/departure_view.dart';
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
 import 'package:oro_ticket_app/app/modules/localReport/view/local_report_view.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
 import 'package:oro_ticket_app/app/modules/ticket/view/ticket_view.dart';
+import 'package:oro_ticket_app/app/modules/vehicles/views/vehicles_view.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/bottom_navbar.dart';
@@ -57,10 +59,13 @@ class _AppScaffoldState extends State<AppScaffold> {
           onItemSelected: (item) async {
             switch (item) {
               case 'Vehicles':
-                Get.toNamed('/vehicles');
+                Get.to(VehiclesView());
                 break;
-              case 'Vehicle categories':
-                Get.toNamed('/fleet-type');
+              // case 'Vehicle categories':
+              //   Get.toNamed('/fleet-type');
+              //   break;
+              case 'Terminal Name':
+                Get.to(DepartureView());
                 break;
               case 'Arrival Terminal':
                 Get.to(ArrivalLocationView());

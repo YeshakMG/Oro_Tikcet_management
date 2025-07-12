@@ -1,21 +1,33 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
+import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 
-class Departure {
-  final int no;
-  final String terminalName;
+class DepartureControllers extends GetxController {
+  final SyncRepository syncRepo = SyncRepository();
+  Rx<DepartureTerminalModel?> terminal = Rx<DepartureTerminalModel?>(null);
 
-  Departure({required this.no, required this.terminalName});
-}
+  @override
+  void onInit() {
+    super.onInit();
+    loadTerminal();
+  }
 
-class DepartureController extends GetxController {
-  // Your controller logic here
-  RxList<Departure> departures = <Departure>[
-    Departure(no: 1, terminalName: 'Terminal A'),
-    Departure(no: 2, terminalName: 'Terminal B'),
-    Departure(no: 3, terminalName: 'Terminal C'),
-    Departure(no: 4, terminalName: 'Terminal D'),
-    Departure(no: 5, terminalName: 'Terminal E'),
-  ].obs;
+  void loadTerminal() {
+    terminal.value = DepartureTerminalStorageService.getTerminal();
+    if (kDebugMode) {
+      print('--- Current Stored Departure Terminal ---');
+      if (terminal.value == null) {
+        print('No terminal stored');
+      } else {
+        print(terminal.value!.toJson());
+      }
+    }
+  }
 
-
+  Future<void> syncTerminalFromApi(Map<String, dynamic> json) async {
+    await syncRepo.syncDepartureTerminal(json);
+    loadTerminal();
+  }
 }

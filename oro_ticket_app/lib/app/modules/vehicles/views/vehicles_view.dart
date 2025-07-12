@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/app/modules/vehicles/controllers/vehicles_controllers.dart';
+import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 
-class VehiclesView extends GetView<VehiclesController> {
-  const VehiclesView({super.key});
+class VehiclesView extends StatelessWidget {
+  final VehiclesController controller = Get.put(VehiclesController());
+
+  VehiclesView({super.key});
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Vehicles',
-      userName: 'Employee Name',
+      userName: 'Employee',
       showBottomNavBar: true,
       currentBottomNavIndex: 0,
       actions: const [
@@ -25,9 +28,9 @@ class VehiclesView extends GetView<VehiclesController> {
             child: Row(
               children: [
                 ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.filter_alt_outlined),
-                  label: const Text("Filter"),
+                  onPressed: () => controller.fetchAndSyncVehicles(),
+                  icon: const Icon(Icons.sync),
+                  label: const Text("Sync"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.backgroundAlt,
                     foregroundColor: AppColors.body,
@@ -39,7 +42,7 @@ class VehiclesView extends GetView<VehiclesController> {
                   child: TextField(
                     onChanged: controller.filterVehicles,
                     decoration: InputDecoration(
-                      hintText: 'Search',
+                      hintText: 'Search by plate/status',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: AppColors.backgroundAlt,
@@ -54,37 +57,52 @@ class VehiclesView extends GetView<VehiclesController> {
             ),
           ),
           Expanded(
-            child: Obx(() => SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(AppColors.cardAlt),
-                    dataRowColor: WidgetStateProperty.all(AppColors.card),
-                    columnSpacing: 16,
-                    columns: const [
-                      DataColumn(label: Text('Level')),
-                      DataColumn(label: Text('Seat No')),
-                      DataColumn(label: Text('Dep Terminal')),
-                      DataColumn(label: Text('')),
-                    ],
-                    rows: controller.vehicles.map((vehicle) {
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(vehicle['level'] ?? '')),
-                          DataCell(Text(vehicle['seat'] ?? '')),
-                          DataCell(Text(vehicle['terminal'] ?? '')),
-                          const DataCell(Icon(Icons.remove_red_eye_outlined,
-                              color: AppColors.secondary)),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                )),
+            child: Obx(() {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  headingRowColor: WidgetStateProperty.all(AppColors.cardAlt),
+                  dataRowColor: WidgetStateProperty.all(AppColors.card),
+                  columnSpacing: 16,
+                  columns: const [
+                    DataColumn(
+                        label:
+                            Text('Plate No', style: AppTextStyles.subtitle4)),
+                    DataColumn(
+                        label: Text('Seats', style: AppTextStyles.subtitle4)),
+                    DataColumn(
+                        label: Text('Level', style: AppTextStyles.subtitle4)),
+                    DataColumn(
+                        label:
+                            Text('Fleet Type', style: AppTextStyles.subtitle4)),
+                  ],
+                  rows: controller.filteredVehicles.map((vehicle) {
+                    return DataRow(
+                      cells: [
+                        DataCell(Text(
+                          '${vehicle.plateRegion}-${vehicle.plateNumber}',
+                          style: AppTextStyles.subtitle4,
+                        )),
+                        DataCell(Text('${vehicle.seatCapacity}',
+                            style: AppTextStyles.subtitle4)),
+                        DataCell(Text(vehicle.vehicleLevel,
+                            style: AppTextStyles.subtitle4)),
+                        DataCell(Text(vehicle.fleetType,
+                            style: AppTextStyles.subtitle4)),
+                        // You can replace this with the actual level name if joined
+                      ],
+                    );
+                  }).toList(),
+                ),
+              );
+            }),
           ),
         ],
       ),
     );
   }
 }
+
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
 // import 'package:oro_ticket_app/core/constants/colors.dart';
@@ -153,14 +171,12 @@ class VehiclesView extends GetView<VehiclesController> {
 //                       DataColumn(label: Text('Dep Terminal')),
 //                       DataColumn(label: Text('')),
 //                     ],
-//                     rows: controller.filteredVehicles.map((vehicle) {
+//                     rows: controller.vehicles.map((vehicle) {
 //                       return DataRow(
 //                         cells: [
-//                           DataCell(Text(vehicle
-//                               .vehicleLevelId)), 
-//                           DataCell(Text('${vehicle.seatCapacity}')),
-//                           DataCell(Text(vehicle
-//                               .associationId)), 
+//                           DataCell(Text(vehicle['level'] ?? '')),
+//                           DataCell(Text(vehicle['seat'] ?? '')),
+//                           DataCell(Text(vehicle['terminal'] ?? '')),
 //                           const DataCell(Icon(Icons.remove_red_eye_outlined,
 //                               color: AppColors.secondary)),
 //                         ],

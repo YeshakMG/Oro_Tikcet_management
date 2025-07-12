@@ -4,8 +4,8 @@ import '../controllers/departure_controllers.dart';
 class DepartureBindings  extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<DepartureController>(
-      () => DepartureController(),
+    Get.lazyPut<DepartureControllers>(
+      () => DepartureControllers(),
     );
   }
 }
