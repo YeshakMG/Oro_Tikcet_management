@@ -167,7 +167,7 @@ class _TicketViewState extends State<TicketView> {
                               _ticketController.level.value = vehicle.vehicleLevel;
                               _ticketController.seatNo.value = vehicle.seatCapacity.toString();
                               _ticketController.level.value = vehicle.vehicleLevel;
-                              _ticketController.associations.value = vehicle.associationId;
+                              _ticketController.associations.value = vehicle.associationName;
                               _ticketController.region.value = vehicle.plateRegion;
 
                               setState(() {}); // Refresh suggestion UI

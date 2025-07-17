@@ -20,7 +20,7 @@ class VehicleModel extends HiveObject {
   final String vehicleLevel;
 
   @HiveField(5)
-  final String associationId;
+  final String associationName;
 
   @HiveField(6)
   final int seatCapacity;
@@ -55,7 +55,7 @@ class VehicleModel extends HiveObject {
     required this.plateRegion,
     required this.fleetType,
     required this.vehicleLevel,
-    required this.associationId,
+    required this.associationName,
     required this.seatCapacity,
     required this.status,
     this.assignedTerminalId,
@@ -74,7 +74,7 @@ class VehicleModel extends HiveObject {
       plateRegion: json['plate_region'] ?? '',
       fleetType: json['fleetType']['name'],
       vehicleLevel: json['vehicleLevel']['name'],
-      associationId: json['association_id'],
+      associationName: json['association']['name'],
       seatCapacity: json['seat_capacity'] ?? 0,
       status: json['status'] ?? 'active',
       assignedTerminalId: json['assigned_terminal_id'],
@@ -94,7 +94,7 @@ class VehicleModel extends HiveObject {
         'plate_region': plateRegion,
         'fleetType': fleetType,
         'vehicleLevel': vehicleLevel,
-        'association_id': associationId,
+        'association': associationName,
         'seat_capacity': seatCapacity,
         'status': status,
         'assigned_terminal_id': assignedTerminalId,

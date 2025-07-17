@@ -45,7 +45,7 @@ class TicketController extends GetxController {
     km.value = "${arrival.distance.toStringAsFixed(1)} km";
     tariff.value = "${arrival.tariff.toStringAsFixed(2)} ETB";
     dateTime.value = DateTime.now().toString();
-    associations.value = vehicle.associationId;
+    associations.value = vehicle.associationName;
     region.value = vehicle.plateRegion;
     level.value = vehicle.vehicleLevel;
 

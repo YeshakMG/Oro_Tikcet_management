@@ -22,7 +22,7 @@ class VehicleModelAdapter extends TypeAdapter<VehicleModel> {
       plateRegion: fields[2] as String,
       fleetType: fields[3] as String,
       vehicleLevel: fields[4] as String,
-      associationId: fields[5] as String,
+      associationName: fields[5] as String,
       seatCapacity: fields[6] as int,
       status: fields[7] as String,
       assignedTerminalId: fields[8] as String?,
@@ -50,7 +50,7 @@ class VehicleModelAdapter extends TypeAdapter<VehicleModel> {
       ..writeByte(4)
       ..write(obj.vehicleLevel)
       ..writeByte(5)
-      ..write(obj.associationId)
+      ..write(obj.associationName)
       ..writeByte(6)
       ..write(obj.seatCapacity)
       ..writeByte(7)
