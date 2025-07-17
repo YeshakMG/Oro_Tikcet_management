@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:oro_ticket_app/app/modules/Tarrif/view/tariif_view.dart';
 import 'package:oro_ticket_app/app/modules/arrivals/views/arrival_view.dart';
 import 'package:oro_ticket_app/app/modules/departure/view/departure_view.dart';
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
@@ -70,9 +69,9 @@ class _AppScaffoldState extends State<AppScaffold> {
               case 'Arrival Terminal':
                 Get.to(ArrivalLocationView());
                 break;
-              case 'Tariff':
-                Get.to(TariffView());
-                break;
+              // case 'Tariff':
+              //   Get.to(TariffView());
+              //   break;
               case 'Logout':
                 confirmLogout();
                 break;
@@ -131,26 +130,53 @@ class _AppScaffoldState extends State<AppScaffold> {
 
 Future<void> confirmLogout() async {
   final AuthService authService = Get.find<AuthService>();
+  final isLoading = false.obs;
+  
   final result = await Get.dialog<bool>(
     AlertDialog(
       title: const Text('Logout'),
-      content: const Text('Are you sure you want to logout?'),
+      content: Obx(() => isLoading.value
+          ? const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Logging out...'),
+              ],
+            )
+          : const Text('Are you sure you want to logout?')),
       actions: [
-        TextButton(
-          onPressed: () => Get.back(result: false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Get.back(result: true),
-          child: const Text('Logout', style: TextStyle(color: Colors.red)),
-        ),
+        if (!isLoading.value) ...[
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              isLoading.value = true;
+              Get.back(result: true);
+            },
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ],
     ),
-    barrierDismissible: true,
+    barrierDismissible: !isLoading.value,
   );
 
   if (result == true) {
-    await authService.logout();
-    Get.offAllNamed('/sign-in');
+    try {
+      await authService.logout();
+      Get.offAllNamed('/sign-in');
+    } catch (e) {
+      Get.back(); 
+      Get.snackbar(
+        'Logout Error',
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+
+      Get.offAllNamed('/sign-in');
+    }
   }
 }

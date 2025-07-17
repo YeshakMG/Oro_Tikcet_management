@@ -19,10 +19,10 @@ class DrawerItems {
       'title': 'Arrival Terminal',
       'icon': Icons.share_arrival_time,
     },
-    {
-      'title': 'Tariff',
-      'icon': Icons.price_change,
-    },
+    // {
+    //   'title': 'Tariff',
+    //   'icon': Icons.price_change,
+    // },
     {
       'title': 'Logout',
       'icon': Icons.logout,

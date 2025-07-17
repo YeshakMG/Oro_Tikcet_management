@@ -56,20 +56,52 @@ class AuthService {
   }
 
   Future<void> logout() async {
-    final token = await _storage.read(key: _tokenKey);
-    final url = Uri.parse('$baseUrl/auth/logout');
+    try {
+      final token = await _storage.read(key: _tokenKey);
+      if (token == null) {
+        throw Exception('No token found');
+      }
 
-    await http.post(
-      url,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
+      final url = Uri.parse('$baseUrl/auth/logout');
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
 
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _userKey);
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['status'] == 'success') {
+          // Successful logout - clear local storage
+          // await _clearStorage();
+          return;
+        } else {
+          throw Exception(responseData['message'] ?? 'Logout failed');
+        }
+      } else if (response.statusCode == 401) {
+        // Token might be invalid, but we should still clear local storage
+        // await _clearStorage();
+        throw Exception('Session expired or invalid');
+      } else {
+        throw Exception('Logout failed with status ${response.statusCode}');
+      }
+    } catch (e) {
+      // Even if logout fails, we should clear local storage
+      // await _clearStorage();
+      rethrow;
+    }
   }
+
+  // Future<void> _clearStorage() async {
+  //   await _storage.delete(key: _tokenKey);
+  //   await _storage.delete(key: _userKey);
+
+  //   // Clear any other relevant local storage
+  //   // await Hive.box<VehicleModel>(HiveBoxes.vehiclesBox).clear();
+  //   // await Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox).clear();
+  // }
 
   Future<String?> getToken() => _storage.read(key: _tokenKey);
 
