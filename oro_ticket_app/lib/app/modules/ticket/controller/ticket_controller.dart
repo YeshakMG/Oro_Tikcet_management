@@ -1,19 +1,70 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
+import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
+import 'package:hive/hive.dart';
 
 class TicketController extends GetxController {
-  final agencyName = "Oromia Transport Agency".obs;
-  final locationFrom = "Location 1".obs;
-  final locationTo = "Location 2".obs;
-  final timeFrom = "12:00 AM".obs;
-  final timeTo = "02:00 PM".obs;
-  final plateNumber = "23758".obs;
-  final seatNo = "11".obs;
-  final level = "Level 1".obs;
-  final dateTime = "19/09/2016 10:23:14".obs;
-  final km = "240".obs;
-  final tariff = "89 ETB".obs;
-  final serviceCharge = "20".obs;
-  final total = "109 ETB".obs;
-  final employeeName = "Employee Name".obs;
-  final ticketStatus = "CONFIRMED".obs;
+  final locationFrom = ''.obs;
+  final locationTo = ''.obs;
+  final plateNumber = ''.obs;
+  final seatNo = ''.obs;
+  final level = ''.obs;
+  final dateTime = ''.obs;
+  final km = ''.obs;
+  final associationId = ''.obs;
+  final regionId = ''.obs;
+
+  final tariff = ''.obs;
+  final serviceCharge = ''.obs;
+  final totalPayment = ''.obs;
+
+  final commissionRate = 0.0.obs;
+
+  // Associations
+  final associations = ''.obs;
+  final region = ''.obs;
+
+  // Models
+  final selectedVehicle = Rxn<VehicleModel>();
+  final selectedArrival = Rxn<ArrivalTerminalModel>();
+  
+
+  // Populates ticket info and calculates charges
+  void populateFromModels(VehicleModel vehicle, ArrivalTerminalModel arrival, String departureName) {
+    selectedVehicle.value = vehicle;
+    selectedArrival.value = arrival;
+  
+
+    plateNumber.value = vehicle.plateNumber;
+    seatNo.value = vehicle.seatCapacity.toString();
+    level.value = vehicle.vehicleLevel;
+    locationFrom.value = departureName;
+    locationTo.value = arrival.name;
+    km.value = "${arrival.distance.toStringAsFixed(1)} km";
+    tariff.value = "${arrival.tariff.toStringAsFixed(2)} ETB";
+    dateTime.value = DateTime.now().toString();
+    associations.value = vehicle.associationId;
+    region.value = vehicle.plateRegion;
+    level.value = vehicle.vehicleLevel;
+
+
+
+    calculateCharges(arrival.tariff);
+  }
+
+  void calculateCharges(double baseTariff) {
+    final box = Hive.box<CommissionRuleModel>('commissionRuleBox');
+    final rule = box.values.firstOrNull;
+
+    double rate = rule?.commissionRate ?? 0.0;
+    commissionRate.value = rate;
+
+    double computedService = baseTariff * rate;
+    double total = baseTariff + computedService;
+
+    serviceCharge.value = "${computedService.toStringAsFixed(2)} ETB";
+    totalPayment.value = "${total.toStringAsFixed(2)} ETB";
+  }
 }

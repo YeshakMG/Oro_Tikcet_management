@@ -58,6 +58,10 @@ class SyncRepository {
     final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
     return box.values.toList();
   }
+  
+  List<ArrivalTerminalModel> getLocalArrivalTerminals() {
+    return ArrivalTerminalStorageService.getTerminals();
+  }
 
 // For Departure
   Future<void> syncDepartureTerminal(Map<String, dynamic> terminalJson) async {
@@ -78,79 +82,99 @@ class SyncRepository {
   }
 
   Future<void> syncCompanyUserArrivalTerminals() async {
-    final authService = Get.find<AuthService>();
-    final token = await authService.getToken();
+  final authService = Get.find<AuthService>();
+  final token = await authService.getToken();
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      },
-    );
+  final response = await http.get(
+    Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    },
+  );
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> json = jsonDecode(response.body);
-      final vehicles = json['data']['vehicles'] as List<dynamic>;
+  if (response.statusCode == 200) {
+    final Map<String, dynamic> json = jsonDecode(response.body);
+    final vehicles = json['data']['vehicles'] as List<dynamic>;
 
-      final arrivalTerminals = <ArrivalTerminalModel>[];
+    final arrivalTerminals = <ArrivalTerminalModel>[];
 
-      for (final vehicle in vehicles) {
-        final destinations =
-            vehicle['vehicleTerminalDestinations'] as List<dynamic>?;
-        if (destinations != null) {
-          for (final dest in destinations) {
-            final terminalDestination = dest['terminalDestination'];
-            if (terminalDestination != null) {
-              final terminalJson = terminalDestination['arrivalTerminal'] ?? {};
+    for (final vehicle in vehicles) {
+      final destinations = vehicle['vehicleTerminalDestinations'] as List<dynamic>?;
 
-              // Handle tariff conversion
-              dynamic tariffValue = vehicle['tariff']?['tariff'] ?? 0.0;
-              double parsedTariff = 0.0;
+      if (destinations != null) {
+        for (final dest in destinations) {
+          
+          final terminalDestination = dest['terminalDestination'];
 
-              if (tariffValue is String) {
-                parsedTariff = double.tryParse(tariffValue) ?? 0.0;
-              } else if (tariffValue is int) {
-                parsedTariff = tariffValue.toDouble();
-              } else if (tariffValue is double) {
-                parsedTariff = tariffValue;
-              }
+          if (terminalDestination != null) {
+            print('Full terminalDestination JSON: $terminalDestination');
+            final arrivalTerminal = terminalDestination['arrivalTerminal'] ?? {};
 
-              // Handle distance conversion
-              dynamic distanceValue = terminalDestination['distance'] ?? 0.0;
-              double parsedDistance = 0.0;
+            // Debug print raw arrivalTerminal JSON to inspect actual content
+            print('Raw arrivalTerminal JSON: $arrivalTerminal');
 
-              if (distanceValue is String) {
-                parsedDistance = double.tryParse(distanceValue) ?? 0.0;
-              } else if (distanceValue is int) {
-                parsedDistance = distanceValue.toDouble();
-              } else if (distanceValue is double) {
-                parsedDistance = distanceValue;
-              }
+            // Try to extract id and name directly or check nested keys if needed
+            // Example if nested deeper, you can add logic here after seeing the debug output
 
-              arrivalTerminals.add(
-                ArrivalTerminalModel.fromJson({
-                  ...terminalJson,
-                  'tariff': parsedTariff,
-                  'distance': parsedDistance,
-                }),
-              );
+            final terminalId = arrivalTerminal['id'] ??
+                arrivalTerminal['arrival_terminal_id'] ??
+                '';
+
+            final terminalName =
+                arrivalTerminal['name'] ??
+                arrivalTerminal['terminal_name'] ??
+                '';
+
+            print("Parsed terminal: id=$terminalId, name=$terminalName");
+
+            // Handle tariff conversion
+            dynamic tariffValue = vehicle['tariff']?['tariff'] ?? 0.0;
+            double parsedTariff = 0.0;
+
+            if (tariffValue is String) {
+              parsedTariff = double.tryParse(tariffValue) ?? 0.0;
+            } else if (tariffValue is int) {
+              parsedTariff = tariffValue.toDouble();
+            } else if (tariffValue is double) {
+              parsedTariff = tariffValue;
             }
+
+            // Handle distance conversion
+            dynamic distanceValue = terminalDestination['distance'] ?? 0.0;
+            double parsedDistance = 0.0;
+
+            if (distanceValue is String) {
+              parsedDistance = double.tryParse(distanceValue) ?? 0.0;
+            } else if (distanceValue is int) {
+              parsedDistance = distanceValue.toDouble();
+            } else if (distanceValue is double) {
+              parsedDistance = distanceValue;
+            }
+
+            arrivalTerminals.add(
+              ArrivalTerminalModel.fromJson({
+                'id': terminalId,
+                'name': terminalName,
+                'tariff': parsedTariff,
+                'distance': parsedDistance,
+              }),
+            );
           }
         }
       }
-
-      await syncArrivalTerminals(
-        arrivalTerminals.map((e) => e.toJson()).toList(),
-      );
-    } else {
-      throw Exception('Failed to sync arrival terminals: ${response.body}');
     }
-  }
 
-  List<ArrivalTerminalModel> getLocalArrivalTerminals() {
-    return ArrivalTerminalStorageService.getTerminals();
+    // Save to Hive after transformation
+    await syncArrivalTerminals(
+      arrivalTerminals.map((e) => e.toJson()).toList(),
+    );
+  } else {
+    throw Exception('Failed to sync arrival terminals: ${response.body}');
   }
+}
+
+
       
 // For Commission
   Future<void> syncCommissionRules() async {
