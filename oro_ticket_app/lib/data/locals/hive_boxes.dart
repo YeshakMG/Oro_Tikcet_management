@@ -3,6 +3,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
+import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 
 import 'models/vehicle_model.dart';
@@ -12,6 +14,8 @@ class HiveBoxes {
   static const String departureTerminalsBox = 'departureTerminalsBox';
   static const String arrivalTerminalsBox = 'arrivalTerminalsBox';
   static const String commissionRulesBox = 'commissionRulesBox';
+  static const String tripBox = 'tripBox';
+  static const String serviceChargeBox = 'serviceChargeBox';
   static bool _initialized = false;
 
   static Future<void> init() async {
@@ -32,6 +36,8 @@ class HiveBoxes {
       Hive.registerAdapter(DepartureTerminalModelAdapter());
       Hive.registerAdapter(ArrivalTerminalModelAdapter());
       Hive.registerAdapter(CommissionRuleModelAdapter());
+      Hive.registerAdapter(TripModelAdapter());
+      Hive.registerAdapter(ServiceChargeModelAdapter());
 
       // Open boxes
       await Future.wait([
@@ -39,6 +45,8 @@ class HiveBoxes {
         Hive.openBox<DepartureTerminalModel>(departureTerminalsBox),
         Hive.openBox<ArrivalTerminalModel>(arrivalTerminalsBox),
         Hive.openBox<CommissionRuleModel>(commissionRulesBox),
+        Hive.openBox<TripModel>(tripBox),
+        Hive.openBox<ServiceChargeModel>(serviceChargeBox),
       ]);
 
       _initialized = true;
