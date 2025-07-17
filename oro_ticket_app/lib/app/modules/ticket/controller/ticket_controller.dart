@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
@@ -54,8 +55,8 @@ class TicketController extends GetxController {
     calculateCharges(arrival.tariff);
   }
 
-  void calculateCharges(double baseTariff) {
-    final box = Hive.box<CommissionRuleModel>('commissionRuleBox');
+  void calculateCharges(double baseTariff)async {
+    final box = await HiveBoxes.getBox<CommissionRuleModel>(HiveBoxes.commissionRulesBox);
     final rule = box.values.firstOrNull;
 
     double rate = rule?.commissionRate ?? 0.0;
