@@ -2,7 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'service_charge_model.g.dart';
 
-@HiveType(typeId: 5)
+@HiveType(typeId: 6)
 class ServiceChargeModel extends HiveObject {
   @HiveField(0)
   String departureTerminal;

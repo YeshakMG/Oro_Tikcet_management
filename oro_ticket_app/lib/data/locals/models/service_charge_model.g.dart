@@ -8,7 +8,7 @@ part of 'service_charge_model.dart';
 
 class ServiceChargeModelAdapter extends TypeAdapter<ServiceChargeModel> {
   @override
-  final int typeId = 5;
+  final int typeId = 6;
 
   @override
   ServiceChargeModel read(BinaryReader reader) {

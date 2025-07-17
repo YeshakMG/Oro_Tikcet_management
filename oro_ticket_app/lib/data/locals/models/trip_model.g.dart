@@ -8,7 +8,7 @@ part of 'trip_model.dart';
 
 class TripModelAdapter extends TypeAdapter<TripModel> {
   @override
-  final int typeId = 4;
+  final int typeId = 5;
 
   @override
   TripModel read(BinaryReader reader) {

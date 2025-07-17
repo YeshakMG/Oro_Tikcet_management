@@ -2,7 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'trip_model.g.dart';
 
-@HiveType(typeId: 4)
+@HiveType(typeId: 5)
 class TripModel extends HiveObject {
   @HiveField(0)
   String plateNumber;
