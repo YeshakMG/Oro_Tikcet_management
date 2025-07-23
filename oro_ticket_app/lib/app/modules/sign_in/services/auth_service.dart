@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -35,7 +36,7 @@ class AuthService {
 
     if (response.statusCode == 200 && data['status'] == 'success') {
       final token = data['data']['token'];
-      final user = UserModel.fromJson(data['data']['user']);
+      final user = UserModel.fromLoginJson(data['data']);
 
       await _storage.write(key: _tokenKey, value: token);
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
@@ -106,12 +107,24 @@ class AuthService {
   Future<String?> getToken() => _storage.read(key: _tokenKey);
 
   Future<UserModel?> getUser() async {
-    final jsonString = await _storage.read(key: _userKey);
-    if (jsonString != null) {
-      final map = jsonDecode(jsonString);
-      return UserModel.fromJson(Map<String, dynamic>.from(map));
+    final token = await _storage.read(key: 'auth_token');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/auth/company-user/profile'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    print(
+        'Raw response body: ${response.body}'); // 👈 This is key for debugging
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      print('Decoded JSON: $json'); // Optional
+      return UserModel.fromLoginJson(json['data']);
+    } else {
+      debugPrint('Failed to load user profile: ${response.body}');
+      return null;
     }
-    return null;
   }
 
   Future<bool> isLoggedIn() async => (await getToken()) != null;

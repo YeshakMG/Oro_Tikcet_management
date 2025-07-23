@@ -24,12 +24,15 @@ class HomeController extends GetxController {
   Future<void> loadUser() async {
     final loadedUser = await AuthService().getUser();
     user.value = loadedUser;
-    if (loadedUser?.companyId != null) {
-      await fetchCompanyName();
+
+    if (loadedUser?.companyName != null) {
+      companyName.value = loadedUser!.companyName!;
+    } else {
+      companyName.value = 'Unknown Company';
     }
   }
 
-  Future<void> fetchCompanyName() async {
+  /*Future<void> fetchCompanyName() async {
     final id = user.value?.companyId;
     if (id == null) return;
 
@@ -51,9 +54,8 @@ class HomeController extends GetxController {
       debugPrint('Error fetching company name: $e');
     }
   }
-
+*/
   void resetDashboard() {
     // Implement reset logic
-    
   }
 }
