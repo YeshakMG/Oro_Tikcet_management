@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'package:ethiopian_datetime/ethiopian_datetime.dart';
+// Ethiopian DateTime package for date conversion
 
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
+import 'package:ethiopian_datetime/ethiopian_datetime.dart';
+
 
 class TicketController extends GetxController {
   final locationFrom = ''.obs;
@@ -63,8 +65,8 @@ class TicketController extends GetxController {
     tariff.value = "${arrival.tariff.toStringAsFixed(2)} ETB";
     associations.value = vehicle.associationName;
     region.value = vehicle.plateRegion;
+    
 
-    // Get current Ethiopian date
     final now = DateTime.now();
     final ethDate = now.convertToEthiopian();
 

@@ -9,6 +9,7 @@ import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart'
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../controller/ticket_controller.dart';
+import 'package:ethiopian_datetime/ethiopian_datetime.dart';
 
 class TicketView extends StatefulWidget {
   @override
@@ -183,6 +184,15 @@ class _TicketViewState extends State<TicketView> {
                                   vehicle.associationName;
                               _ticketController.region.value =
                                   vehicle.plateRegion;
+                              // Set the date and time
+                              final now = DateTime.now();
+                              final ethDate = now.convertToEthiopian();
+                              
+                              _ticketController.dateTime.value =
+                              "${TicketController.oromoWeekdays[now.weekday]} - "
+                              "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
+                              "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+                              
 
                               setState(() {}); // Refresh suggestion UI
                             },
@@ -305,6 +315,7 @@ class _TicketViewState extends State<TicketView> {
                     ),
                   ],
                 )
+
               ],
             ),
             Divider(height: 30),
@@ -411,6 +422,4 @@ class _TicketViewState extends State<TicketView> {
       ),
     );
   }
-
-
 }
