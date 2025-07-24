@@ -271,13 +271,15 @@ class _TicketViewState extends State<TicketView> {
                     CircleAvatar(
                         backgroundColor:
                             AppColors.primary.withValues(alpha: 0.1),
-                        child: Icon(Icons.my_location_sharp,
+                        child: Icon(Icons.location_pin,
                             color: AppColors.primary)),
                     SizedBox(width: 12),
                     _locationColumn(
-                        _ticketController.locationFrom.value, "12:00 AM"),
+                        _ticketController.locationFrom.value, ""),
                   ],
                 ),
+
+                
                 SizedBox(height: 12),
                 Row(
                   children: [
@@ -288,9 +290,21 @@ class _TicketViewState extends State<TicketView> {
                             Icon(Icons.location_pin, color: AppColors.primary)),
                     SizedBox(width: 12),
                     _locationColumn(
-                        _ticketController.locationTo.value, "02:00 PM"),
+                        _ticketController.locationTo.value, ""),
                   ],
                 ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Text(
+                      _ticketController.dateTime.value,
+                      style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                )
               ],
             ),
             Divider(height: 30),
@@ -398,108 +412,5 @@ class _TicketViewState extends State<TicketView> {
     );
   }
 
-  /* Widget _TicketCard() {
-    return Card(
-      color: Colors.grey[100],
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Ticket Details",
-              style: AppTextStyles.heading2.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.location_on, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text("From: ${_ticketController.locationFrom.value}"),
-              ],
-            ),
-            SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.location_on, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text("To: ${_ticketController.locationTo.value}"),
-              ],
-            ),
-            SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.directions_bus, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text("Plate: ${_ticketController.plateNumber.value}"),
-              ],
-            ),
-            Row(children: [
-              Icon(Icons.arrow_circle_up, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text("Level: ${_ticketController.level.value}"),
-            ],),
-            Row(
-              children:[
-                Icon(Icons.code, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text("Region: ${_ticketController.region.value}"),
-              ],
-            ),
-            Row(children: [
-              Icon(Icons.people, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text("Association: ${_ticketController.associations.value}"),
-            ],),
-            SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.event_seat, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text("Seats: ${_ticketController.seatNo.value}"),
-              ],
-            ),
-            SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.straighten, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text("Distance: ${_ticketController.km.value}"),
-              ],
-            ),
-            SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.attach_money, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text("Tariff: ${_ticketController.tariff.value}"),
-              ],
-            ),
-            SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.miscellaneous_services, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text("Service Charge: ${_ticketController.serviceCharge.value}"),
-              ],
-            ),
-            SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.payments, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text("Total Payment: ${_ticketController.totalPayment.value}"),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-*/
+
 }
