@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/dimensions.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
@@ -18,6 +19,7 @@ class TicketView extends StatefulWidget {
 
 class _TicketViewState extends State<TicketView> {
   final _ticketController = Get.put(TicketController());
+  final homeController = Get.put(HomeController());
 
   List<ArrivalTerminalModel> arrivalTerminals = [];
   ArrivalTerminalModel? selectedArrival;
@@ -112,6 +114,7 @@ class _TicketViewState extends State<TicketView> {
                   // Destination
                   DropdownButtonFormField<ArrivalTerminalModel>(
                     value: selectedArrival,
+                    isExpanded: true,
                     hint: Text('Select destination'),
                     onChanged: (val) {
                       setState(() {
@@ -222,6 +225,12 @@ class _TicketViewState extends State<TicketView> {
         child: Column(
           children: [
             Text("Ticket Deatils", style: AppTextStyles.buttonMediumB),
+            SizedBox(height: 5),
+            Text("Oromia Transport Agency", style: AppTextStyles.heading3),
+            SizedBox(height: 10),
+            Text(homeController.companyName.value,
+                style: AppTextStyles.buttonMediumB
+                    .copyWith(color: Colors.grey, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
             Row(
               children: [
@@ -285,7 +294,7 @@ class _TicketViewState extends State<TicketView> {
                             color: AppColors.primary)),
                     SizedBox(width: 12),
                     _locationColumn(
-                        _ticketController.locationFrom.value, ""),
+                        _ticketController.locationFrom.value, "12:00 AM"),
                   ],
                 ),
 
@@ -300,22 +309,9 @@ class _TicketViewState extends State<TicketView> {
                             Icon(Icons.location_pin, color: AppColors.primary)),
                     SizedBox(width: 12),
                     _locationColumn(
-                        _ticketController.locationTo.value, ""),
+                        _ticketController.locationTo.value, "02:00 PM"),
                   ],
                 ),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text(
-                      _ticketController.dateTime.value,
-                      style: AppTextStyles.caption.copyWith(
-                          color: Colors.grey, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                )
-
               ],
             ),
             Divider(height: 30),
@@ -370,6 +366,25 @@ class _TicketViewState extends State<TicketView> {
                 ),
               ],
             ),
+            SizedBox(height: 15),
+            Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Agent Name: ${homeController.user.value?.fullName}",
+                        style: AppTextStyles.caption.copyWith(
+                            color: Colors.grey, fontWeight: FontWeight.bold)),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    Text("Free Call Service: 8556",
+                        style: AppTextStyles.caption.copyWith(
+                            color: Colors.grey, fontWeight: FontWeight.bold))
+                  ],
+                ),
+              ],
+            ),
             SizedBox(
               height: AppDimensions.horizontalSpacingSmall,
             ),
@@ -380,7 +395,8 @@ class _TicketViewState extends State<TicketView> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text("Confirm", style: TextStyle(color: Colors.white)),
+              //free call service
+              child: Text("Print", style: TextStyle(color: Colors.white)),
             )
           ],
         ),
