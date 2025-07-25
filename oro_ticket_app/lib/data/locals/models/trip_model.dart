@@ -5,65 +5,45 @@ part 'trip_model.g.dart';
 @HiveType(typeId: 5)
 class TripModel extends HiveObject {
   @HiveField(0)
-  String plateNumber;
+  String vehicleId;
 
   @HiveField(1)
-  String plateRegion;
+  DateTime dateAndTime;
 
   @HiveField(2)
-  String vehicleLevel;
-
-  @HiveField(3)
-  String associationName;
-
-  @HiveField(4)
-  int seatCapacity;
-
-  @HiveField(5)
-  String fleetTypeName;
-
-  @HiveField(6)
-  DateTime dateTime;
-
-  @HiveField(7)
   double km;
 
-  @HiveField(8)
+  @HiveField(3)
   double tariff;
 
-  @HiveField(9)
+  @HiveField(4)
   double serviceCharge;
 
-  @HiveField(10)
+  @HiveField(5)
   double totalPaid;
 
-  @HiveField(11)
-  String departureTerminal;
+  @HiveField(6)
+  String departureTerminalId;
 
-  @HiveField(12)
-  String arrivalTerminal;
+  @HiveField(7)
+  String arrivalTerminalId;
 
-  @HiveField(13)
-  String employeeName;
+  @HiveField(8)
+  String companyId;
 
-  @HiveField(14)
-  String companyName;
+  @HiveField(9)
+  String employeeId;
 
   TripModel({
-    required this.plateNumber,
-    required this.plateRegion,
-    required this.vehicleLevel,
-    required this.associationName,
-    required this.seatCapacity,
-    required this.fleetTypeName,
-    required this.dateTime,
+    required this.vehicleId,
+    required this.dateAndTime,
     required this.km,
     required this.tariff,
     required this.serviceCharge,
     required this.totalPaid,
-    required this.departureTerminal,
-    required this.arrivalTerminal,
-    required this.employeeName,
-    required this.companyName,
+    required this.departureTerminalId,
+    required this.arrivalTerminalId,
+    required this.companyId,
+    required this.employeeId,
   });
 }

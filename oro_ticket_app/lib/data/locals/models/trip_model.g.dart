@@ -17,58 +17,43 @@ class TripModelAdapter extends TypeAdapter<TripModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return TripModel(
-      plateNumber: fields[0] as String,
-      plateRegion: fields[1] as String,
-      vehicleLevel: fields[2] as String,
-      associationName: fields[3] as String,
-      seatCapacity: fields[4] as int,
-      fleetTypeName: fields[5] as String,
-      dateTime: fields[6] as DateTime,
-      km: fields[7] as double,
-      tariff: fields[8] as double,
-      serviceCharge: fields[9] as double,
-      totalPaid: fields[10] as double,
-      departureTerminal: fields[11] as String,
-      arrivalTerminal: fields[12] as String,
-      employeeName: fields[13] as String,
-      companyName: fields[14] as String,
+      vehicleId: fields[0] as String,
+      dateAndTime: fields[1] as DateTime,
+      km: fields[2] as double,
+      tariff: fields[3] as double,
+      serviceCharge: fields[4] as double,
+      totalPaid: fields[5] as double,
+      departureTerminalId: fields[6] as String,
+      arrivalTerminalId: fields[7] as String,
+      companyId: fields[8] as String,
+      employeeId: fields[9] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, TripModel obj) {
     writer
-      ..writeByte(15)
-      ..writeByte(0)
-      ..write(obj.plateNumber)
-      ..writeByte(1)
-      ..write(obj.plateRegion)
-      ..writeByte(2)
-      ..write(obj.vehicleLevel)
-      ..writeByte(3)
-      ..write(obj.associationName)
-      ..writeByte(4)
-      ..write(obj.seatCapacity)
-      ..writeByte(5)
-      ..write(obj.fleetTypeName)
-      ..writeByte(6)
-      ..write(obj.dateTime)
-      ..writeByte(7)
-      ..write(obj.km)
-      ..writeByte(8)
-      ..write(obj.tariff)
-      ..writeByte(9)
-      ..write(obj.serviceCharge)
       ..writeByte(10)
+      ..writeByte(0)
+      ..write(obj.vehicleId)
+      ..writeByte(1)
+      ..write(obj.dateAndTime)
+      ..writeByte(2)
+      ..write(obj.km)
+      ..writeByte(3)
+      ..write(obj.tariff)
+      ..writeByte(4)
+      ..write(obj.serviceCharge)
+      ..writeByte(5)
       ..write(obj.totalPaid)
-      ..writeByte(11)
-      ..write(obj.departureTerminal)
-      ..writeByte(12)
-      ..write(obj.arrivalTerminal)
-      ..writeByte(13)
-      ..write(obj.employeeName)
-      ..writeByte(14)
-      ..write(obj.companyName);
+      ..writeByte(6)
+      ..write(obj.departureTerminalId)
+      ..writeByte(7)
+      ..write(obj.arrivalTerminalId)
+      ..writeByte(8)
+      ..write(obj.companyId)
+      ..writeByte(9)
+      ..write(obj.employeeId);
   }
 
   @override
