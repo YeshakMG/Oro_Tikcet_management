@@ -10,7 +10,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await HiveBoxes.init();
   await dotenv.load(fileName: ".env");
-  await HiveBoxes.init();
+  
   Get.put(AuthService());
   runApp(const MyApp());
 }

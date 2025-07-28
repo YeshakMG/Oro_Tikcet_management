@@ -1,51 +1,41 @@
 import 'package:get/get.dart';
-import '../../../data/models/ticket_model.dart';
+import 'package:hive/hive.dart';
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
+import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 
 class SyncController extends GetxController {
-  final tickets = <Ticket>[
-    Ticket(
-      plateNumber: "23758",
-      region: "Oromia",
-      level: "Level 1",
-      seatCapacity: 24,
-      tripId: "1009",
-      departure: "Addis Ababa",
-      destination: "Mojjo",
-      date: "2023-10-01",
-      time: "08:00 AM",
-      status: "Completed",
-      employeeName: "John Doe",
-    ),
-    Ticket(
-      plateNumber: "23759",
-      region: "Oromia",
-      level: "Level 2",
-      seatCapacity: 15,
-      tripId: "1010",
-      departure: "Addis Ababa",
-      destination: "Shasmane",
-      date: "2023-10-02",
-      time: "09:00 AM",
-      status: "Completed",
-      employeeName: "Jane Smith",
-    ),
-  ].obs;
-
+  final Box<TripModel> tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
+  final tickets = <TripModel>[].obs;
   var searchQuery = ''.obs;
 
-  List<Ticket> get filteredTickets {
+  @override
+  void onInit() {
+    super.onInit();
+    loadTicketsFromLocal();
+  }
+
+  void loadTicketsFromLocal() {
+    tickets.value = tripBox.values.toList();
+  }
+
+  List<TripModel> get filteredTickets {
     if (searchQuery.value.isEmpty) return tickets;
     return tickets.where((t) =>
       t.plateNumber.contains(searchQuery.value) ||
-      t.tripId.contains(searchQuery.value) ||
-      t.departure.toLowerCase().contains(searchQuery.value.toLowerCase()) ||
-      t.destination.toLowerCase().contains(searchQuery.value.toLowerCase()) ||
+      t.departureTerminal.toLowerCase().contains(searchQuery.value.toLowerCase()) ||
+      t.arrivalTerminal.toLowerCase().contains(searchQuery.value.toLowerCase()) ||
       t.employeeName.toLowerCase().contains(searchQuery.value.toLowerCase())
     ).toList();
   }
 
   Future<void> refreshTickets() async {
-    await Future.delayed(Duration(seconds: 1));
+    await Future.delayed(const Duration(seconds: 1));
+    loadTicketsFromLocal();
     tickets.refresh();
+  }
+
+  Future<void> saveTicket(TripModel trip) async {
+    await tripBox.add(trip);
+    loadTicketsFromLocal();
   }
 }

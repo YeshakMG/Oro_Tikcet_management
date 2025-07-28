@@ -5,12 +5,16 @@ import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/dimensions.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
+import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../controller/ticket_controller.dart';
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
+import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
+
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 
 class TicketView extends StatefulWidget {
   @override
@@ -185,8 +189,12 @@ class _TicketViewState extends State<TicketView> {
                                   vehicle.vehicleLevel;
                               _ticketController.associations.value =
                                   vehicle.associationName;
+                              
                               _ticketController.region.value =
                                   vehicle.plateRegion;
+                              
+                              _ticketController.fleetType.value =
+                                  vehicle.fleetType;
                               // Set the date and time
                               final now = DateTime.now();
                               final ethDate = now.convertToEthiopian();
@@ -294,7 +302,7 @@ class _TicketViewState extends State<TicketView> {
                             color: AppColors.primary)),
                     SizedBox(width: 12),
                     _locationColumn(
-                        _ticketController.locationFrom.value, "12:00 AM"),
+                        _ticketController.locationFrom.value, ""),
                   ],
                 ),
 
@@ -309,9 +317,21 @@ class _TicketViewState extends State<TicketView> {
                             Icon(Icons.location_pin, color: AppColors.primary)),
                     SizedBox(width: 12),
                     _locationColumn(
-                        _ticketController.locationTo.value, "02:00 PM"),
+                        _ticketController.locationTo.value, ""),
                   ],
                 ),
+
+                SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text(
+                      _ticketController.dateTime.value,
+                      style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey, fontWeight: FontWeight.bold),
+                    )
+                  ],
+                )
+
               ],
             ),
             Divider(height: 30),
@@ -389,7 +409,71 @@ class _TicketViewState extends State<TicketView> {
               height: AppDimensions.horizontalSpacingSmall,
             ),
             ElevatedButton(
-              onPressed: () {}, // Add confirmation logic here
+              onPressed: () async {
+                final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
+                final serviceChargeBox = Hive.box<ServiceChargeModel>('serviceChargeBox');
+
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+
+                final trip = TripModel(
+                  departureTerminal: _ticketController.locationFrom.value,
+                  arrivalTerminal: _ticketController.locationTo.value,
+                  plateNumber: _ticketController.plateNumber.value,
+                  plateRegion: _ticketController.region.value,
+                  vehicleLevel: _ticketController.level.value,
+                  associationName: _ticketController.associations.value,
+                  seatCapacity: int.parse(_ticketController.seatNo.value),
+                  fleetTypeName: _ticketController.fleetType.value,
+                  dateTime: now,
+                  km: double.parse(_ticketController.km.value.split(' ')[0]),
+                  tariff: double.parse(_ticketController.tariff.value.split(' ')[0]),
+                  serviceCharge: double.parse(_ticketController.serviceCharge.value.split(' ')[0]),
+                  totalPaid: double.parse(_ticketController.totalPayment.value.split(' ')[0]),
+                  employeeName: homeController.user.value?.fullName ?? '',
+                  companyName: homeController.companyName.value,
+                );
+
+                // ✅ Save Trip
+                await tripBox.add(trip);
+
+                // ✅ Try to find existing service charge entry for today + same terminal + employee
+                ServiceChargeModel? existingEntry;
+                try {
+                  existingEntry = serviceChargeBox.values.firstWhere(
+                    (entry) {
+                      final entryDate = DateTime(entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
+                      return entry.departureTerminal == trip.departureTerminal &&
+                            entry.employeeName == trip.employeeName &&
+                            entryDate == today;
+                    },
+                  );
+                } catch (e) {
+                  existingEntry = null;
+                }
+
+                if (existingEntry != null) {
+                  // ✅ Update existing: add the service charge amount
+                  existingEntry.serviceChargeAmount += trip.serviceCharge;
+                  await existingEntry.save();
+                } else {
+                  // ❌ Not found: create new
+                  final newCharge = ServiceChargeModel(
+                    departureTerminal: trip.departureTerminal,
+                    dateTime: now,
+                    serviceChargeAmount: trip.serviceCharge,
+                    employeeName: trip.employeeName,
+                  );
+                  await serviceChargeBox.add(newCharge);
+                }
+
+                Get.snackbar("Saved", "Ticket & Service Charge updated successfully",
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.green.withOpacity(0.8),
+                    colorText: Colors.white);
+              },
+
+              // Add confirmation logic here
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 shape: RoundedRectangleBorder(

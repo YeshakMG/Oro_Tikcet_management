@@ -3,8 +3,8 @@ import 'package:get/get.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../controller/sync_controller.dart';
 import '../../ticketdetail/view/ticket_detail_view.dart';
+import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import '../../../data/models/ticket_model.dart';
-
 
 
 class SyncView extends StatelessWidget {
@@ -68,12 +68,14 @@ class SyncView extends StatelessWidget {
     );
   }
 
-  Widget _buildTicketCard(Ticket ticket) {
+  Widget _buildTicketCard(TripModel trip) {
     return GestureDetector(
-      key: Key(ticket.tripId), // Ensure each card has a unique key
+      key: Key(trip.plateNumber), // Using plateNumber as a unique key
 
       onTap: () {
-        Get.to(() => TicketDetailView(ticket: ticket),
+        // You may need to adapt the TicketDetailView to accept TripModel
+        // or create a conversion function
+        Get.to(() => TicketDetailView(ticket: _convertToTicket(trip)),
             transition: Transition.rightToLeft,
             duration: const Duration(milliseconds: 300));
       },
@@ -89,19 +91,17 @@ class SyncView extends StatelessWidget {
                 children: [
                   const Icon(Icons.directions_bus, color: Colors.green),
                   const SizedBox(width: 8),
-                  Text("Plate: ${ticket.plateNumber}",
+                  Text("Plate: ${trip.plateNumber}",
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   const Spacer(),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: ticket.status == "Completed"
-                          ? Colors.green[100]
-                          : Colors.orange[100],
+                      color: Colors.green[100],
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(ticket.status),
+                    child: Text("Active"),
                   ),
                 ],
               ),
@@ -109,8 +109,8 @@ class SyncView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Trip ID: ${ticket.tripId}"),
-                  Text(ticket.date),
+                  Text("Association: ${trip.associationName}"),
+                  Text(trip.dateTime.toString().substring(0, 10)),
                 ],
               ),
               const SizedBox(height: 6),
@@ -118,9 +118,9 @@ class SyncView extends StatelessWidget {
                 children: [
                   Expanded(
                       child:
-                          Text("${ticket.departure} → ${ticket.destination}")),
+                          Text("${trip.departureTerminal} → ${trip.arrivalTerminal}")),
                   const SizedBox(width: 8),
-                  Text(ticket.time),
+                  Text(trip.dateTime.toString().substring(11, 16)),
                 ],
               ),
               const SizedBox(height: 6),
@@ -128,17 +128,35 @@ class SyncView extends StatelessWidget {
                 children: [
                   const Icon(Icons.layers, size: 16),
                   const SizedBox(width: 4),
-                  Text(ticket.level),
+                  Text(trip.vehicleLevel),
                   const SizedBox(width: 12),
                   const Icon(Icons.event_seat, size: 16),
                   const SizedBox(width: 4),
-                  Text("${ticket.seatCapacity} Seats"),
+                  Text("${trip.seatCapacity} Seats"),
                 ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+  
+  // Helper method to convert TripModel to Ticket for TicketDetailView
+  Ticket _convertToTicket(TripModel trip) {
+    return Ticket(
+      plateNumber: trip.plateNumber,
+      region: trip.plateRegion,
+      
+      level: trip.vehicleLevel,
+      seatCapacity: trip.seatCapacity,
+      tripId: trip.key?.toString() ?? "Unknown",
+      departure: trip.departureTerminal,
+      destination: trip.arrivalTerminal,
+      date: trip.dateTime.toString().substring(0, 10),
+      time: trip.dateTime.toString().substring(11, 16),
+      status: "Active",
+      employeeName: trip.employeeName,
     );
   }
 }
