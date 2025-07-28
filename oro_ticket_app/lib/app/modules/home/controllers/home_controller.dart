@@ -8,12 +8,17 @@ import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
 // Fix the import for Ethiopian datetime
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
 
+// Import SyncRepository
+import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
+
 class HomeController extends GetxController {
   final Rx<UserModel?> user = Rx<UserModel?>(null);
   final RxString companyName = ''.obs;
   final RxString companyLogoUrl = ''.obs; // Add missing property
   final RxDouble serviceChargeToday = 0.0.obs;
   final RxString ethiopianDate = ''.obs;
+
+  final SyncRepository _syncRepository = SyncRepository();
 
   @override
   void onInit() {
@@ -92,4 +97,14 @@ class HomeController extends GetxController {
       Get.snackbar("Error", "Failed to clear service charge records: ${e.toString()}");
     }
   }
+
+  // --- NEW METHOD ---
+  Future<void> syncTrips() async {
+    try {
+      await _syncRepository.syncTripsToServer();
+    } catch (e) {
+      throw Exception('Sync failed: $e');
+    }
+  }
 }
+

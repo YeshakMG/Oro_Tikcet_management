@@ -7,6 +7,7 @@ import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/service/arrival_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/commission_rule_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
@@ -211,6 +212,61 @@ class SyncRepository {
     } else {
       print('Failed to fetch commission rules: ${response.body}');
       throw Exception('Failed to sync commission rules');
+    }
+  }
+
+  // For Trips
+  Future<void> syncTripsToServer() async {
+    try {
+      final authService = Get.find<AuthService>();
+      final token = await authService.getToken();
+      
+      // Get trips from local storage using the proper box name and type
+      final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
+      final trips = tripBox.values.toList();
+      
+      if (trips.isEmpty) {
+        print('No trips to sync');
+        return;
+      }
+      
+      // Manually convert TripModel objects to JSON since toJson() isn't available
+      final tripsData = trips.map((trip) => {
+        'vehicleId': trip.vehicleId,
+        'dateAndTime': trip.dateAndTime.toIso8601String(),
+        'km': trip.km,
+        'tariff': trip.tariff,
+        'serviceCharge': trip.serviceCharge,
+        'totalPaid': trip.totalPaid,
+        'departureTerminalId': trip.departureTerminalId,
+        'arrivalTerminalId': trip.arrivalTerminalId,
+        'companyId': trip.companyId,
+        'employeeId': trip.employeeId,
+      }).toList();
+      
+      // Send to server
+      final response = await http.post(
+        Uri.parse('$baseUrl/trips'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'trips': tripsData}),
+      );
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Trips synced successfully: ${trips.length} trips');
+        
+        // Optionally clear local trips after successful sync
+        await tripBox.clear();
+      } else {
+        print('Failed to sync trips: ${response.body}');
+        throw Exception('Failed to sync trips: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error syncing trips: $e');
+      throw Exception('Error syncing trips: $e');
     }
   }
 }

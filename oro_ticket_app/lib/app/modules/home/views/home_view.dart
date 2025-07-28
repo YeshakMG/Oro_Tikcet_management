@@ -68,17 +68,43 @@ class HomeView extends StatelessWidget {
                           child: const Text('Sync'),
                         ),
                         IconButton(
-                          onPressed: () {
+                          onPressed: () async {
                             Get.snackbar(
-                              'Success',
-                              'Synced Successfully!',
+                              'Syncing',
+                              'Please wait...',
                               snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: AppColors.primaryHover,
-                              colorText: AppColors.background,
+                              backgroundColor: Colors.blueGrey,
+                              colorText: Colors.white,
+                              showProgressIndicator: true,
+                              isDismissible: false,
                             );
+
+                            try {
+                              await homeController.syncTrips();
+                              Get.back(); // Close loading snackbar
+                              Get.snackbar(
+                                'Success',
+                                'Synced Successfully!',
+                                snackPosition: SnackPosition.BOTTOM,
+                                backgroundColor: AppColors.primaryHover,
+                                colorText: AppColors.background,
+                              );
+                              // Optionally refresh service charge and date after sync
+                              homeController.loadServiceChargeAndDate();
+                            } catch (e) {
+                              Get.back(); // Close loading snackbar
+                              Get.snackbar(
+                                'Error',
+                                e.toString(),
+                                snackPosition: SnackPosition.BOTTOM,
+                                backgroundColor: Colors.red,
+                                colorText: Colors.white,
+                              );
+                            }
                           },
                           icon: const Icon(Icons.sync, color: Colors.white),
                         ),
+
                       ],
                     ),
                   ],
@@ -100,7 +126,7 @@ class HomeView extends StatelessWidget {
                     Obx(() => DailyInfoTile(
                           icon: Icons.credit_card_rounded,
                           label: "Total Service Charge",
-                          value: "${homeController.serviceChargeToday.value} ETB",
+                          value: "${homeController.serviceChargeToday.value.toStringAsFixed(2)} ETB",
                         )),
                     const SizedBox(height: 10),
                     Obx(() => DailyInfoTile(

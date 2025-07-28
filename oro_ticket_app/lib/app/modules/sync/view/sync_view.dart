@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../controller/sync_controller.dart';
 import '../../ticketdetail/view/ticket_detail_view.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
+import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
+import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import '../../../data/models/ticket_model.dart';
 
 
@@ -69,12 +74,51 @@ class SyncView extends StatelessWidget {
   }
 
   Widget _buildTicketCard(TripModel trip) {
+    // Get vehicle details from vehicleId
+    final vehicleBox = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
+    final vehicle = vehicleBox.values.firstWhere(
+      (v) => v.id == trip.vehicleId,
+      orElse: () => VehicleModel(
+        id: "unknown",
+        plateNumber: "unknown",
+        plateRegion: "unknown",
+        fleetType: "unknown",
+        vehicleLevel: "Standard",
+        associationName: "unknown",
+        seatCapacity: 0,
+        status: "unknown",
+        arrivalTerminals: [],
+        tariffs: [],
+      ),
+    );
+    
+    // Get departure terminal details
+    final departureBox = Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
+    final departureTerminal = departureBox.values.firstWhere(
+      (t) => t.id == trip.departureTerminalId,
+      orElse: () => DepartureTerminalModel(
+        id: "unknown",
+        name: "Unknown",
+        status: "active",
+      ),
+    );
+    
+    // Get arrival terminal details
+    final arrivalBox = Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
+    final arrivalTerminal = arrivalBox.values.firstWhere(
+      (t) => t.id == trip.arrivalTerminalId,
+      orElse: () => ArrivalTerminalModel(
+        id: "unknown",
+        name: "Unknown",
+        tariff: 0.0,
+        distance: 0.0,
+      ),
+    );
+    
     return GestureDetector(
-      key: Key(trip.plateNumber), // Using plateNumber as a unique key
-
+      key: Key(trip.key?.toString() ?? "unknown"), // Using key as a unique identifier
+      
       onTap: () {
-        // You may need to adapt the TicketDetailView to accept TripModel
-        // or create a conversion function
         Get.to(() => TicketDetailView(ticket: _convertToTicket(trip)),
             transition: Transition.rightToLeft,
             duration: const Duration(milliseconds: 300));
@@ -91,7 +135,7 @@ class SyncView extends StatelessWidget {
                 children: [
                   const Icon(Icons.directions_bus, color: Colors.green),
                   const SizedBox(width: 8),
-                  Text("Plate: ${trip.plateNumber}",
+                  Text("Plate: ${vehicle.plateNumber}",
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   const Spacer(),
                   Container(
@@ -109,8 +153,8 @@ class SyncView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Association: ${trip.associationName}"),
-                  Text(trip.dateTime.toString().substring(0, 10)),
+                  Text("Association: ${vehicle.associationName}"),
+                  Text(trip.dateAndTime.toString().substring(0, 10)),
                 ],
               ),
               const SizedBox(height: 6),
@@ -118,9 +162,9 @@ class SyncView extends StatelessWidget {
                 children: [
                   Expanded(
                       child:
-                          Text("${trip.departureTerminal} → ${trip.arrivalTerminal}")),
+                          Text("${departureTerminal.name} → ${arrivalTerminal.name}")),
                   const SizedBox(width: 8),
-                  Text(trip.dateTime.toString().substring(11, 16)),
+                  Text(trip.dateAndTime.toString().substring(11, 16)),
                 ],
               ),
               const SizedBox(height: 6),
@@ -128,11 +172,11 @@ class SyncView extends StatelessWidget {
                 children: [
                   const Icon(Icons.layers, size: 16),
                   const SizedBox(width: 4),
-                  Text(trip.vehicleLevel),
+                  Text(vehicle.vehicleLevel),
                   const SizedBox(width: 12),
                   const Icon(Icons.event_seat, size: 16),
                   const SizedBox(width: 4),
-                  Text("${trip.seatCapacity} Seats"),
+                  Text("${vehicle.seatCapacity} Seats"),
                 ],
               ),
             ],
@@ -144,19 +188,59 @@ class SyncView extends StatelessWidget {
   
   // Helper method to convert TripModel to Ticket for TicketDetailView
   Ticket _convertToTicket(TripModel trip) {
+    // Get vehicle details from vehicleId
+    final vehicleBox = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
+    final vehicle = vehicleBox.values.firstWhere(
+      (v) => v.id == trip.vehicleId,
+      orElse: () => VehicleModel(
+        id: "unknown",
+        plateNumber: "unknown",
+        plateRegion: "unknown",
+        fleetType: "unknown",
+        vehicleLevel: "Standard",
+        associationName: "unknown",
+        seatCapacity: 0,
+        status: "unknown",
+        arrivalTerminals: [],
+        tariffs: [],
+      ),
+    );
+    
+    // Get departure terminal details
+    final departureBox = Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
+    final departureTerminal = departureBox.values.firstWhere(
+      (t) => t.id == trip.departureTerminalId,
+      orElse: () => DepartureTerminalModel(
+        id: "unknown",
+        name: "Unknown",
+        status: "active",
+      ),
+    );
+    
+    // Get arrival terminal details
+    final arrivalBox = Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
+    final arrivalTerminal = arrivalBox.values.firstWhere(
+      (t) => t.id == trip.arrivalTerminalId,
+      orElse: () => ArrivalTerminalModel(
+        id: "unknown",
+        name: "Unknown",
+        tariff: 0.0,
+        distance: 0.0,
+      ),
+    );
+    
     return Ticket(
-      plateNumber: trip.plateNumber,
-      region: trip.plateRegion,
-      
-      level: trip.vehicleLevel,
-      seatCapacity: trip.seatCapacity,
+      plateNumber: vehicle.plateNumber,
+      region: vehicle.plateRegion,
+      level: vehicle.vehicleLevel,
+      seatCapacity: vehicle.seatCapacity,
       tripId: trip.key?.toString() ?? "Unknown",
-      departure: trip.departureTerminal,
-      destination: trip.arrivalTerminal,
-      date: trip.dateTime.toString().substring(0, 10),
-      time: trip.dateTime.toString().substring(11, 16),
+      departure: departureTerminal.name,
+      destination: arrivalTerminal.name,
+      date: trip.dateAndTime.toString().substring(0, 10),
+      time: trip.dateAndTime.toString().substring(11, 16),
       status: "Active",
-      employeeName: trip.employeeName,
+      employeeName: "Unknown", // TripModel doesn't have employeeName, using default
     );
   }
 }

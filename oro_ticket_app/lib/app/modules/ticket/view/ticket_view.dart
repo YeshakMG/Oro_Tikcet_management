@@ -413,25 +413,27 @@ class _TicketViewState extends State<TicketView> {
                 final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
                 final serviceChargeBox = Hive.box<ServiceChargeModel>('serviceChargeBox');
 
+                debugPrint('amount ->> ');
+                for (var sc in serviceChargeBox.values) {
+                    debugPrint(
+                      'Terminal: ${sc.departureTerminal}, Date: ${sc.dateTime}, Agent: ${sc.employeeName}, Amount: ${sc.serviceChargeAmount}');
+                }
+                
+
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
 
                 final trip = TripModel(
-                  departureTerminal: _ticketController.locationFrom.value,
-                  arrivalTerminal: _ticketController.locationTo.value,
-                  plateNumber: _ticketController.plateNumber.value,
-                  plateRegion: _ticketController.region.value,
-                  vehicleLevel: _ticketController.level.value,
-                  associationName: _ticketController.associations.value,
-                  seatCapacity: int.parse(_ticketController.seatNo.value),
-                  fleetTypeName: _ticketController.fleetType.value,
-                  dateTime: now,
+                  departureTerminalId: _ticketController.locationFrom.value,
+                  arrivalTerminalId: _ticketController.locationTo.value,
+                  vehicleId: _ticketController.plateNumber.value,
+                  dateAndTime: now,
                   km: double.parse(_ticketController.km.value.split(' ')[0]),
                   tariff: double.parse(_ticketController.tariff.value.split(' ')[0]),
                   serviceCharge: double.parse(_ticketController.serviceCharge.value.split(' ')[0]),
                   totalPaid: double.parse(_ticketController.totalPayment.value.split(' ')[0]),
-                  employeeName: homeController.user.value?.fullName ?? '',
-                  companyName: homeController.companyName.value,
+                  employeeId: homeController.user.value?.fullName ?? '',
+                  companyId: homeController.companyName.value,
                 );
 
                 // ✅ Save Trip
@@ -443,8 +445,8 @@ class _TicketViewState extends State<TicketView> {
                   existingEntry = serviceChargeBox.values.firstWhere(
                     (entry) {
                       final entryDate = DateTime(entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
-                      return entry.departureTerminal == trip.departureTerminal &&
-                            entry.employeeName == trip.employeeName &&
+                      return entry.departureTerminal == trip.departureTerminalId &&
+                            entry.employeeName == trip.employeeId &&
                             entryDate == today;
                     },
                   );
@@ -459,12 +461,14 @@ class _TicketViewState extends State<TicketView> {
                 } else {
                   // ❌ Not found: create new
                   final newCharge = ServiceChargeModel(
-                    departureTerminal: trip.departureTerminal,
+                    departureTerminal: trip.departureTerminalId,
                     dateTime: now,
                     serviceChargeAmount: trip.serviceCharge,
-                    employeeName: trip.employeeName,
+                    employeeName: trip.employeeId,
+                    companyId: trip.companyId,
                   );
                   await serviceChargeBox.add(newCharge);
+                  homeController.loadServiceChargeAndDate();
                 }
 
                 Get.snackbar("Saved", "Ticket & Service Charge updated successfully",

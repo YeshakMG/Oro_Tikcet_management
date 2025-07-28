@@ -21,13 +21,14 @@ class ServiceChargeModelAdapter extends TypeAdapter<ServiceChargeModel> {
       dateTime: fields[1] as DateTime,
       serviceChargeAmount: fields[2] as double,
       employeeName: fields[3] as String,
+      companyId: fields[4] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ServiceChargeModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.departureTerminal)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class ServiceChargeModelAdapter extends TypeAdapter<ServiceChargeModel> {
       ..writeByte(2)
       ..write(obj.serviceChargeAmount)
       ..writeByte(3)
-      ..write(obj.employeeName);
+      ..write(obj.employeeName)
+      ..writeByte(4)
+      ..write(obj.companyId);
   }
 
   @override

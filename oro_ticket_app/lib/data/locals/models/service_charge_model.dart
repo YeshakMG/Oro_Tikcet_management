@@ -16,10 +16,14 @@ class ServiceChargeModel extends HiveObject {
   @HiveField(3)
   String employeeName;
 
+  @HiveField(4)
+  String companyId;
+
   ServiceChargeModel({
     required this.departureTerminal,
     required this.dateTime,
     required this.serviceChargeAmount,
     required this.employeeName,
+    required this.companyId,
   });
 }
