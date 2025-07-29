@@ -11,6 +11,7 @@ import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/service/arrival_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/commission_rule_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
+import 'package:oro_ticket_app/data/locals/service/trip_storage_service.dart';
 import '../locals/models/vehicle_model.dart';
 import '../locals/hive_boxes.dart';
 import 'package:http/http.dart' as http;
@@ -59,7 +60,7 @@ class SyncRepository {
     final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
     return box.values.toList();
   }
-  
+
   List<ArrivalTerminalModel> getLocalArrivalTerminals() {
     return ArrivalTerminalStorageService.getTerminals();
   }
@@ -83,100 +84,98 @@ class SyncRepository {
   }
 
   Future<void> syncCompanyUserArrivalTerminals() async {
-  final authService = Get.find<AuthService>();
-  final token = await authService.getToken();
+    final authService = Get.find<AuthService>();
+    final token = await authService.getToken();
 
-  final response = await http.get(
-    Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
-    headers: {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    },
-  );
+    final response = await http.get(
+      Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
 
-  if (response.statusCode == 200) {
-    final Map<String, dynamic> json = jsonDecode(response.body);
-    final vehicles = json['data']['vehicles'] as List<dynamic>;
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> json = jsonDecode(response.body);
+      final vehicles = json['data']['vehicles'] as List<dynamic>;
 
-    final arrivalTerminals = <ArrivalTerminalModel>[];
+      final arrivalTerminals = <ArrivalTerminalModel>[];
 
-    for (final vehicle in vehicles) {
-      final destinations = vehicle['vehicleTerminalDestinations'] as List<dynamic>?;
+      for (final vehicle in vehicles) {
+        final destinations =
+            vehicle['vehicleTerminalDestinations'] as List<dynamic>?;
 
-      if (destinations != null) {
-        for (final dest in destinations) {
-          
-          final terminalDestination = dest['terminalDestination'];
+        if (destinations != null) {
+          for (final dest in destinations) {
+            final terminalDestination = dest['terminalDestination'];
 
-          if (terminalDestination != null) {
-            print('Full terminalDestination JSON: $terminalDestination');
-            final arrivalTerminal = terminalDestination['arrivalTerminal'] ?? {};
+            if (terminalDestination != null) {
+              print('Full terminalDestination JSON: $terminalDestination');
+              final arrivalTerminal =
+                  terminalDestination['arrivalTerminal'] ?? {};
 
-            // Debug print raw arrivalTerminal JSON to inspect actual content
-            print('Raw arrivalTerminal JSON: $arrivalTerminal');
+              // Debug print raw arrivalTerminal JSON to inspect actual content
+              print('Raw arrivalTerminal JSON: $arrivalTerminal');
 
-            // Try to extract id and name directly or check nested keys if needed
-            // Example if nested deeper, you can add logic here after seeing the debug output
+              // Try to extract id and name directly or check nested keys if needed
+              // Example if nested deeper, you can add logic here after seeing the debug output
 
-            final terminalId = arrivalTerminal['id'] ??
-                arrivalTerminal['arrival_terminal_id'] ??
-                '';
+              final terminalId = arrivalTerminal['id'] ??
+                  arrivalTerminal['arrival_terminal_id'] ??
+                  '';
 
-            final terminalName =
-                arrivalTerminal['name'] ??
-                arrivalTerminal['terminal_name'] ??
-                '';
+              final terminalName = arrivalTerminal['name'] ??
+                  arrivalTerminal['terminal_name'] ??
+                  '';
 
-            print("Parsed terminal: id=$terminalId, name=$terminalName");
+              print("Parsed terminal: id=$terminalId, name=$terminalName");
 
-            // Handle tariff conversion
-            dynamic tariffValue = vehicle['tariff']?['tariff'] ?? 0.0;
-            double parsedTariff = 0.0;
+              // Handle tariff conversion
+              dynamic tariffValue = vehicle['tariff']?['tariff'] ?? 0.0;
+              double parsedTariff = 0.0;
 
-            if (tariffValue is String) {
-              parsedTariff = double.tryParse(tariffValue) ?? 0.0;
-            } else if (tariffValue is int) {
-              parsedTariff = tariffValue.toDouble();
-            } else if (tariffValue is double) {
-              parsedTariff = tariffValue;
+              if (tariffValue is String) {
+                parsedTariff = double.tryParse(tariffValue) ?? 0.0;
+              } else if (tariffValue is int) {
+                parsedTariff = tariffValue.toDouble();
+              } else if (tariffValue is double) {
+                parsedTariff = tariffValue;
+              }
+
+              // Handle distance conversion
+              dynamic distanceValue = terminalDestination['distance'] ?? 0.0;
+              double parsedDistance = 0.0;
+
+              if (distanceValue is String) {
+                parsedDistance = double.tryParse(distanceValue) ?? 0.0;
+              } else if (distanceValue is int) {
+                parsedDistance = distanceValue.toDouble();
+              } else if (distanceValue is double) {
+                parsedDistance = distanceValue;
+              }
+
+              arrivalTerminals.add(
+                ArrivalTerminalModel.fromJson({
+                  'id': terminalId,
+                  'name': terminalName,
+                  'tariff': parsedTariff,
+                  'distance': parsedDistance,
+                }),
+              );
             }
-
-            // Handle distance conversion
-            dynamic distanceValue = terminalDestination['distance'] ?? 0.0;
-            double parsedDistance = 0.0;
-
-            if (distanceValue is String) {
-              parsedDistance = double.tryParse(distanceValue) ?? 0.0;
-            } else if (distanceValue is int) {
-              parsedDistance = distanceValue.toDouble();
-            } else if (distanceValue is double) {
-              parsedDistance = distanceValue;
-            }
-
-            arrivalTerminals.add(
-              ArrivalTerminalModel.fromJson({
-                'id': terminalId,
-                'name': terminalName,
-                'tariff': parsedTariff,
-                'distance': parsedDistance,
-              }),
-            );
           }
         }
       }
+
+      // Save to Hive after transformation
+      await syncArrivalTerminals(
+        arrivalTerminals.map((e) => e.toJson()).toList(),
+      );
+    } else {
+      throw Exception('Failed to sync arrival terminals: ${response.body}');
     }
-
-    // Save to Hive after transformation
-    await syncArrivalTerminals(
-      arrivalTerminals.map((e) => e.toJson()).toList(),
-    );
-  } else {
-    throw Exception('Failed to sync arrival terminals: ${response.body}');
   }
-}
 
-
-      
 // For Commission
   Future<void> syncCommissionRules() async {
     final authService = Get.find<AuthService>();
@@ -200,7 +199,6 @@ class SyncRepository {
 
       await CommissionRuleStorageService.saveCommissionRules(rules);
 
-      
       print('Commission rules fetched: ${rules.length}');
       for (var rule in rules) {
         print(
@@ -216,56 +214,104 @@ class SyncRepository {
   }
 
   // For Trips
+  // Future<void> syncTripsToServer() async {
+  //   try {
+  //     final authService = Get.find<AuthService>();
+  //     final token = await authService.getToken();
+
+  //     final tripStorageService = TripStorageService();
+  //     final trips = tripStorageService.getAllTrips();
+
+  //     if (trips.isEmpty) {
+  //       print('No trips to sync');
+  //       return;
+  //     }
+
+  //     // final tripsData = trips.map((trip) => trip.toJson()).toList();
+  //     final tripsData = trips
+  //         .map((trip) => {
+  //               'vehicle_id': trip.vehicleId,
+  //               'date_and_time': trip.dateAndTime.toIso8601String(),
+  //               'km': trip.km,
+  //               'tariff': trip.tariff,
+  //               'service_charge': trip.serviceCharge,
+  //               'total_paid': trip.totalPaid,
+  //               'departure_terminal_id': trip.departureTerminalId,
+  //               'arrival_terminal_id': trip.arrivalTerminalId,
+  //               'company_id': trip.companyId,
+  //               'employee_name': trip.employeeId,
+  //             })
+  //         .toList();
+  //     final response = await http.post(
+  //       Uri.parse('$baseUrl/trips'),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Accept': 'application/json',
+  //         'Authorization': 'Bearer $token',
+  //       },
+  //       body: jsonEncode({'trips': tripsData}),
+  //     );
+
+  //     if (response.statusCode == 200 || response.statusCode == 201) {
+  //       print('Trips synced successfully: ${trips.length} trips');
+
+  //       // Optional: clear the local trips after sync
+  //       await tripStorageService.clearTrips();
+  //     } else {
+  //       print('Failed to sync trips: ${response.body}');
+  //       final payload = jsonEncode({'trips': tripsData});
+  //       print('Sending payload: $payload');
+  //       throw Exception('Failed to sync trips: ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     print('Error syncing trips: $e');
+  //     throw Exception('Error syncing trips: $e');
+  //   }
+  // }
+
   Future<void> syncTripsToServer() async {
     try {
       final authService = Get.find<AuthService>();
       final token = await authService.getToken();
-      
-      // Get trips from local storage using the proper box name and type
-      final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
-      final trips = tripBox.values.toList();
-      
+      final tripStorageService = TripStorageService();
+      final trips = tripStorageService.getAllTrips();
+
       if (trips.isEmpty) {
         print('No trips to sync');
+        Get.snackbar("", "No trips to sync");
         return;
       }
-      
-      // Manually convert TripModel objects to JSON since toJson() isn't available
-      final tripsData = trips.map((trip) => {
-        'vehicleId': trip.vehicleId,
-        'dateAndTime': trip.dateAndTime.toIso8601String(),
-        'km': trip.km,
-        'tariff': trip.tariff,
-        'serviceCharge': trip.serviceCharge,
-        'totalPaid': trip.totalPaid,
-        'departureTerminalId': trip.departureTerminalId,
-        'arrivalTerminalId': trip.arrivalTerminalId,
-        'companyId': trip.companyId,
-        'employeeId': trip.employeeId,
-      }).toList();
-      
-      // Send to server
-      final response = await http.post(
-        Uri.parse('$baseUrl/trips'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'trips': tripsData}),
-      );
-      
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        print('Trips synced successfully: ${trips.length} trips');
-        
-        // Optionally clear local trips after successful sync
-        await tripBox.clear();
-      } else {
-        print('Failed to sync trips: ${response.body}');
-        throw Exception('Failed to sync trips: ${response.statusCode}');
+
+      // Send each trip individually instead of nested array
+      for (final trip in trips) {
+        try {
+          final response = await http.post(
+            Uri.parse('$baseUrl/trips'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(trip.toJson()), 
+          );
+
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            print('Trip synced successfully: ${trip.vehicleId}');
+          } else {
+            print('Failed to sync trip: ${response.body}');
+            print('Sent payload: ${jsonEncode(trip.toJson())}');
+          }
+        } catch (e) {
+          print('Error syncing individual trip: $e');
+          continue; // Continue with next trip if one fails
+        }
       }
+
+      // Only clear trips if all were successfully synced
+      await tripStorageService.clearTrips();
+      print('All trips processed');
     } catch (e) {
-      print('Error syncing trips: $e');
+      print('Error in sync process: $e');
       throw Exception('Error syncing trips: $e');
     }
   }

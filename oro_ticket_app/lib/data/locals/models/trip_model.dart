@@ -46,4 +46,34 @@ class TripModel extends HiveObject {
     required this.companyId,
     required this.employeeId,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'vehicle_id': vehicleId,
+      'date_and_time': dateAndTime.toIso8601String(),
+      'km': km,
+      'tariff': tariff,
+      'service_charge': serviceCharge,
+      'total_paid': totalPaid,
+      'departure_terminal_id': departureTerminalId,
+      'arrival_terminal_id': arrivalTerminalId,
+      'company_id': companyId,
+      'employee_name': employeeId,
+    };
+  }
+
+  factory TripModel.fromJson(Map<String, dynamic> json) {
+    return TripModel(
+      vehicleId: json['vehicle_id'],
+      dateAndTime: DateTime.parse(json['date_and_time']),
+      km: (json['km'] as num).toDouble(),
+      tariff: (json['tariff'] as num).toDouble(),
+      serviceCharge: (json['service_charge'] as num).toDouble(),
+      totalPaid: (json['total_paid'] as num).toDouble(),
+      departureTerminalId: json['departure_terminal_id'],
+      arrivalTerminalId: json['arrival_terminal_id'],
+      companyId: json['company_id'],
+      employeeId: json['employee_name'],
+    );
+  }
 }

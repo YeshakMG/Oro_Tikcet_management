@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -47,9 +48,10 @@ class _TicketViewState extends State<TicketView> {
     });
   }
 
-  void _loadDefaultDeparture() {
-    final terminalBox =
-        Hive.box<DepartureTerminalModel>('departureTerminalsBox');
+  void _loadDefaultDeparture() async {
+    final terminalBox = await HiveBoxes.getBox<DepartureTerminalModel>(
+        HiveBoxes.departureTerminalsBox);
+
     final terminal = terminalBox.values.firstOrNull;
 
     if (terminal != null) {
@@ -60,8 +62,9 @@ class _TicketViewState extends State<TicketView> {
     }
   }
 
-  void _onPlateInputChanged(String input) {
-    final vehicleBox = Hive.box<VehicleModel>('vehiclesBox');
+  void _onPlateInputChanged(String input) async {
+    final vehicleBox =
+        await HiveBoxes.getBox<VehicleModel>(HiveBoxes.vehiclesBox);
 
     final filtered = vehicleBox.values
         .where((v) => v.plateNumber.toLowerCase().contains(input.toLowerCase()))
@@ -131,6 +134,8 @@ class _TicketViewState extends State<TicketView> {
                         _ticketController.tariff.value =
                             "${val.tariff.toStringAsFixed(2)} ETB";
                         _ticketController.calculateCharges(val.tariff);
+
+                        _ticketController.arrivalTerminalId.value = val.id;
                       }
                     },
                     decoration: InputDecoration(
@@ -189,21 +194,22 @@ class _TicketViewState extends State<TicketView> {
                                   vehicle.vehicleLevel;
                               _ticketController.associations.value =
                                   vehicle.associationName;
-                              
+                              _ticketController.vehicleId.value = vehicle.id;
+                              _ticketController.locationFrom.value =
+                                  vehicle.assignedTerminalId!;
                               _ticketController.region.value =
                                   vehicle.plateRegion;
-                              
+
                               _ticketController.fleetType.value =
                                   vehicle.fleetType;
                               // Set the date and time
                               final now = DateTime.now();
                               final ethDate = now.convertToEthiopian();
-                              
+
                               _ticketController.dateTime.value =
-                              "${TicketController.oromoWeekdays[now.weekday]} - "
-                              "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
-                              "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-                              
+                                  "${TicketController.oromoWeekdays[now.weekday]} - "
+                                  "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
+                                  "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
 
                               setState(() {}); // Refresh suggestion UI
                             },
@@ -298,15 +304,12 @@ class _TicketViewState extends State<TicketView> {
                     CircleAvatar(
                         backgroundColor:
                             AppColors.primary.withValues(alpha: 0.1),
-                        child: Icon(Icons.location_pin,
-                            color: AppColors.primary)),
+                        child:
+                            Icon(Icons.location_pin, color: AppColors.primary)),
                     SizedBox(width: 12),
-                    _locationColumn(
-                        _ticketController.locationFrom.value, ""),
+                    _locationColumn(_ticketController.locationFrom.value, ""),
                   ],
                 ),
-
-                
                 SizedBox(height: 12),
                 Row(
                   children: [
@@ -316,11 +319,9 @@ class _TicketViewState extends State<TicketView> {
                         child:
                             Icon(Icons.location_pin, color: AppColors.primary)),
                     SizedBox(width: 12),
-                    _locationColumn(
-                        _ticketController.locationTo.value, ""),
+                    _locationColumn(_ticketController.locationTo.value, ""),
                   ],
                 ),
-
                 SizedBox(height: 12),
                 Row(
                   children: [
@@ -331,7 +332,6 @@ class _TicketViewState extends State<TicketView> {
                     )
                   ],
                 )
-
               ],
             ),
             Divider(height: 30),
@@ -411,55 +411,47 @@ class _TicketViewState extends State<TicketView> {
             ElevatedButton(
               onPressed: () async {
                 final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
-                final serviceChargeBox = Hive.box<ServiceChargeModel>('serviceChargeBox');
-
-                debugPrint('amount ->> ');
-                for (var sc in serviceChargeBox.values) {
-                    debugPrint(
-                      'Terminal: ${sc.departureTerminal}, Date: ${sc.dateTime}, Agent: ${sc.employeeName}, Amount: ${sc.serviceChargeAmount}');
-                }
-                
+                final serviceChargeBox =
+                    Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
 
+                // Parse double values safely
+                double parseSafe(String value) =>
+                    double.tryParse(value.split(' ').first) ?? 0.0;
+
                 final trip = TripModel(
+                  vehicleId: _ticketController.vehicleId.value,
                   departureTerminalId: _ticketController.locationFrom.value,
-                  arrivalTerminalId: _ticketController.locationTo.value,
-                  vehicleId: _ticketController.plateNumber.value,
+                  arrivalTerminalId: _ticketController.arrivalTerminalId.value,
                   dateAndTime: now,
-                  km: double.parse(_ticketController.km.value.split(' ')[0]),
-                  tariff: double.parse(_ticketController.tariff.value.split(' ')[0]),
-                  serviceCharge: double.parse(_ticketController.serviceCharge.value.split(' ')[0]),
-                  totalPaid: double.parse(_ticketController.totalPayment.value.split(' ')[0]),
-                  employeeId: homeController.user.value?.fullName ?? '',
-                  companyId: homeController.companyName.value,
+                  km: parseSafe(_ticketController.km.value),
+                  tariff: parseSafe(_ticketController.tariff.value),
+                  serviceCharge:
+                      parseSafe(_ticketController.serviceCharge.value),
+                  totalPaid: parseSafe(_ticketController.totalPayment.value),
+                  employeeId: homeController.user.value!.id,
+                  companyId: homeController.companyId.value,
                 );
 
                 // ✅ Save Trip
                 await tripBox.add(trip);
 
-                // ✅ Try to find existing service charge entry for today + same terminal + employee
-                ServiceChargeModel? existingEntry;
-                try {
-                  existingEntry = serviceChargeBox.values.firstWhere(
-                    (entry) {
-                      final entryDate = DateTime(entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
-                      return entry.departureTerminal == trip.departureTerminalId &&
-                            entry.employeeName == trip.employeeId &&
-                            entryDate == today;
-                    },
-                  );
-                } catch (e) {
-                  existingEntry = null;
-                }
+                // ✅ Handle Service Charge (per day per terminal per employee)
+                final existingEntry =
+                    serviceChargeBox.values.firstWhereOrNull((entry) {
+                  final entryDate = DateTime(entry.dateTime.year,
+                      entry.dateTime.month, entry.dateTime.day);
+                  return entry.departureTerminal == trip.departureTerminalId &&
+                      entry.employeeName == trip.employeeId &&
+                      entryDate == today;
+                });
 
                 if (existingEntry != null) {
-                  // ✅ Update existing: add the service charge amount
                   existingEntry.serviceChargeAmount += trip.serviceCharge;
                   await existingEntry.save();
                 } else {
-                  // ❌ Not found: create new
                   final newCharge = ServiceChargeModel(
                     departureTerminal: trip.departureTerminalId,
                     dateTime: now,
@@ -471,10 +463,13 @@ class _TicketViewState extends State<TicketView> {
                   homeController.loadServiceChargeAndDate();
                 }
 
-                Get.snackbar("Saved", "Ticket & Service Charge updated successfully",
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: Colors.green.withOpacity(0.8),
-                    colorText: Colors.white);
+                Get.snackbar(
+                  "Saved",
+                  "Ticket & Service Charge updated successfully",
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.green.withOpacity(0.8),
+                  colorText: Colors.white,
+                );
               },
 
               // Add confirmation logic here

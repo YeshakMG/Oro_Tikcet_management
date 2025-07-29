@@ -14,6 +14,7 @@ import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 class HomeController extends GetxController {
   final Rx<UserModel?> user = Rx<UserModel?>(null);
   final RxString companyName = ''.obs;
+  final RxString companyId = ''.obs;
   final RxString companyLogoUrl = ''.obs; // Add missing property
   final RxDouble serviceChargeToday = 0.0.obs;
   final RxString ethiopianDate = ''.obs;
@@ -30,10 +31,11 @@ class HomeController extends GetxController {
   void loadUser() async {
     final loadedUser = await AuthService().getUser();
     if (loadedUser != null && loadedUser.companyName != null) {
-      // Cast to the same UserModel type to avoid type mismatch
-      user.value = loadedUser as UserModel;
+   
+      user.value = loadedUser;
       companyName.value = loadedUser.companyName!;
-      companyLogoUrl.value = loadedUser.logoUrl ?? ''; // Set the logo URL
+      companyLogoUrl.value = loadedUser.logoUrl ?? '';
+      companyId.value = loadedUser.companyId;
     } else {
       Get.snackbar("Error", "User must have valid company info");
     }

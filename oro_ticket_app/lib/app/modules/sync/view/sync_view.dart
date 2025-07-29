@@ -1,3 +1,4 @@
+import 'package:ethiopian_datetime/ethiopian_datetime.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
@@ -11,7 +12,6 @@ import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import '../../../data/models/ticket_model.dart';
 
-
 class SyncView extends StatelessWidget {
   final SyncController controller = Get.put(SyncController());
   @override
@@ -24,7 +24,6 @@ class SyncView extends StatelessWidget {
         SizedBox(width: 16),
       ],
       body: Column(
-        
         children: [
           _buildTopBar(),
           Expanded(
@@ -76,6 +75,8 @@ class SyncView extends StatelessWidget {
   Widget _buildTicketCard(TripModel trip) {
     // Get vehicle details from vehicleId
     final vehicleBox = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
+    final currentDate = trip.dateAndTime;
+    final ethDate = currentDate.convertToEthiopian();
     final vehicle = vehicleBox.values.firstWhere(
       (v) => v.id == trip.vehicleId,
       orElse: () => VehicleModel(
@@ -91,9 +92,10 @@ class SyncView extends StatelessWidget {
         tariffs: [],
       ),
     );
-    
+
     // Get departure terminal details
-    final departureBox = Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
+    final departureBox =
+        Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
     final departureTerminal = departureBox.values.firstWhere(
       (t) => t.id == trip.departureTerminalId,
       orElse: () => DepartureTerminalModel(
@@ -102,9 +104,10 @@ class SyncView extends StatelessWidget {
         status: "active",
       ),
     );
-    
+
     // Get arrival terminal details
-    final arrivalBox = Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
+    final arrivalBox =
+        Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
     final arrivalTerminal = arrivalBox.values.firstWhere(
       (t) => t.id == trip.arrivalTerminalId,
       orElse: () => ArrivalTerminalModel(
@@ -114,10 +117,11 @@ class SyncView extends StatelessWidget {
         distance: 0.0,
       ),
     );
-    
+
     return GestureDetector(
-      key: Key(trip.key?.toString() ?? "unknown"), // Using key as a unique identifier
-      
+      key: Key(trip.key?.toString() ??
+          "unknown"), // Using key as a unique identifier
+
       onTap: () {
         Get.to(() => TicketDetailView(ticket: _convertToTicket(trip)),
             transition: Transition.rightToLeft,
@@ -154,17 +158,16 @@ class SyncView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text("Association: ${vehicle.associationName}"),
-                  Text(trip.dateAndTime.toString().substring(0, 10)),
                 ],
               ),
               const SizedBox(height: 6),
               Row(
                 children: [
                   Expanded(
-                      child:
-                          Text("${departureTerminal.name} → ${arrivalTerminal.name}")),
+                      child: Text(
+                          "${departureTerminal.name} → ${arrivalTerminal.name}")),
                   const SizedBox(width: 8),
-                  Text(trip.dateAndTime.toString().substring(11, 16)),
+                  // Text(trip.dateAndTime.toString().substring(11, 16)),
                 ],
               ),
               const SizedBox(height: 6),
@@ -179,13 +182,26 @@ class SyncView extends StatelessWidget {
                   Text("${vehicle.seatCapacity} Seats"),
                 ],
               ),
+              SizedBox(
+                height: 6,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const Icon(Icons.calendar_month_rounded, size: 16),
+                  Text("${ethDate.day}-${ethDate.month}-${ethDate.year}: ${ethDate.hour}:${ethDate.minute}"),
+                  SizedBox(
+                    width: 2,
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
     );
   }
-  
+
   // Helper method to convert TripModel to Ticket for TicketDetailView
   Ticket _convertToTicket(TripModel trip) {
     // Get vehicle details from vehicleId
@@ -205,9 +221,10 @@ class SyncView extends StatelessWidget {
         tariffs: [],
       ),
     );
-    
+
     // Get departure terminal details
-    final departureBox = Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
+    final departureBox =
+        Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
     final departureTerminal = departureBox.values.firstWhere(
       (t) => t.id == trip.departureTerminalId,
       orElse: () => DepartureTerminalModel(
@@ -216,9 +233,10 @@ class SyncView extends StatelessWidget {
         status: "active",
       ),
     );
-    
+
     // Get arrival terminal details
-    final arrivalBox = Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
+    final arrivalBox =
+        Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
     final arrivalTerminal = arrivalBox.values.firstWhere(
       (t) => t.id == trip.arrivalTerminalId,
       orElse: () => ArrivalTerminalModel(
@@ -228,7 +246,7 @@ class SyncView extends StatelessWidget {
         distance: 0.0,
       ),
     );
-    
+
     return Ticket(
       plateNumber: vehicle.plateNumber,
       region: vehicle.plateRegion,
@@ -240,7 +258,8 @@ class SyncView extends StatelessWidget {
       date: trip.dateAndTime.toString().substring(0, 10),
       time: trip.dateAndTime.toString().substring(11, 16),
       status: "Active",
-      employeeName: "Unknown", // TripModel doesn't have employeeName, using default
+      employeeName:
+          "Unknown", // TripModel doesn't have employeeName, using default
     );
   }
 }

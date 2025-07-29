@@ -115,7 +115,7 @@ class AuthService {
     );
 
     print(
-        'Raw response body: ${response.body}'); // 👈 This is key for debugging
+        'Raw response body: ${response.body}');
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
