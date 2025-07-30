@@ -58,7 +58,7 @@ class TripModel extends HiveObject {
       'departure_terminal_id': departureTerminalId,
       'arrival_terminal_id': arrivalTerminalId,
       'company_id': companyId,
-      'employee_name': employeeId,
+      'employee_id': employeeId,
     };
   }
 
@@ -73,7 +73,7 @@ class TripModel extends HiveObject {
       departureTerminalId: json['departure_terminal_id'],
       arrivalTerminalId: json['arrival_terminal_id'],
       companyId: json['company_id'],
-      employeeId: json['employee_name'],
+      employeeId: json['employee_id'],
     );
   }
 }

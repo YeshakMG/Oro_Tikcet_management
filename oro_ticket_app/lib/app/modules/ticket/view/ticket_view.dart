@@ -48,10 +48,9 @@ class _TicketViewState extends State<TicketView> {
     });
   }
 
-  void _loadDefaultDeparture() async {
-    final terminalBox = await HiveBoxes.getBox<DepartureTerminalModel>(
-        HiveBoxes.departureTerminalsBox);
-
+  void _loadDefaultDeparture() {
+    final terminalBox =
+        Hive.box<DepartureTerminalModel>('departureTerminalsBox');
     final terminal = terminalBox.values.firstOrNull;
 
     if (terminal != null) {
@@ -62,9 +61,8 @@ class _TicketViewState extends State<TicketView> {
     }
   }
 
-  void _onPlateInputChanged(String input) async {
-    final vehicleBox =
-        await HiveBoxes.getBox<VehicleModel>(HiveBoxes.vehiclesBox);
+  void _onPlateInputChanged(String input) {
+    final vehicleBox = Hive.box<VehicleModel>('vehiclesBox');
 
     final filtered = vehicleBox.values
         .where((v) => v.plateNumber.toLowerCase().contains(input.toLowerCase()))
