@@ -76,33 +76,32 @@ class AuthService {
         final responseData = jsonDecode(response.body);
         if (responseData['status'] == 'success') {
           // Successful logout - clear local storage
-          // await _clearStorage();
+          await _clearStorage();
           return;
         } else {
           throw Exception(responseData['message'] ?? 'Logout failed');
         }
       } else if (response.statusCode == 401) {
         // Token might be invalid, but we should still clear local storage
-        // await _clearStorage();
+        await _clearStorage();
         throw Exception('Session expired or invalid');
       } else {
         throw Exception('Logout failed with status ${response.statusCode}');
       }
     } catch (e) {
-      // Even if logout fails, we should clear local storage
-      // await _clearStorage();
+      await _clearStorage();
       rethrow;
     }
   }
 
-  // Future<void> _clearStorage() async {
-  //   await _storage.delete(key: _tokenKey);
-  //   await _storage.delete(key: _userKey);
+  Future<void> _clearStorage() async {
+    await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _userKey);
 
-  //   // Clear any other relevant local storage
-  //   // await Hive.box<VehicleModel>(HiveBoxes.vehiclesBox).clear();
-  //   // await Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox).clear();
-  // }
+    // Clear any other relevant local storage
+    // await Hive.box<VehicleModel>(HiveBoxes.vehiclesBox).clear();
+    // await Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox).clear();
+  }
 
   Future<String?> getToken() => _storage.read(key: _tokenKey);
 
@@ -114,8 +113,7 @@ class AuthService {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    print(
-        'Raw response body: ${response.body}');
+    print('Raw response body: ${response.body}');
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);

@@ -64,7 +64,7 @@ class TicketController extends GetxController {
     plateNumber.value = vehicle.plateNumber;
     seatNo.value = vehicle.seatCapacity.toString();
     level.value = vehicle.vehicleLevel;
-    locationFrom.value = departure.name;
+    locationFrom.value = departure.id;
     locationTo.value = arrival.id;
     km.value = "${arrival.distance.toStringAsFixed(1)} km";
     tariff.value = "${arrival.tariff.toStringAsFixed(2)} ETB";

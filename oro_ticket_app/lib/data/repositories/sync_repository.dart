@@ -213,62 +213,6 @@ class SyncRepository {
     }
   }
 
-  // For Trips
-  // Future<void> syncTripsToServer() async {
-  //   try {
-  //     final authService = Get.find<AuthService>();
-  //     final token = await authService.getToken();
-
-  //     final tripStorageService = TripStorageService();
-  //     final trips = tripStorageService.getAllTrips();
-
-  //     if (trips.isEmpty) {
-  //       print('No trips to sync');
-  //       return;
-  //     }
-
-  //     // final tripsData = trips.map((trip) => trip.toJson()).toList();
-  //     final tripsData = trips
-  //         .map((trip) => {
-  //               'vehicle_id': trip.vehicleId,
-  //               'date_and_time': trip.dateAndTime.toIso8601String(),
-  //               'km': trip.km,
-  //               'tariff': trip.tariff,
-  //               'service_charge': trip.serviceCharge,
-  //               'total_paid': trip.totalPaid,
-  //               'departure_terminal_id': trip.departureTerminalId,
-  //               'arrival_terminal_id': trip.arrivalTerminalId,
-  //               'company_id': trip.companyId,
-  //               'employee_name': trip.employeeId,
-  //             })
-  //         .toList();
-  //     final response = await http.post(
-  //       Uri.parse('$baseUrl/trips'),
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Accept': 'application/json',
-  //         'Authorization': 'Bearer $token',
-  //       },
-  //       body: jsonEncode({'trips': tripsData}),
-  //     );
-
-  //     if (response.statusCode == 200 || response.statusCode == 201) {
-  //       print('Trips synced successfully: ${trips.length} trips');
-
-  //       // Optional: clear the local trips after sync
-  //       await tripStorageService.clearTrips();
-  //     } else {
-  //       print('Failed to sync trips: ${response.body}');
-  //       final payload = jsonEncode({'trips': tripsData});
-  //       print('Sending payload: $payload');
-  //       throw Exception('Failed to sync trips: ${response.statusCode}');
-  //     }
-  //   } catch (e) {
-  //     print('Error syncing trips: $e');
-  //     throw Exception('Error syncing trips: $e');
-  //   }
-  // }
-
   Future<void> syncTripsToServer() async {
     try {
       final authService = Get.find<AuthService>();
@@ -292,13 +236,13 @@ class SyncRepository {
               'Accept': 'application/json',
               'Authorization': 'Bearer $token',
             },
-            body: jsonEncode(trip.toJson()), 
+            body: jsonEncode(trip.toJson()),
           );
 
           if (response.statusCode == 200 || response.statusCode == 201) {
             print('Trip synced successfully: ${trip.vehicleId}');
-                  await tripStorageService.clearTrips();
-                  print('All trips processed');
+            await tripStorageService.clearTrips();
+            print('All trips processed');
           } else {
             print('Failed to sync trip: ${response.body}');
             print('Sent payload: ${jsonEncode(trip.toJson())}');
@@ -309,8 +253,7 @@ class SyncRepository {
         }
       }
 
-      // Only clear trips if all were successfully synced
-
+ 
     } catch (e) {
       print('Error in sync process: $e');
       throw Exception('Error syncing trips: $e');
