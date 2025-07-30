@@ -109,7 +109,7 @@ class _TicketViewState extends State<TicketView> {
                   // Departure Terminal (read-only)
                   TextFormField(
                     readOnly: true,
-                    initialValue: selectedDeparture ?? 'Loading...',
+                    initialValue: selectedDeparture,
                     decoration: InputDecoration(
                       labelText: 'Departure Terminal',
                       prefixIcon: Icon(Icons.location_on),

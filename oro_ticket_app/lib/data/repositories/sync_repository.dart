@@ -297,6 +297,8 @@ class SyncRepository {
 
           if (response.statusCode == 200 || response.statusCode == 201) {
             print('Trip synced successfully: ${trip.vehicleId}');
+                  await tripStorageService.clearTrips();
+                  print('All trips processed');
           } else {
             print('Failed to sync trip: ${response.body}');
             print('Sent payload: ${jsonEncode(trip.toJson())}');
@@ -308,8 +310,7 @@ class SyncRepository {
       }
 
       // Only clear trips if all were successfully synced
-      await tripStorageService.clearTrips();
-      print('All trips processed');
+
     } catch (e) {
       print('Error in sync process: $e');
       throw Exception('Error syncing trips: $e');
