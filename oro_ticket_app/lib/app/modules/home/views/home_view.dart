@@ -30,7 +30,8 @@ class HomeView extends StatelessWidget {
               // Header
               Container(
                 color: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -39,13 +40,17 @@ class HomeView extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          companyName.isNotEmpty ? companyName : 'Unknown Company',
-                          style: AppTextStyles.subtitle1.copyWith(color: Colors.white),
+                          companyName.isNotEmpty
+                              ? companyName
+                              : 'Unknown Company',
+                          style: AppTextStyles.subtitle1
+                              .copyWith(color: Colors.white),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           user?.fullName ?? 'Employee Name',
-                          style: AppTextStyles.buttonMedium.copyWith(color: Colors.white),
+                          style: AppTextStyles.buttonMedium
+                              .copyWith(color: Colors.white),
                         ),
                       ],
                     ),
@@ -62,7 +67,8 @@ class HomeView extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             textStyle: AppTextStyles.button,
                           ),
                           child: const Text('Sync'),
@@ -82,13 +88,13 @@ class HomeView extends StatelessWidget {
                             try {
                               await homeController.syncTrips();
                               Get.back(); // Close loading snackbar
-                              Get.snackbar(
-                                'Success',
-                                'Synced Successfully!',
-                                snackPosition: SnackPosition.BOTTOM,
-                                backgroundColor: AppColors.primaryHover,
-                                colorText: AppColors.background,
-                              );
+                              // Get.snackbar(
+                              //   'Success',
+                              //   'Synced Successfully!',
+                              //   snackPosition: SnackPosition.BOTTOM,
+                              //   backgroundColor: AppColors.primaryHover,
+                              //   colorText: AppColors.background,
+                              // );
                               // Optionally refresh service charge and date after sync
                               homeController.loadServiceChargeAndDate();
                             } catch (e) {
@@ -104,7 +110,6 @@ class HomeView extends StatelessWidget {
                           },
                           icon: const Icon(Icons.sync, color: Colors.white),
                         ),
-
                       ],
                     ),
                   ],
@@ -121,12 +126,14 @@ class HomeView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Daily Information", style: AppTextStyles.heading3),
+                    const Text("Daily Information",
+                        style: AppTextStyles.heading3),
                     const SizedBox(height: 12),
                     Obx(() => DailyInfoTile(
                           icon: Icons.credit_card_rounded,
                           label: "Total Service Charge",
-                          value: "${homeController.serviceChargeToday.value.toStringAsFixed(2)} ETB",
+                          value:
+                              "${homeController.serviceChargeToday.value.toStringAsFixed(2)} ETB",
                         )),
                     const SizedBox(height: 10),
                     Obx(() => DailyInfoTile(

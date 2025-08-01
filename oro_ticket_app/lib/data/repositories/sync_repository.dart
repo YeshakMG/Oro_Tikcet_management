@@ -243,6 +243,7 @@ class SyncRepository {
             print('Trip synced successfully: ${trip.vehicleId}');
             await tripStorageService.clearTrips();
             print('All trips processed');
+            print('Sent payload: ${jsonEncode(trip.toJson())}');
           } else {
             print('Failed to sync trip: ${response.body}');
             print('Sent payload: ${jsonEncode(trip.toJson())}');
@@ -252,8 +253,6 @@ class SyncRepository {
           continue; // Continue with next trip if one fails
         }
       }
-
- 
     } catch (e) {
       print('Error in sync process: $e');
       throw Exception('Error syncing trips: $e');
