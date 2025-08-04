@@ -11,11 +11,17 @@ import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
+import 'package:oro_ticket_app/widgets/ticket_widget.dart';
+import 'package:pdf/pdf.dart';
 import '../controller/ticket_controller.dart';
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
 
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:typed_data';
+import 'package:printing/printing.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 class TicketView extends StatefulWidget {
   @override
@@ -398,7 +404,15 @@ class _TicketViewState extends State<TicketView> {
                     ),
                     Text("Free Call Service: 8556",
                         style: AppTextStyles.caption.copyWith(
-                            color: Colors.grey, fontWeight: FontWeight.bold))
+                            color: Colors.grey, fontWeight: FontWeight.bold)),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    Text(
+                        "Company Phone Number: ${homeController.companyPhoneNo.value}",
+                        style: AppTextStyles.caption.copyWith(
+                            color: Colors.grey, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 10),
                   ],
                 ),
               ],
@@ -431,10 +445,13 @@ class _TicketViewState extends State<TicketView> {
                   totalPaid: parseSafe(_ticketController.totalPayment.value),
                   employeeId: homeController.user.value!.id,
                   companyId: homeController.companyId.value,
+                  departureName: selectedDeparture.toString(),
+                  arrivalName: _ticketController.locationTo.value,
                 );
 
                 // ✅ Save Trip
-                await tripBox.add(trip);
+                // await tripBox.add(trip);
+                final tripKey = await tripBox.add(trip);
 
                 // ✅ Handle Service Charge (per day per terminal per employee)
                 final existingEntry =
@@ -468,6 +485,10 @@ class _TicketViewState extends State<TicketView> {
                   backgroundColor: Colors.green.withOpacity(0.8),
                   colorText: Colors.white,
                 );
+              //   final savedTrip = tripBox.get(tripKey);
+              //   if (savedTrip != null) {
+              //     _printTicketWithQR(savedTrip, tripKey.toString());
+              //   }
               },
 
               // Add confirmation logic here
@@ -519,4 +540,34 @@ class _TicketViewState extends State<TicketView> {
       ),
     );
   }
+
+ /* void _printTicketWithQR(TripModel trip, String tripId) async {
+    final ticketWidget = PrintableTicketWidget(
+      tripId: tripId,
+      plateNumber: _ticketController.plateNumber.value,
+      region: _ticketController.region.value,
+      association: _ticketController.associations.value,
+      departure: trip.departureName,
+      arrival: trip.arrivalName,
+      level: _ticketController.level.value,
+      seat: _ticketController.seatNo.value,
+      distance: trip.km.toString(),
+      tariff: trip.tariff.toString(),
+      serviceCharge: trip.serviceCharge.toString(),
+      totalPaid: trip.totalPaid.toString(),
+      agent: homeController.user.value?.fullName ?? 'Unknown Agent',
+      dateTime: trip.dateAndTime.toString(), // You may format this
+    );
+
+    // You can preview the ticket before printing if needed
+    await Get.to(() => Scaffold(
+          appBar: AppBar(title: Text("Ticket Preview")),
+          body: Center(child: ticketWidget),
+        ));
+  // await Printing.layoutPdf(
+  //   onLayout: (PdfPageFormat format) async => pdf.save(),
+  // );
+    // OR if using a print package, you can convert `ticketWidget` to image/pdf and print
+  }
+*/
 }

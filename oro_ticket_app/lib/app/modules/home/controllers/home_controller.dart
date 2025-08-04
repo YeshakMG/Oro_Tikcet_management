@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
@@ -15,6 +16,7 @@ class HomeController extends GetxController {
   final Rx<UserModel?> user = Rx<UserModel?>(null);
   final RxString companyName = ''.obs;
   final RxString companyId = ''.obs;
+  final RxString companyPhoneNo = ''.obs;
   final RxString companyLogoUrl = ''.obs; // Add missing property
   final RxDouble serviceChargeToday = 0.0.obs;
   final RxString ethiopianDate = ''.obs;
@@ -29,13 +31,21 @@ class HomeController extends GetxController {
   }
 
   void loadUser() async {
+    final token = await AuthService().getToken();
+
+    if (token == null) {
+      debugPrint('No token found — skipping user load');
+      return; 
+    }
+
     final loadedUser = await AuthService().getUser();
+
     if (loadedUser != null && loadedUser.companyName != null) {
-   
       user.value = loadedUser;
       companyName.value = loadedUser.companyName!;
       companyLogoUrl.value = loadedUser.logoUrl ?? '';
       companyId.value = loadedUser.companyId;
+      companyPhoneNo.value = loadedUser.companyPhoneNo ?? '';
     } else {
       Get.snackbar("Error", "User must have valid company info");
     }
@@ -48,11 +58,13 @@ class HomeController extends GetxController {
       final today = DateTime(now.year, now.month, now.day);
 
       final chargesToday = box.values.where((entry) {
-        final entryDate = DateTime(entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
+        final entryDate = DateTime(
+            entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
         return entry.employeeName == user.value?.fullName && entryDate == today;
       });
 
-      final total = chargesToday.fold<double>(0.0, (sum, e) => sum + e.serviceChargeAmount);
+      final total = chargesToday.fold<double>(
+          0.0, (sum, e) => sum + e.serviceChargeAmount);
       serviceChargeToday.value = total;
 
       // Use the extension method instead of direct class
@@ -64,11 +76,11 @@ class HomeController extends GetxController {
       ethiopianDate.value = "Unknown Date";
     }
   }
-  
+
   void resetDashboard() {
     // Reset the service charge for today
     serviceChargeToday.value = 0.0;
-    
+
     // Reload the Ethiopian date (in case it was showing an error)
     try {
       final currentDate = DateTime.now();
@@ -77,26 +89,28 @@ class HomeController extends GetxController {
     } catch (e) {
       ethiopianDate.value = "Unknown Date";
     }
-    
+
     // You might want to clear the Hive box entries for today as well
     try {
       final box = Hive.box<ServiceChargeModel>('serviceChargeBox');
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      
+
       // Get entries for today by this employee
       final entriesToRemove = box.values.where((entry) {
-        final entryDate = DateTime(entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
+        final entryDate = DateTime(
+            entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
         return entry.employeeName == user.value?.fullName && entryDate == today;
       }).toList();
-      
+
       // Delete these entries
       for (var entry in entriesToRemove) {
         final key = box.keyAt(box.values.toList().indexOf(entry));
         box.delete(key);
       }
     } catch (e) {
-      Get.snackbar("Error", "Failed to clear service charge records: ${e.toString()}");
+      Get.snackbar(
+          "Error", "Failed to clear service charge records: ${e.toString()}");
     }
   }
 
@@ -109,4 +123,3 @@ class HomeController extends GetxController {
     }
   }
 }
-

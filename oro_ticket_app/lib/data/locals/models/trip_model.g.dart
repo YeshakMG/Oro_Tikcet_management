@@ -27,13 +27,15 @@ class TripModelAdapter extends TypeAdapter<TripModel> {
       arrivalTerminalId: fields[7] as String,
       companyId: fields[8] as String,
       employeeId: fields[9] as String,
+      departureName: fields[10] as String,
+      arrivalName: fields[11] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, TripModel obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.vehicleId)
       ..writeByte(1)
@@ -53,7 +55,11 @@ class TripModelAdapter extends TypeAdapter<TripModel> {
       ..writeByte(8)
       ..write(obj.companyId)
       ..writeByte(9)
-      ..write(obj.employeeId);
+      ..write(obj.employeeId)
+      ..writeByte(10)
+      ..write(obj.departureName)
+      ..writeByte(11)
+      ..write(obj.arrivalName);
   }
 
   @override
