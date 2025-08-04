@@ -89,11 +89,19 @@ class SyncRepository {
   }
 
 // For Arrivals
-  Future<void> syncArrivalTerminals(
-      List<Map<String, dynamic>> jsonTerminals) async {
-    final terminals =
-        jsonTerminals.map((e) => ArrivalTerminalModel.fromJson(e)).toList();
-    await ArrivalTerminalStorageService.saveTerminals(terminals);
+  Future<void> syncArrivalTerminals(List<Map<String, dynamic>> jsonTerminals) async {
+    final seenNames = <String>{};
+    final uniqueTerminals = jsonTerminals.where((e) {
+      final name = e['name']?.toString().trim().toLowerCase();
+      if (name == null || seenNames.contains(name)) {
+        return false;
+      } else {
+        seenNames.add(name);
+        return true;
+      }
+    }).map((e) => ArrivalTerminalModel.fromJson(e)).toList();
+
+    await ArrivalTerminalStorageService.saveTerminals(uniqueTerminals);
   }
 
   Future<void> syncCompanyUserArrivalTerminals() async {

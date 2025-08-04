@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
-
 import 'package:get/get.dart';
+
 class DailyInfoTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final VoidCallback? onRefresh; // 👈 New
+  final VoidCallback? onRefresh;
 
   const DailyInfoTile({
     super.key,
@@ -46,14 +46,14 @@ class DailyInfoTile extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.grey),
-            onPressed: onRefresh, // 👈 Trigger refresh
-            tooltip: 'Refresh',
-          ),
+          if (onRefresh != null)
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.grey),
+              onPressed: onRefresh,
+              tooltip: 'Refresh',
+            ),
         ],
       ),
     );
   }
 }
-
