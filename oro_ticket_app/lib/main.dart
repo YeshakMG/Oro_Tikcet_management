@@ -13,6 +13,7 @@ void main() async {
   await dotenv.load(fileName: ".env");
   
   
+  
   Get.put(AuthService());
   Get.put(HomeController());
   runApp(const MyApp());

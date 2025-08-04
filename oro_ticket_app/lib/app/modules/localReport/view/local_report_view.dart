@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
@@ -6,7 +7,6 @@ import '../controller/local_report_controller.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 
 class LocalReportView extends StatelessWidget {
   final LocalReportController controller = Get.put(LocalReportController());
@@ -54,6 +54,18 @@ class LocalReportView extends StatelessWidget {
                   icon: const Icon(Icons.download),
                   label: const Text("Download"),
                   onPressed: generatePDF,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.refresh),
+                  label: const Text("Refresh"),
+                  onPressed: () {
+                    controller.loadTripsFromHive(); // Refresh only trip data
+                    Get.snackbar("Refreshed", "Trip data has been reloaded");
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                   ),

@@ -14,8 +14,17 @@ import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../controller/ticket_controller.dart';
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
-
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
+import 'package:hive/hive.dart';
+import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
+import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
+
+import 'package:oro_ticket_app/app/modules/utils/ticket_printer.dart';
+
+
+
+
+
 
 class TicketView extends StatefulWidget {
   @override
@@ -49,17 +58,19 @@ class _TicketViewState extends State<TicketView> {
   }
 
   void _loadDefaultDeparture() {
-    final terminalBox =
-        Hive.box<DepartureTerminalModel>('departureTerminalsBox');
+    final terminalBox = Hive.box<DepartureTerminalModel>('departureTerminalsBox');
     final terminal = terminalBox.values.firstOrNull;
 
     if (terminal != null) {
       setState(() {
         selectedDeparture = terminal.name;
         _ticketController.locationFrom.value = terminal.name;
+        _ticketController.departureTerminalId.value = terminal.id; // ✅ set correct ID
+        _ticketController.selectedDepartureTerminal.value = terminal; // ✅ store full model if needed
       });
     }
   }
+
 
   void _onPlateInputChanged(String input) {
     final vehicleBox = Hive.box<VehicleModel>('vehiclesBox');
@@ -193,10 +204,12 @@ class _TicketViewState extends State<TicketView> {
                               _ticketController.associations.value =
                                   vehicle.associationName;
                               _ticketController.vehicleId.value = vehicle.id;
-                              _ticketController.locationFrom.value =
-                                  vehicle.assignedTerminalId!;
+                              
                               _ticketController.region.value =
                                   vehicle.plateRegion;
+                              // _ticketController.departureTerminalId.value = 
+                              //     _ticketController.locationFrom.value;
+                                  
 
                               _ticketController.fleetType.value =
                                   vehicle.fleetType;
@@ -236,7 +249,7 @@ class _TicketViewState extends State<TicketView> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Text("Ticket Deatils", style: AppTextStyles.buttonMediumB),
+            Text("Ticket Details", style: AppTextStyles.buttonMediumB),
             SizedBox(height: 5),
             Text("Oromia Transport Agency", style: AppTextStyles.heading3),
             SizedBox(height: 10),
@@ -244,6 +257,10 @@ class _TicketViewState extends State<TicketView> {
                 style: AppTextStyles.buttonMediumB
                     .copyWith(color: Colors.grey, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
+            Text("Phone: 011-1234567",
+                style: AppTextStyles.caption
+                    .copyWith(color: Colors.grey, fontWeight: FontWeight.bold)),
+            
             Row(
               children: [
                 CircleAvatar(
@@ -398,7 +415,10 @@ class _TicketViewState extends State<TicketView> {
                     ),
                     Text("Free Call Service: 8556",
                         style: AppTextStyles.caption.copyWith(
-                            color: Colors.grey, fontWeight: FontWeight.bold))
+                            color: Colors.grey, fontWeight: FontWeight.bold)),
+                    Text("Terminal phone: 011-1234567",
+                        style: AppTextStyles.caption.copyWith(
+                            color: Colors.grey, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],
@@ -409,79 +429,130 @@ class _TicketViewState extends State<TicketView> {
             ElevatedButton(
               onPressed: () async {
                 final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
-                final serviceChargeBox =
-                    Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+                final serviceChargeBox = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
 
-                // Parse double values safely
                 double parseSafe(String value) =>
                     double.tryParse(value.split(' ').first) ?? 0.0;
 
+                // Seat count from controller (string to int)
+                final int seatCount = int.tryParse(_ticketController.seatNo.value) ?? 1;
+
+                // Multiply service charge by number of selected seats
+                final double totalServiceCharge =
+                    parseSafe(_ticketController.serviceCharge.value) * seatCount;
+
                 final trip = TripModel(
                   vehicleId: _ticketController.vehicleId.value,
-                  departureTerminalId: _ticketController.locationFrom.value,
+                  departureTerminalId: _ticketController.departureTerminalId.value,
                   arrivalTerminalId: _ticketController.arrivalTerminalId.value,
                   dateAndTime: now,
                   km: parseSafe(_ticketController.km.value),
                   tariff: parseSafe(_ticketController.tariff.value),
-                  serviceCharge:
-                      parseSafe(_ticketController.serviceCharge.value),
+                  serviceCharge: totalServiceCharge,
                   totalPaid: parseSafe(_ticketController.totalPayment.value),
                   employeeId: homeController.user.value!.id,
                   companyId: homeController.companyId.value,
                 );
 
-                // ✅ Save Trip
+                // Debug TripModel print
+                print("🚌 TripModel Debug Info:");
+                print("Vehicle ID: ${trip.vehicleId}");
+                print("From: ${trip.departureTerminalId}, To: ${trip.arrivalTerminalId}");
+                print("KM: ${trip.km}, Tariff: ${trip.tariff}, Charge: ${trip.serviceCharge}");
+                print("Total Paid: ${trip.totalPaid}, Employee: ${trip.employeeId}, Company: ${trip.companyId}");
+                print("Date: ${trip.dateAndTime}");
+
                 await tripBox.add(trip);
 
-                // ✅ Handle Service Charge (per day per terminal per employee)
-                final existingEntry =
-                    serviceChargeBox.values.firstWhereOrNull((entry) {
-                  final entryDate = DateTime(entry.dateTime.year,
-                      entry.dateTime.month, entry.dateTime.day);
+                // Check if a charge already exists for today, terminal, and employee
+                final existingEntry = serviceChargeBox.values.firstWhereOrNull((entry) {
+                  final entryDate = DateTime(entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
                   return entry.departureTerminal == trip.departureTerminalId &&
                       entry.employeeName == trip.employeeId &&
                       entryDate == today;
                 });
 
                 if (existingEntry != null) {
-                  existingEntry.serviceChargeAmount += trip.serviceCharge;
+                  // Add new service charge to existing
+                  existingEntry.serviceChargeAmount += totalServiceCharge;
                   await existingEntry.save();
+
+                  // Debug updated ServiceChargeModel
+                  print("💵 Updated ServiceChargeModel:");
+                  print("Terminal: ${existingEntry.departureTerminal}, Employee: ${existingEntry.employeeName}");
+                  print("New Charge: ${existingEntry.serviceChargeAmount}, Date: ${existingEntry.dateTime}");
                 } else {
+                  // Create new entry
                   final newCharge = ServiceChargeModel(
                     departureTerminal: trip.departureTerminalId,
                     dateTime: now,
-                    serviceChargeAmount: trip.serviceCharge,
+                    serviceChargeAmount: totalServiceCharge,
                     employeeName: trip.employeeId,
                     companyId: trip.companyId,
                   );
+
                   await serviceChargeBox.add(newCharge);
-                  homeController.loadServiceChargeAndDate();
+
+                  // Debug new ServiceChargeModel
+                  print("💰 New ServiceChargeModel:");
+                  print("Terminal: ${newCharge.departureTerminal}, Employee: ${newCharge.employeeName}");
+                  print("Charge: ${newCharge.serviceChargeAmount}, Date: ${newCharge.dateTime}");
                 }
 
+                // === Printing logic ===
+                final printer = TicketPrinter();
+
+                final ticketText = '''
+            Oromia Transport Agency
+            -------------------------------
+              Company: Malkaa Technology
+              Phone: 011-123-4567
+            Plate: ${_ticketController.region.value} ${_ticketController.plateNumber.value}
+            From: ${_ticketController.locationFrom.value}
+            To: ${_ticketController.locationTo.value}
+            Date: ${_ticketController.dateTime.value}
+            Seat No: ${_ticketController.seatNo.value}
+            Level: ${_ticketController.level.value}
+            Km: ${_ticketController.km.value}
+            Tariff: ${_ticketController.tariff.value}
+            Service Charge: ${_ticketController.serviceCharge.value}
+            Total Payment: ${_ticketController.totalPayment.value}
+            Agent: ${homeController.user.value?.fullName}
+            -------------------------------
+            Free-call: 8556
+            Phone: 011-123-4567
+
+            ''';
+
+                final copies = int.tryParse(_ticketController.seatNo.value) ?? 1;
+
+                await printer.connectAndPrint(text: ticketText, copies: copies);
+
+                // Success Feedback Snackbar
                 Get.snackbar(
                   "Saved",
-                  "Ticket & Service Charge updated successfully",
+                  "Ticket & Service Charge updated and printed successfully",
                   snackPosition: SnackPosition.BOTTOM,
                   backgroundColor: Colors.green.withOpacity(0.8),
                   colorText: Colors.white,
                 );
               },
-
-              // Add confirmation logic here
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              //free call service
-              child: Text("Print", style: TextStyle(color: Colors.white)),
+              child: const Text("Print & Save"),
             )
+
           ],
         ),
       ),
+   
+   
     );
   }
 
@@ -519,4 +590,12 @@ class _TicketViewState extends State<TicketView> {
       ),
     );
   }
+  // Helper function to center text by adding spaces on the left
+String centerText(String text, {int lineWidth = 32}) {
+  if (text.length >= lineWidth) return text; // no padding if too long
+  int leftPadding = ((lineWidth - text.length) / 2).floor();
+  return ' ' * leftPadding + text;
+}
+
+
 }

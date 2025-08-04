@@ -23,13 +23,12 @@ class SyncController extends GetxController {
 
   List<TripModel> get filteredTickets {
     if (searchQuery.value.isEmpty) return tickets;
-    
+
     final vehicleBox = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
     final departureBox = Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
     final arrivalBox = Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
-    
+
     return tickets.where((trip) {
-      // Get vehicle details
       final vehicle = vehicleBox.values.firstWhere(
         (v) => v.id == trip.vehicleId,
         orElse: () => VehicleModel(
@@ -45,20 +44,18 @@ class SyncController extends GetxController {
           tariffs: [],
         ),
       );
-      
-      // Get departure terminal details
-      final departureTerminal = departureBox.values.firstWhere(
-        (t) => t.id == trip.departureTerminalId,
+
+      final departure = departureBox.values.firstWhere(
+        (d) => d.id == trip.departureTerminalId,
         orElse: () => DepartureTerminalModel(
           id: "unknown",
           name: "Unknown",
           status: "active",
         ),
       );
-      
-      // Get arrival terminal details
-      final arrivalTerminal = arrivalBox.values.firstWhere(
-        (t) => t.id == trip.arrivalTerminalId,
+
+      final arrival = arrivalBox.values.firstWhere(
+        (a) => a.id == trip.arrivalTerminalId,
         orElse: () => ArrivalTerminalModel(
           id: "unknown",
           name: "Unknown",
@@ -66,13 +63,12 @@ class SyncController extends GetxController {
           distance: 0.0,
         ),
       );
-      
+
       final query = searchQuery.value.toLowerCase();
-      
       return vehicle.plateNumber.toLowerCase().contains(query) ||
-             departureTerminal.name.toLowerCase().contains(query) ||
-             arrivalTerminal.name.toLowerCase().contains(query) ||
-             vehicle.associationName.toLowerCase().contains(query);
+          vehicle.associationName.toLowerCase().contains(query) ||
+          departure.name.toLowerCase().contains(query) ||
+          arrival.name.toLowerCase().contains(query);
     }).toList();
   }
 

@@ -21,30 +21,27 @@ class LocalReportController extends GetxController {
 
   void loadTripsFromHive() async {
     final tripBox = await Hive.openBox<TripModel>('trip');
-    
-    // Open other boxes needed for related data
-    final vehicleBox = await Hive.openBox('vehicles');
-    final departureBox = await Hive.openBox('departureTerminals');
-    final arrivalBox = await Hive.openBox('arrivalTerminals');
-    
-    final List<Map<String, String>> loaded = tripBox.values.map((trip) {
-      // Get related data from other boxes if needed
-      // For now, use safe defaults to fix the immediate errors
-      
+
+    final List<Map<String, String>> loaded = tripBox.toMap().entries.map((entry) {
+      final tripId = entry.key.toString();
+      final TripModel trip = entry.value as TripModel;
+
       return {
-        'tripId': trip.key?.toString() ?? 'Unknown',
-        'departure': _getDepartureName(departureBox, trip.departureTerminalId),
-        'destination': _getArrivalName(arrivalBox, trip.arrivalTerminalId),
-        'plate': _getPlateNumber(vehicleBox, trip.vehicleId),
+        'tripId': tripId,
+        'departure': trip.departureTerminalId ?? 'Unknown',
+        'destination': trip.arrivalTerminalId ?? 'Unknown',
+        'plate': trip.companyId ?? 'Unknown',
         'date': DateFormat('yyyy-MM-dd').format(trip.dateAndTime),
         'time': DateFormat('hh:mm a').format(trip.dateAndTime),
-        'status': 'Completed' // or use trip.status if you store it
+        'status': 'Completed', // or add real status field to model if you want
       };
     }).toList();
 
     allReports.assignAll(loaded);
     filteredReports.assignAll(loaded);
   }
+
+
 
   void searchReports(String query) {
     if (query.isEmpty) {
