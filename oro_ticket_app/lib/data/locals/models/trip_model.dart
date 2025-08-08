@@ -34,6 +34,12 @@ class TripModel extends HiveObject {
   @HiveField(9)
   String employeeId;
 
+  @HiveField(10)
+  String departureName;
+
+  @HiveField(11)
+  String arrivalName;
+
   TripModel({
     required this.vehicleId,
     required this.dateAndTime,
@@ -45,6 +51,8 @@ class TripModel extends HiveObject {
     required this.arrivalTerminalId,
     required this.companyId,
     required this.employeeId,
+    required this.departureName,
+    required this.arrivalName,
   });
 
   Map<String, dynamic> toJson() {
@@ -74,6 +82,12 @@ class TripModel extends HiveObject {
       arrivalTerminalId: json['arrival_terminal_id'],
       companyId: json['company_id'],
       employeeId: json['employee_id'],
+      departureName: json['departure_name'] ??
+          json['departureTerminal']?['name'] ??
+          '', 
+      arrivalName: json['arrival_name'] ??
+          json['arrivalTerminal']?['name'] ??
+          '',
     );
   }
 }

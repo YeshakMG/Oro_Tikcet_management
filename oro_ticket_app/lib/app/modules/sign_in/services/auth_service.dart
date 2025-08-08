@@ -89,6 +89,7 @@ class AuthService {
         throw Exception('Logout failed with status ${response.statusCode}');
       }
     } catch (e) {
+      
       await _clearStorage();
       rethrow;
     }
@@ -113,7 +114,8 @@ class AuthService {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    print('Raw response body: ${response.body}');
+    print(
+        'Raw response body: ${response.body}');
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);

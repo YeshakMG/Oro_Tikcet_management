@@ -6,6 +6,7 @@ class UserModel {
   final String? companyName;
   final String? logoUrl;
   final String companyId;
+  final String? companyPhoneNo;
 
   UserModel({
     required this.id,
@@ -15,7 +16,7 @@ class UserModel {
     required this.companyId,
     this.companyName,
     this.logoUrl,
-
+    this.companyPhoneNo,
   });
 
   factory UserModel.fromLoginJson(Map<String, dynamic> json) {
@@ -33,6 +34,7 @@ class UserModel {
       companyName:
           company?['name'] ?? json['company_name'] ?? 'Unknown Company',
       logoUrl: company?['logo_url'],
+      companyPhoneNo: company?['phone'],
     );
   }
 
@@ -44,5 +46,6 @@ class UserModel {
         'company_id': companyId,
         'name': companyName,
         'logo_url': logoUrl,
+        'phone_no': companyPhoneNo,
       };
 }

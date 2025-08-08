@@ -455,6 +455,8 @@ class _TicketViewState extends State<TicketView> {
                   totalPaid: parseSafe(_ticketController.totalPayment.value),
                   employeeId: homeController.user.value!.id,
                   companyId: homeController.companyId.value,
+                  departureName: selectedDeparture.toString(),
+                  arrivalName: _ticketController.locationTo.value,
                 );
 
                 // Debug TripModel print

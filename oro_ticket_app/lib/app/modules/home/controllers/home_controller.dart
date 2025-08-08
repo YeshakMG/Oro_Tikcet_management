@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
@@ -17,6 +18,7 @@ class HomeController extends GetxController {
   final RxDouble serviceChargeToday = 0.0.obs;
   final RxString ethiopianDate = ''.obs;
   final RxString serviceChargeText = ''.obs;
+  final RxString companyPhoneNo = ''.obs;
   final SyncRepository _syncRepository = SyncRepository();
 
   @override
@@ -29,16 +31,25 @@ class HomeController extends GetxController {
   }
 
   void loadUser() async {
-    final loadedUser = await AuthService().getUser();
-    if (loadedUser != null && loadedUser.companyName != null) {
-      user.value = loadedUser;
-      companyName.value = loadedUser.companyName!;
-      companyLogoUrl.value = loadedUser.logoUrl ?? '';
-      companyId.value = loadedUser.companyId;
-    } else {
-      Get.snackbar("Error", "User must have valid company info");
+      final token = await AuthService().getToken();
+
+      if (token == null) {
+        debugPrint('No token found — skipping user load');
+        return; 
+      }
+
+      final loadedUser = await AuthService().getUser();
+
+      if (loadedUser != null && loadedUser.companyName != null) {
+        user.value = loadedUser;
+        companyName.value = loadedUser.companyName!;
+        companyLogoUrl.value = loadedUser.logoUrl ?? '';
+        companyId.value = loadedUser.companyId;
+        companyPhoneNo.value = loadedUser.companyPhoneNo ?? '';
+      } else {
+        Get.snackbar("Error", "User must have valid company info");
+      }
     }
-  }
 
   Future<void> loadTodayServiceCharge() async {
     try {
