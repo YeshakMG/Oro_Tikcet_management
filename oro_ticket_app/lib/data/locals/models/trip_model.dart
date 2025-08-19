@@ -40,6 +40,10 @@ class TripModel extends HiveObject {
   @HiveField(11)
   String arrivalName;
 
+  @HiveField(12)
+  bool isSynced;
+
+
   TripModel({
     required this.vehicleId,
     required this.dateAndTime,
@@ -53,6 +57,7 @@ class TripModel extends HiveObject {
     required this.employeeId,
     required this.departureName,
     required this.arrivalName,
+    this.isSynced = false,
   });
 
   Map<String, dynamic> toJson() {

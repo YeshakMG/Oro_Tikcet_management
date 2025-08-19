@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
+import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
-// Import the UserModel from sign_in module
-import 'package:oro_ticket_app/app/modules/sign_in/models/user_model.dart';
+
+import 'package:oro_ticket_app/data/locals/models/user_model.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 
@@ -27,7 +28,6 @@ class HomeController extends GetxController {
     loadUser();
     loadTodayServiceCharge();
     updateEthiopianDate();
-    
   }
 
   void loadUser() async {
@@ -35,7 +35,7 @@ class HomeController extends GetxController {
 
     if (token == null) {
       debugPrint('No token found — skipping user load');
-      return; 
+      return;
     }
 
     final loadedUser = await AuthService().getUser();
@@ -72,7 +72,8 @@ class HomeController extends GetxController {
   void updateEthiopianDate() {
     final now = DateTime.now();
     final ethDate = now.convertToEthiopian();
-    ethiopianDate.value = "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')}";
+    ethiopianDate.value =
+        "${ethDate.day.toString().padLeft(2, '0')}-${ethDate.month.toString().padLeft(2, '0')}-${ethDate.year}";
   }
 
   void addOrUpdateServiceCharge({
@@ -92,7 +93,8 @@ class HomeController extends GetxController {
       ServiceChargeModel? existingEntry;
       try {
         existingEntry = box.values.firstWhere((entry) {
-          final entryDate = DateTime(entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
+          final entryDate = DateTime(
+              entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
           return entry.employeeName == currentUserId && entryDate == today;
         });
       } catch (_) {
@@ -107,13 +109,15 @@ class HomeController extends GetxController {
         final updatedEntry = ServiceChargeModel(
           departureTerminal: existingEntry.departureTerminal,
           dateTime: existingEntry.dateTime,
-          serviceChargeAmount: existingEntry.serviceChargeAmount + newChargeAmount,
+          serviceChargeAmount:
+              existingEntry.serviceChargeAmount + newChargeAmount,
           employeeName: existingEntry.employeeName,
           companyId: existingEntry.companyId,
         );
 
         await box.put(key, updatedEntry);
-        print("✅ Service charge updated. New total: ${updatedEntry.serviceChargeAmount}");
+        print(
+            "✅ Service charge updated. New total: ${updatedEntry.serviceChargeAmount}");
       } else {
         // Add new entry
         final newEntry = ServiceChargeModel(
@@ -139,16 +143,35 @@ class HomeController extends GetxController {
   Future<void> syncTrips() async {
     try {
       await _syncRepository.syncTripsToServer();
-      Get.snackbar("Success", "Data synced successfully");
+      Get.snackbar(
+        "Success",
+        "Data synced successfully",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.primaryHover,
+        colorText: AppColors.background,
+      );
     } catch (e) {
-      Get.snackbar("Error", "Failed to sync data: $e");
+      Get.snackbar(
+        "Error",
+        "Failed to sync data: $e",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.error,
+        colorText: AppColors.background,
+      );
       rethrow;
     }
   }
+
   Future<void> syncServiceCharge() async {
     try {
       await _syncRepository.syncServiceChargeToServer();
-      Get.snackbar("Success", "Service charge synced successfully");
+      Get.snackbar(
+        "Success",
+        "Service charge synced successfully",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.primaryHover,
+        colorText: AppColors.background,
+      );
     } catch (e) {
       Get.snackbar("Error", "Failed to sync service charge: $e");
       rethrow;
@@ -159,10 +182,10 @@ class HomeController extends GetxController {
     serviceChargeToday.value = 0.0;
     // Reset other dashboard data if any
   }
-  void refreshDashboard() {
-  loadUser();
-  loadTodayServiceCharge();
-  updateEthiopianDate();
-}
 
+  void refreshDashboard() {
+    loadUser();
+    loadTodayServiceCharge();
+    updateEthiopianDate();
+  }
 }

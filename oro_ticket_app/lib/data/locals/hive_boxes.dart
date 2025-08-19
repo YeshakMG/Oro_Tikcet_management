@@ -5,6 +5,7 @@ import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
+import 'package:oro_ticket_app/data/locals/models/user_model.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 
 import 'models/vehicle_model.dart';
@@ -16,6 +17,7 @@ class HiveBoxes {
   static const String commissionRulesBox = 'commissionRulesBox';
   static const String tripBox = 'tripBox';
   static const String serviceChargeBox = 'serviceChargeBox';
+  static const String userBox = 'userData';
   static bool _initialized = false;
 
   static Future<void> init() async {
@@ -26,10 +28,10 @@ class HiveBoxes {
       await Hive.initFlutter(appDir.path);
 
       // Clear existing boxes if they exist
-      await _deleteBoxIfExists(vehiclesBox);
-      await _deleteBoxIfExists(departureTerminalsBox);
-      await _deleteBoxIfExists(arrivalTerminalsBox);
-      await _deleteBoxIfExists(commissionRulesBox);
+      // await _deleteBoxIfExists(vehiclesBox);
+      // await _deleteBoxIfExists(departureTerminalsBox);
+      // await _deleteBoxIfExists(arrivalTerminalsBox);
+      // await _deleteBoxIfExists(commissionRulesBox);
 
       // Register adapters
       Hive.registerAdapter(VehicleModelAdapter());
@@ -38,6 +40,7 @@ class HiveBoxes {
       Hive.registerAdapter(CommissionRuleModelAdapter());
       Hive.registerAdapter(TripModelAdapter());
       Hive.registerAdapter(ServiceChargeModelAdapter());
+      Hive.registerAdapter(UserModelAdapter());
 
       // Open boxes
       await Future.wait([
@@ -47,6 +50,7 @@ class HiveBoxes {
         Hive.openBox<CommissionRuleModel>(commissionRulesBox),
         Hive.openBox<TripModel>(tripBox),
         Hive.openBox<ServiceChargeModel>(serviceChargeBox),
+        Hive.openBox<UserModel>(userBox),
       ]);
 
       _initialized = true;

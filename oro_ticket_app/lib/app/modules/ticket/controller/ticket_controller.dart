@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'package:oro_ticket_app/app/modules/sign_in/models/user_model.dart';
+import 'package:oro_ticket_app/data/locals/models/user_model.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';

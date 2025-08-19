@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 
 import '../../home/controllers/home_controller.dart';
-import '../models/user_model.dart';
+import '../../../../data/locals/models/user_model.dart';
 import '../services/auth_service.dart';
 
 class SignInController extends GetxController {

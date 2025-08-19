@@ -7,106 +7,110 @@ import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 
 class VehiclesController extends GetxController {
-  final SyncRepository syncRepo = SyncRepository();
+  final SyncRepository syncRepo = Get.find<SyncRepository>();
 
   RxList<VehicleModel> allVehicles = <VehicleModel>[].obs;
   RxList<VehicleModel> filteredVehicles = <VehicleModel>[].obs;
-  final String baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+  RxBool isLoading = false.obs;
+  RxBool isSyncing = false.obs;
+  RxString errorMessage = ''.obs;
+
+  // Pagination controls
+  final int itemsPerPage = 10;
+  RxInt currentPage = 1.obs;
+  RxBool hasMore = true.obs;
+  RxBool isPageLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    fetchAndSyncVehicles();
+    loadInitialVehicles();
+    syncRepo.vehicleChanges.listen((_) => loadLocalVehicles());
   }
 
-  Future<void> fetchAndSyncVehicles() async {
-    final authService = Get.find<AuthService>();
-    final token = await authService.getToken();
+  Future<void> loadInitialVehicles() async {
+    try {
+      isLoading(true);
+      errorMessage('');
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      },
-    );
+      // This will automatically handle offline case
+      await loadLocalVehicles();
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final vehicles =
-          List<Map<String, dynamic>>.from(data['data']['vehicles']);
-      await syncRepo.syncVehicles(vehicles);
-      loadVehicles();
-      List<VehicleModel> localVehicles = syncRepo.getLocalVehicles();
-      print('Number of vehicles stored: ${localVehicles.length}');
-      for (var vehicle in localVehicles) {
-        print(vehicle.toJson());
+      // Only show error if we have no local data AND offline
+      if (allVehicles.isEmpty && !(await syncRepo.isOnline)) {
+        errorMessage('No vehicles found (offline mode)');
       }
-    } else {
-      print('Failed to fetch vehicles: ${response.body}');
+    } catch (e) {
+      errorMessage('Failed to load vehicles: ${e.toString()}');
+    } finally {
+      isLoading(false);
     }
   }
 
-  void loadVehicles() {
-    final vehicles = syncRepo.getLocalVehicles();
+  Future<void> loadLocalVehicles() async {
+    final vehicles = await syncRepo.getVehicles();
     allVehicles.assignAll(vehicles);
     filteredVehicles.assignAll(vehicles);
+    hasMore(
+        allVehicles.length >= itemsPerPage); // Assume more if we have full page
+  }
+
+  Future<void> refreshVehicles() async {
+    try {
+      isSyncing(true);
+      errorMessage('');
+      await syncRepo.syncAllCompanyUserVehicles(forceSync: true);
+    } catch (e) {
+      // Don't show error if we have local data
+      if (allVehicles.isEmpty) {
+        errorMessage('Sync failed: ${e.toString()}');
+      } else {
+        Get.snackbar('Offline', 'Showing locally stored vehicles',
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } finally {
+      isSyncing(false);
+    }
+  }
+
+  Future<void> loadMoreVehicles() async {
+    if (!hasMore.value || isPageLoading.value) return;
+
+    try {
+      isPageLoading(true);
+      currentPage++;
+
+      // In a real app, you might fetch next page from API here
+      // For now we'll just show more of the locally stored vehicles
+
+      // Simulate pagination from local storage
+      final startIndex = (currentPage.value - 1) * itemsPerPage;
+      if (startIndex < allVehicles.length) {
+        hasMore(startIndex + itemsPerPage < allVehicles.length);
+      } else {
+        hasMore(false);
+      }
+    } finally {
+      isPageLoading(false);
+    }
+  }
+
+  List<VehicleModel> get paginatedVehicles {
+    final endIndex = currentPage.value * itemsPerPage;
+    return filteredVehicles.take(endIndex).toList();
   }
 
   void filterVehicles(String query) {
+    currentPage(1); // Reset to first page when filtering
     if (query.isEmpty) {
       filteredVehicles.assignAll(allVehicles);
     } else {
       filteredVehicles.assignAll(
         allVehicles.where((v) =>
             v.plateNumber.toLowerCase().contains(query.toLowerCase()) ||
-            v.status.toLowerCase().contains(query.toLowerCase())),
+            (v.status?.toLowerCase().contains(query.toLowerCase()) ?? false)),
       );
     }
+    hasMore(filteredVehicles.length > itemsPerPage);
   }
 }
-
-// import 'package:get/get.dart';
-
-// class VehiclesController extends GetxController {
-//   RxList<Map<String, String>> vehicles = <Map<String, String>>[].obs;
-
-//   @override
-//   void onInit() {
-//     super.onInit();
-//     loadVehicles();
-//   }
-
-//   void loadVehicles() {
-//     vehicles.assignAll([
-//       {'level': '2', 'seat': '14 Adama', 'terminal': 'Afar'},
-//       {'level': '1', 'seat': '29 Adama', 'terminal': 'Peacock Ter'},
-//       {'level': '1', 'seat': '29 Adama', 'terminal': 'Peacock Ter'},
-//       {'level': '2', 'seat': '29 Adama', 'terminal': 'Peacock Ter'},
-//       {'level': '3', 'seat': '44 Adama', 'terminal': 'Peacock Ter'},
-//       {'level': '3', 'seat': '14 Adama', 'terminal': 'Peacock Ter'},
-//       {'level': '1', 'seat': '29 Adama', 'terminal': 'Peacock Ter'},
-//       {'level': '2', 'seat': '14 Adama', 'terminal': 'Peacock Ter'},
-//       {'level': '1', 'seat': '29 Adama', 'terminal': 'Peacock Ter'},
-//       {'level': '1', 'seat': '29 Adama', 'terminal': 'Peacock Ter'},
-//     ]);
-//   }
-
-//   void filterVehicles(String query) {
-//     if (query.isEmpty) {
-//       loadVehicles();
-//     } else {
-//       vehicles.assignAll(vehicles.where((vehicle) =>
-//           vehicle['seat']!.toLowerCase().contains(query.toLowerCase()) ||
-//           vehicle['terminal']!.toLowerCase().contains(query.toLowerCase())));
-//     }
-//   }
-
-//   void addVehicle(String id, String name) {
-//     vehicles.add({'id': id, 'name': name});
-//   }
-
-//   void removeVehicle(String id) {
-//     vehicles.removeWhere((vehicle) => vehicle['id'] == id);
-//   }
-// }

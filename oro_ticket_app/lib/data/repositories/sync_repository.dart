@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
@@ -24,6 +26,131 @@ class SyncRepository {
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? '';
 
   final storage = FlutterSecureStorage();
+  final Connectivity _connectivity = Connectivity();
+  final _vehicleChanges = StreamController<void>.broadcast();
+  Stream<void> get vehicleChanges => _vehicleChanges.stream;
+
+  // Helper method to check network connectivity
+  Future<bool> get _isOnline async {
+    final connectivityResult = await _connectivity.checkConnectivity();
+    return connectivityResult != ConnectivityResult.none;
+  }
+
+  Future<bool> get isOnline async {
+    try {
+      final result = await _connectivity.checkConnectivity();
+      return result != ConnectivityResult.none;
+    } catch (e) {
+      print('⚠️ Connectivity check error: $e');
+      return false;
+    }
+  }
+
+  // ========== VEHICLES ========== //
+  Future<List<VehicleModel>> getVehicles() async {
+    try {
+      // Always return local storage immediately
+      final localVehicles = getLocalVehicles();
+      if (localVehicles.isNotEmpty) {
+        print('📦 Returning vehicles from local storage');
+        for (var vehicle in localVehicles) {
+          print('number of vehicle stored in local: ${localVehicles.length}');
+          print('${vehicle.toJson()}');
+        }
+        return localVehicles;
+      }
+
+      // Only attempt API if online
+      if (await _isOnline) {
+        print('🌐 Attempting to fetch vehicles from API');
+        await syncAllCompanyUserVehicles();
+        return getLocalVehicles();
+      }
+
+      return localVehicles;
+    } catch (e) {
+      print('⚠️ Error in getVehicles(), falling back to local: $e');
+      return getLocalVehicles(); // Always fall back to local
+    }
+  }
+
+  Future<void> syncAllCompanyUserVehicles({bool forceSync = false}) async {
+    if (!await _isOnline && !forceSync) {
+      print('🚫 Offline - Skipping vehicle sync');
+      return;
+    }
+
+    try {
+      final authService = Get.find<AuthService>();
+      final token = await authService.getToken();
+      final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
+
+      int currentPage = 1;
+      bool hasMorePages = true;
+      int totalSynced = 0;
+      final Set<String> apiVehicleIds = {};
+
+      while (hasMorePages) {
+        final response = await http.get(
+          Uri.parse(
+              '$baseUrl/vehicles/company-user/my-vehicles?page=$currentPage'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ).timeout(const Duration(seconds: 10));
+
+        if (response.statusCode == 200) {
+          final json = jsonDecode(response.body);
+          final vehicles = json['data']['vehicles'] as List<dynamic>;
+          final pagination = json['data']['pagination'];
+
+          final validVehicles = vehicles
+              .where((e) => e['deleted_at'] == null)
+              .map((e) => VehicleModel.fromJson(e))
+              .toList();
+
+          for (final vehicle in validVehicles) {
+            apiVehicleIds.add(vehicle.id);
+          }
+
+          await box.putAll(
+              {for (final vehicle in validVehicles) vehicle.id: vehicle});
+
+          totalSynced += validVehicles.length;
+          print(
+              '📦 Synced ${validVehicles.length} vehicles from page $currentPage');
+
+          hasMorePages = pagination['current_page'] < pagination['last_page'];
+          currentPage++;
+        } else {
+          print('⚠️ API returned ${response.statusCode}, stopping sync');
+          break;
+        }
+      }
+
+      if (totalSynced > 0) {
+        final localIds = box.keys.cast<String>().toSet();
+        final idsToRemove = localIds.difference(apiVehicleIds);
+        await box.deleteAll(idsToRemove);
+        _vehicleChanges.add(null);
+        print('✅ Synced $totalSynced vehicles across ${currentPage - 1} pages');
+      }
+    } catch (e) {
+      print('⚠️ Sync error (continuing with local data): $e');
+      rethrow; // Let the caller handle the error
+    }
+  }
+
+  List<VehicleModel> getLocalVehicles() {
+    try {
+      final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
+      return box.values.toList();
+    } catch (e) {
+      print('❌ Error getting local vehicles: $e');
+      return [];
+    }
+  }
 
   Future<void> syncVehicles(List<Map<String, dynamic>> jsonVehicles) async {
     // Delete the old box data
@@ -41,9 +168,7 @@ class SyncRepository {
     // Sync only non-deleted vehicles
     await box.addAll(vehicles);
   }
-
-
-  Future<void> syncCompanyUserVehicles() async {
+  /*Future<void> syncCompanyUserVehicles() async {
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
 
@@ -68,11 +193,12 @@ class SyncRepository {
       throw Exception('Failed to sync vehicles: ${response.body}');
     }
   }
+*/
 
-  List<VehicleModel> getLocalVehicles() {
-    final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
-    return box.values.toList();
-  }
+  // List<VehicleModel> getLocalVehicles() {
+  //   final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
+  //   return box.values.toList();
+  // }
 
   List<ArrivalTerminalModel> getLocalArrivalTerminals() {
     return ArrivalTerminalStorageService.getTerminals();
@@ -89,17 +215,21 @@ class SyncRepository {
   }
 
 // For Arrivals
-  Future<void> syncArrivalTerminals(List<Map<String, dynamic>> jsonTerminals) async {
+  Future<void> syncArrivalTerminals(
+      List<Map<String, dynamic>> jsonTerminals) async {
     final seenNames = <String>{};
-    final uniqueTerminals = jsonTerminals.where((e) {
-      final name = e['name']?.toString().trim().toLowerCase();
-      if (name == null || seenNames.contains(name)) {
-        return false;
-      } else {
-        seenNames.add(name);
-        return true;
-      }
-    }).map((e) => ArrivalTerminalModel.fromJson(e)).toList();
+    final uniqueTerminals = jsonTerminals
+        .where((e) {
+          final name = e['name']?.toString().trim().toLowerCase();
+          if (name == null || seenNames.contains(name)) {
+            return false;
+          } else {
+            seenNames.add(name);
+            return true;
+          }
+        })
+        .map((e) => ArrivalTerminalModel.fromJson(e))
+        .toList();
 
     await ArrivalTerminalStorageService.saveTerminals(uniqueTerminals);
   }
@@ -214,14 +344,17 @@ class SyncRepository {
       final json = jsonDecode(response.body);
       final data = json['data'] as List<dynamic>;
 
-      final rules = data
+      // ✅ Filter out deleted rules (adjust key name as per your API)
+      final activeRules = data
+          .where((ruleJson) =>
+              ruleJson['deleted'] == null || ruleJson['deleted'] == false)
           .map((ruleJson) => CommissionRuleModel.fromJson(ruleJson))
           .toList();
 
-      await CommissionRuleStorageService.saveCommissionRules(rules);
+      await CommissionRuleStorageService.saveCommissionRules(activeRules);
 
-      print('Commission rules fetched: ${rules.length}');
-      for (var rule in rules) {
+      print('Commission rules fetched: ${activeRules.length}');
+      for (var rule in activeRules) {
         print(
             'Rule ${rule.id}: companyId=${rule.companyId}, rate=${rule.commissionRate}');
       }
@@ -233,6 +366,54 @@ class SyncRepository {
       throw Exception('Failed to sync commission rules');
     }
   }
+
+  Future<void> syncTripsToServer() async {
+    try {
+      final authService = Get.find<AuthService>();
+      final token = await authService.getToken();
+      final tripStorageService = TripStorageService();
+      final trips = tripStorageService.getAllTrips();
+
+      if (trips.isEmpty) {
+        print('No trips to sync');
+        Get.snackbar("", "No trips to sync");
+        return;
+      }
+
+      // Send each trip individually instead of nested array
+      for (final trip in trips) {
+        try {
+          final response = await http.post(
+            Uri.parse('$baseUrl/trips'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(trip.toJson()),
+          );
+
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            trip.isSynced = true;
+            print('Trip synced successfully: ${trip.vehicleId}');
+            await tripStorageService.clearTrips();
+            print('All trips processed');
+            print('Sent payload: ${jsonEncode(trip.toJson())}');
+          } else {
+            print('Failed to sync trip: ${response.body}');
+            print('Sent payload: ${jsonEncode(trip.toJson())}');
+          }
+        } catch (e) {
+          print('Error syncing individual trip: $e');
+          continue; // Continue with next trip if one fails
+        }
+      }
+    } catch (e) {
+      print('Error in sync process: $e');
+      throw Exception('Error syncing trips: $e');
+    }
+  }
+
   Future<void> syncServiceChargeToServer() async {
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
@@ -263,53 +444,6 @@ class SyncRepository {
       } catch (e) {
         print('❗ Sync error: $e');
       }
-    }
-  }
-
-
-  Future<void> syncTripsToServer() async {
-    try {
-      final authService = Get.find<AuthService>();
-      final token = await authService.getToken();
-      final tripStorageService = TripStorageService();
-      final trips = tripStorageService.getAllTrips();
-
-      if (trips.isEmpty) {
-        print('No trips to sync');
-        Get.snackbar("", "No trips to sync");
-        return;
-      }
-
-      // Send each trip individually instead of nested array
-      for (final trip in trips) {
-        try {
-          final response = await http.post(
-            Uri.parse('$baseUrl/trips'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode(trip.toJson()),
-          );
-
-          if (response.statusCode == 200 || response.statusCode == 201) {
-            print('Trip synced successfully: ${trip.vehicleId}');
-            await tripStorageService.clearTrips();
-            print('All trips processed');
-            print('Sent payload: ${jsonEncode(trip.toJson())}');
-          } else {
-            print('Failed to sync trip: ${response.body}');
-            print('Sent payload: ${jsonEncode(trip.toJson())}');
-          }
-        } catch (e) {
-          print('Error syncing individual trip: $e');
-          continue; // Continue with next trip if one fails
-        }
-      }
-    } catch (e) {
-      print('Error in sync process: $e');
-      throw Exception('Error syncing trips: $e');
     }
   }
 }

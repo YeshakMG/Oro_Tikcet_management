@@ -15,7 +15,8 @@ class DepartureControllers extends GetxController {
   }
 
   void loadTerminal() {
-    terminal.value = DepartureTerminalStorageService.getTerminal();
+    // terminal.value = DepartureTerminalStorageService.getTerminal();
+    terminal.value = syncRepo.getLocalDepartureTerminal();
     if (kDebugMode) {
       print('--- Current Stored Departure Terminal ---');
       if (terminal.value == null) {

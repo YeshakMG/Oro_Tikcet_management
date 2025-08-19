@@ -1,56 +1,64 @@
 import 'package:hive/hive.dart';
 
-// TODO: Run 'flutter pub run build_runner build' to generate the part file
-// part 'user_model.g.dart';
+part 'user_model.g.dart'; // This will be generated
 
-@HiveType(typeId: 1)
-class UserModel extends HiveObject {
+@HiveType(typeId: 7) // Assign a unique typeId
+class UserModel {
   @HiveField(0)
-  String? id;
-
+  final String id;
   @HiveField(1)
-  String? username;
-
+  final String email;
   @HiveField(2)
-  String? fullName;
-
+  final String fullName;
   @HiveField(3)
-  String? companyName;
-
+  final String roleId;
   @HiveField(4)
-  String? role;
-
+  final String? companyName;
   @HiveField(5)
-  String? token;
+  final String? logoUrl;
+  @HiveField(6)
+  final String companyId;
+  @HiveField(7)
+  final String? companyPhoneNo;
 
   UserModel({
-    this.id,
-    this.username,
-    this.fullName,
+    required this.id,
+    required this.email,
+    required this.fullName,
+    required this.roleId,
+    required this.companyId,
     this.companyName,
-    this.role,
-    this.token,
+    this.logoUrl,
+    this.companyPhoneNo,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) {
+  factory UserModel.fromLoginJson(Map<String, dynamic> json) {
+    // Try nested parsing
+    final companyUser = json['company_user'];
+    final user = companyUser != null ? companyUser['user'] : json;
+    final company = companyUser != null ? companyUser['company'] : null;
+
     return UserModel(
-      id: json['id'],
-      username: json['username'],
-      fullName: json['fullName'],
-      companyName: json['companyName'],
-      role: json['role'],
-      token: json['token'],
+      id: user?['id'] ?? '',
+      email: user?['email'] ?? '',
+      fullName: user?['full_name'] ?? '',
+      roleId: user?['role_id'] ?? '',
+      companyId: companyUser?['company_id'] ?? '',
+      companyName:
+          company?['name'] ?? json['company_name'] ?? 'Unknown Company',
+      logoUrl: company?['logo_url'],
+      companyPhoneNo: company?['phone'],
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'username': username,
-      'fullName': fullName,
-      'companyName': companyName,
-      'role': role,
-      'token': token,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'email': email,
+        'full_name': fullName,
+        'role_id': roleId,
+        'company_id': companyId,
+        'name': companyName,
+        'logo_url': logoUrl,
+        'phone_no': companyPhoneNo,
+      };
 }

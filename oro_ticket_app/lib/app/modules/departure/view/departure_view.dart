@@ -39,9 +39,9 @@ class DepartureView extends GetView<DepartureControllers> {
                 child: Row(
                   children: [
                     ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.filter_alt_outlined),
-                      label: const Text("Filter"),
+                      onPressed: controller.loadTerminal,
+                      icon: const Icon(Icons.sync),
+                      label: const Text("Sync"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.backgroundAlt,
                         foregroundColor: AppColors.body,
@@ -88,7 +88,7 @@ class DepartureView extends GetView<DepartureControllers> {
                         rows: [
                           DataRow(cells: [
                             const DataCell(
-                                Text('1', style: AppTextStyles.buttonMedium)),
+                                Text('', style: AppTextStyles.buttonMedium)),
                             DataCell(Text(terminal.name,
                                 style: AppTextStyles.buttonMedium)),
                           ])

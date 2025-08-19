@@ -1,13 +1,19 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:oro_ticket_app/app/modules/sync/view/sync_view.dart';
+import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
+import 'package:oro_ticket_app/data/locals/service/user_storage_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
-import '../models/user_model.dart';
+import '../../../../data/locals/hive_boxes.dart';
+import '../../../../data/locals/models/user_model.dart';
 
 class AuthService {
   static final _storage = const FlutterSecureStorage();
@@ -21,51 +27,85 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final url = Uri.parse('$baseUrl/auth/company-user/login');
+    try {
+      final url = Uri.parse('$baseUrl/auth/company-user/login');
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 10));
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-      }),
-    );
+      final data = jsonDecode(response.body);
 
-    final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['status'] == 'success') {
+        final token = data['data']['token'];
+        final user = UserModel.fromLoginJson(data['data']);
 
-    if (response.statusCode == 200 && data['status'] == 'success') {
-      final token = data['data']['token'];
-      final user = UserModel.fromLoginJson(data['data']);
+        // Store in secure storage and Hive
+        await _storage.write(key: _tokenKey, value: token);
+        await UserStorageService.saveUser(user);
 
-      await _storage.write(key: _tokenKey, value: token);
-      await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
-      try {
-        await syncRepo.syncCommissionRules();
-        print('✅ Commission rules synced after login.');
-      } catch (e) {
-        print('❌ Failed to sync commission rules after login: $e');
+        // Sync critical data in background
+        syncUserDataAfterLogin();
+
+        return {'success': true, 'user': user, 'token': token};
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Login failed',
+          'errors': data['errors'] ?? []
+        };
       }
-      return {'success': true, 'user': user, 'token': token};
-    } else {
-      return {
-        'success': false,
-        'message': data['message'] ?? 'Login failed',
-        'errors': data['errors'] ?? []
-      };
+    } catch (e) {
+      // Check if we have cached user data for offline login
+      final lastUser = await UserStorageService.getUser();
+      if (lastUser != null && email == lastUser.email) {
+        final token = await _storage.read(key: _tokenKey);
+        if (token != null) {
+          return {
+            'success': true,
+            'user': lastUser,
+            'token': token,
+            'offline': true
+          };
+        }
+      }
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<void> syncUserDataAfterLogin() async {
+    try {
+      await Future.wait([
+        syncRepo.syncCommissionRules(),
+        syncRepo.syncAllCompanyUserVehicles(),
+        fetchAndStoreProfileData(),
+      ]);
+      print('✅ Critical data synced after login');
+    } catch (e) {
+      print('⚠️ Partial sync after login: $e');
     }
   }
 
   Future<void> logout() async {
     try {
-      final token = await _storage.read(key: _tokenKey);
-      if (token == null) {
-        throw Exception('No token found');
+      // 1️⃣ Check for unsynced trips (unless forced logout)
+      final unsyncedTrips = _getUnsyncedTrips();
+      if (unsyncedTrips.isNotEmpty) {
+        if (unsyncedTrips.isNotEmpty) {
+          _redirectToHomeForSync(unsyncedTrips.length);
+          return;
+        }
       }
 
-      final url = Uri.parse('$baseUrl/auth/logout');
+      // 2️⃣ Proceed with normal logout
+      final token = await _storage.read(key: _tokenKey);
+      if (token == null) throw Exception('No token found');
+
       final response = await http.post(
-        url,
+        Uri.parse('$baseUrl/auth/logout'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -73,61 +113,86 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        if (responseData['status'] == 'success') {
-          // Successful logout - clear local storage
-          await _clearStorage();
-          return;
-        } else {
-          throw Exception(responseData['message'] ?? 'Logout failed');
-        }
-      } else if (response.statusCode == 401) {
-        // Token might be invalid, but we should still clear local storage
         await _clearStorage();
-        throw Exception('Session expired or invalid');
+        Get.offAllNamed('/login');
       } else {
+        print('❌ Logout failed: ${response.statusCode} ${response.body}');
         throw Exception('Logout failed with status ${response.statusCode}');
       }
     } catch (e) {
-      
-      await _clearStorage();
+      Get.snackbar(
+        'Logout Error!',
+        'Try Again Later',
+        // e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      print("error: $e");
       rethrow;
     }
+  }
+
+  void _redirectToHomeForSync(int unsyncedCount) {
+    Get.off(SyncView());
+    Get.snackbar(
+      'Unsynced Trips Found',
+      'Please sync your $unsyncedCount trip(s) before logging out',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.error,
+      colorText: AppColors.background,
+      duration: Duration(seconds: 5),
+    );
+  }
+
+  /// Helper method to get unsynced trips
+  List<TripModel> _getUnsyncedTrips() {
+    final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
+    return tripBox.values.where((trip) => trip.isSynced != true).toList();
   }
 
   Future<void> _clearStorage() async {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _userKey);
-
-    // Clear any other relevant local storage
-    // await Hive.box<VehicleModel>(HiveBoxes.vehiclesBox).clear();
-    // await Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox).clear();
+    UserStorageService.clearUser();
+    await Hive.box<TripModel>(HiveBoxes.tripBox).clear();
   }
 
   Future<String?> getToken() => _storage.read(key: _tokenKey);
 
   Future<UserModel?> getUser() async {
-    final token = await _storage.read(key: 'auth_token');
+    try {
+      // Try to get fresh data if online
+      if (await syncRepo.isOnline) {
+        final token = await _storage.read(key: _tokenKey);
+        if (token != null) {
+          final response = await http.get(
+            Uri.parse('$baseUrl/auth/company-user/profile'),
+            headers: {'Authorization': 'Bearer $token'},
+          ).timeout(const Duration(seconds: 5));
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/auth/company-user/profile'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+          if (response.statusCode == 200) {
+            final user =
+                UserModel.fromLoginJson(jsonDecode(response.body)['data']);
+            await UserStorageService.saveUser(user);
+            return user;
+          }
+        }
+      }
 
-    print(
-        'Raw response body: ${response.body}');
-
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      print('Decoded JSON: $json'); // Optional
-      return UserModel.fromLoginJson(json['data']);
-    } else {
-      debugPrint('Failed to load user profile: ${response.body}');
-      return null;
+      // Fall back to local storage
+      return await UserStorageService.getUser();
+    } catch (e) {
+      return await UserStorageService.getUser();
     }
   }
 
-  Future<bool> isLoggedIn() async => (await getToken()) != null;
+  Future<bool> isLoggedIn() async {
+    final token = await _storage.read(key: _tokenKey);
+    if (token == null) return false;
+
+    // Check if we have user data
+    final user = await UserStorageService.getUser();
+    return user != null;
+  }
 
   Future<void> fetchAndStoreProfileData() async {
     final token = await getToken();

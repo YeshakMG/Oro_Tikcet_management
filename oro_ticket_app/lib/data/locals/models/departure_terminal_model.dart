@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 part 'departure_terminal_model.g.dart';
 
 @HiveType(typeId: 1)
-class DepartureTerminalModel extends HiveObject {
+class  DepartureTerminalModel extends HiveObject {
   @HiveField(0)
   final String id;
 

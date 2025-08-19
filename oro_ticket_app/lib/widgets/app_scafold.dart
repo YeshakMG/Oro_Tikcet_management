@@ -8,6 +8,7 @@ import 'package:oro_ticket_app/app/modules/localReport/view/local_report_view.da
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
 import 'package:oro_ticket_app/app/modules/ticket/view/ticket_view.dart';
 import 'package:oro_ticket_app/app/modules/vehicles/views/vehicles_view.dart';
+import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/bottom_navbar.dart';
@@ -58,16 +59,16 @@ class _AppScaffoldState extends State<AppScaffold> {
           onItemSelected: (item) async {
             switch (item) {
               case 'Vehicles':
-                Get.to(VehiclesView());
+                Get.toNamed(Routes.VEHICLES);
                 break;
               // case 'Vehicle categories':
               //   Get.toNamed('/fleet-type');
               //   break;
               case 'Terminal Name':
-                Get.to(DepartureView());
+                Get.toNamed(Routes.DEPARTURE);
                 break;
               case 'Arrival Terminal':
-                Get.to(ArrivalLocationView());
+                Get.toNamed(Routes.ARRIVALS);
                 break;
               // case 'Tariff':
               //   Get.to(TariffView());
@@ -129,19 +130,19 @@ class _AppScaffoldState extends State<AppScaffold> {
 }
 
 Future<void> confirmLogout() async {
-  final AuthService authService = Get.find<AuthService>();
+  final authService = Get.find<AuthService>();
   final isLoading = false.obs;
-  
+
   final result = await Get.dialog<bool>(
     AlertDialog(
-      title: const Text('Logout'),
+      title: const Text('Confirm Logout'),
       content: Obx(() => isLoading.value
           ? const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 16),
-                Text('Logging out...'),
+                Text('Processing...'),
               ],
             )
           : const Text('Are you sure you want to logout?')),
@@ -161,22 +162,22 @@ Future<void> confirmLogout() async {
         ],
       ],
     ),
-    barrierDismissible: !isLoading.value,
   );
 
   if (result == true) {
     try {
-      await authService.logout();
-      Get.offAllNamed('/sign-in');
+      isLoading.value = true;
+      await authService
+          .logout(); // Will redirect to home if unsynced trips exist
     } catch (e) {
-      Get.back(); 
+      isLoading.value = false;
       Get.snackbar(
-        'Logout Error',
+        'Error',
         e.toString(),
         snackPosition: SnackPosition.BOTTOM,
       );
-
-      Get.offAllNamed('/sign-in');
+    } finally {
+      isLoading.value = false;
     }
   }
 }

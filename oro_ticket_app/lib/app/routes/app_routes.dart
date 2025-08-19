@@ -9,7 +9,11 @@ abstract class Routes {
   static const VEHICLES = _Paths.VEHICLES;
   static const FLEET_TYPE = _Paths.FLEET_TYPE;
   static const ARRIVALS = _Paths.ARRIVALS;
-
+  static const SESSION_CHECK = _Paths.SESSION_CHECK;
+  static const DEPARTURE = _Paths.DEPARTURE;
+  static const TICKET = _Paths.TICKET;
+  static const HISTORY = _Paths.HISTORY;
+  static const SYNC = _Paths.SYNC;
 }
 
 abstract class _Paths {
@@ -21,5 +25,9 @@ abstract class _Paths {
   static const FLEET_TYPE = '/fleet-type';
   static const ARRIVALS = '/arrivals';
   static const TARIFF = '/tariff';
-  static const TICKET = '/ticket';
+  static const TICKET = '/TicketView';
+  static const SESSION_CHECK = '/session-check';
+  static const DEPARTURE = '/departure';
+  static const HISTORY = '/LocalReportView';
+  static const SYNC = '/LocalReportView';
 }
