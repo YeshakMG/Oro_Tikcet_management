@@ -88,15 +88,13 @@ class HomeView extends StatelessWidget {
                             try {
                               await homeController.syncTrips();
                               Get.back(); // Close loading snackbar
-                              // Get.snackbar(
-                              //   'Success',
-                              //   'Synced Successfully!',
-                              //   snackPosition: SnackPosition.BOTTOM,
-                              //   backgroundColor: AppColors.primaryHover,
-                              //   colorText: AppColors.background,
-                              // );
-                              // Optionally refresh service charge and date after sync
-                              homeController.loadServiceChargeAndDate();
+                              Get.snackbar(
+                                'Success',
+                                'Synced Successfully!',
+                                snackPosition: SnackPosition.BOTTOM,
+                                backgroundColor: AppColors.primaryHover,
+                                colorText: AppColors.background,
+                              );
                             } catch (e) {
                               Get.back(); // Close loading snackbar
                               Get.snackbar(
@@ -132,8 +130,17 @@ class HomeView extends StatelessWidget {
                     Obx(() => DailyInfoTile(
                           icon: Icons.credit_card_rounded,
                           label: "Total Service Charge",
-                          value:
-                              "${homeController.serviceChargeToday.value.toStringAsFixed(2)} ETB",
+                          value: "${homeController.serviceChargeToday.value.toStringAsFixed(2)} ETB",
+                          onRefresh: () async {
+                            await homeController.loadTodayServiceCharge();
+                            Get.snackbar(
+                              'Refreshed',
+                              'Service charge updated',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: AppColors.primaryHover,
+                              colorText: AppColors.background,
+                            );
+                          },
                         )),
                     const SizedBox(height: 10),
                     Obx(() => DailyInfoTile(

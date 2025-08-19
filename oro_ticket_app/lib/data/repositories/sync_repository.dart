@@ -12,6 +12,9 @@ import 'package:oro_ticket_app/data/locals/service/arrival_storage_service.dart'
 import 'package:oro_ticket_app/data/locals/service/commission_rule_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/trip_storage_service.dart';
+
+import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
+
 import '../locals/models/vehicle_model.dart';
 import '../locals/hive_boxes.dart';
 import 'package:http/http.dart' as http;
@@ -22,20 +25,30 @@ class SyncRepository {
 
   final storage = FlutterSecureStorage();
 
-// For Vehicles
   Future<void> syncVehicles(List<Map<String, dynamic>> jsonVehicles) async {
-    final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
-    await box.clear();
-    final vehicles = jsonVehicles.map((e) => VehicleModel.fromJson(e)).toList();
+    // Delete the old box data
+    await Hive.deleteBoxFromDisk(HiveBoxes.vehiclesBox);
+
+    // Reopen the box
+    final box = await Hive.openBox<VehicleModel>(HiveBoxes.vehiclesBox);
+
+    // Filter out deleted vehicles and convert to model
+    final vehicles = jsonVehicles
+        .where((e) => e['deleted_at'] == null)
+        .map((e) => VehicleModel.fromJson(e))
+        .toList();
+
+    // Sync only non-deleted vehicles
     await box.addAll(vehicles);
   }
+
 
   Future<void> syncCompanyUserVehicles() async {
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
 
     final response = await http.get(
-      Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
+      Uri.parse('$baseUrl/vehicles/company-user/terminals/my-vehicles'),
       headers: {
         'Authorization': 'Bearer $token',
         'Accept': 'application/json',
@@ -76,11 +89,19 @@ class SyncRepository {
   }
 
 // For Arrivals
-  Future<void> syncArrivalTerminals(
-      List<Map<String, dynamic>> jsonTerminals) async {
-    final terminals =
-        jsonTerminals.map((e) => ArrivalTerminalModel.fromJson(e)).toList();
-    await ArrivalTerminalStorageService.saveTerminals(terminals);
+  Future<void> syncArrivalTerminals(List<Map<String, dynamic>> jsonTerminals) async {
+    final seenNames = <String>{};
+    final uniqueTerminals = jsonTerminals.where((e) {
+      final name = e['name']?.toString().trim().toLowerCase();
+      if (name == null || seenNames.contains(name)) {
+        return false;
+      } else {
+        seenNames.add(name);
+        return true;
+      }
+    }).map((e) => ArrivalTerminalModel.fromJson(e)).toList();
+
+    await ArrivalTerminalStorageService.saveTerminals(uniqueTerminals);
   }
 
   Future<void> syncCompanyUserArrivalTerminals() async {
@@ -212,6 +233,39 @@ class SyncRepository {
       throw Exception('Failed to sync commission rules');
     }
   }
+  Future<void> syncServiceChargeToServer() async {
+    final authService = Get.find<AuthService>();
+    final token = await authService.getToken();
+    final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+
+    if (box.isEmpty) {
+      print('❌ No service charges to sync');
+      return;
+    }
+
+    for (final entry in box.values) {
+      try {
+        final response = await http.post(
+          Uri.parse(''), // Replace with actual URL
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(entry.toJson()),
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          print('✅ Synced: ${entry.departureTerminal}');
+        } else {
+          print('❌ Failed (${response.statusCode}): ${response.body}');
+        }
+      } catch (e) {
+        print('❗ Sync error: $e');
+      }
+    }
+  }
+
 
   Future<void> syncTripsToServer() async {
     try {

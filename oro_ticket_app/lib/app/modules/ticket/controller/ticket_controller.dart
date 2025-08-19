@@ -9,6 +9,9 @@ import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
 
+import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
+import 'package:oro_ticket_app/app/modules/utils/ticket_printer.dart'; // Import the printer
+
 class TicketController extends GetxController {
   final locationFrom = ''.obs;
   final locationTo = ''.obs;
@@ -36,6 +39,8 @@ class TicketController extends GetxController {
   // Models
   final selectedVehicle = Rxn<VehicleModel>();
   final selectedArrival = Rxn<ArrivalTerminalModel>();
+  final selectedDepartureTerminal = Rxn<DepartureTerminalModel>();
+
 
   var arrivalTerminalId = ''.obs;
   var departureTerminalId = ''.obs;
@@ -64,8 +69,10 @@ class TicketController extends GetxController {
     plateNumber.value = vehicle.plateNumber;
     seatNo.value = vehicle.seatCapacity.toString();
     level.value = vehicle.vehicleLevel;
-    locationFrom.value = departure.id;
+    locationFrom.value = departure.name;
+
     locationTo.value = arrival.id;
+    departureTerminalId.value = departure.id;
     km.value = "${arrival.distance.toStringAsFixed(1)} km";
     tariff.value = "${arrival.tariff.toStringAsFixed(2)} ETB";
     associations.value = vehicle.associationName;
@@ -96,5 +103,35 @@ class TicketController extends GetxController {
     double total = baseTariff + computedService;
     serviceCharge.value = "${computedService.toStringAsFixed(2)} ETB";
     totalPayment.value = "${total.toStringAsFixed(2)} ETB";
+  }
+
+  // New method to print ticket with copies = seatNo count
+  Future<void> printTicket() async {
+    // parse seat count safely (default to 1)
+    final copies = int.tryParse(seatNo.value) ?? 1;
+
+    final ticketText = '''
+  OROMIA TRANSPORT AGENCY
+  -------------------------------
+  Company: Malkaa Technology
+  Phone: 011-123-4567
+  Date: ${dateTime.value}
+  From: ${locationFrom.value}
+  To: ${selectedArrival.value?.name ?? ''}
+  Vehicle: ${plateNumber.value} (${region.value})
+  Level: ${level.value}
+  Seat: ${seatNo.value}
+  Distance: ${km.value}
+  Tariff: ${tariff.value}
+  Service Charge: ${serviceCharge.value}
+  Total: ${totalPayment.value}
+  -------------------------------
+  Free-call: 8556
+  Phone:
+
+  ''';
+
+    final printer = TicketPrinter();
+    await printer.connectAndPrint(text: ticketText, copies: copies);
   }
 }
