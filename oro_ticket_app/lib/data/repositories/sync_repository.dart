@@ -414,36 +414,55 @@ class SyncRepository {
     }
   }
 
-  Future<void> syncServiceChargeToServer() async {
-    final authService = Get.find<AuthService>();
-    final token = await authService.getToken();
-    final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+Future<void> syncServiceChargeToServer() async {
+  final authService = Get.find<AuthService>();
+  final token = await authService.getToken();
+  final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
-    if (box.isEmpty) {
-      print('❌ No service charges to sync');
-      return;
+  if (box.isEmpty) {
+    if (Get.context != null) {
+      Get.snackbar("Info", "No service charges to sync");
     }
+    return;
+  }
 
-    for (final entry in box.values) {
-      try {
-        final response = await http.post(
-          Uri.parse(''), // Replace with actual URL
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode(entry.toJson()),
-        );
+  final entries = box.toMap();
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          print('✅ Synced: ${entry.departureTerminal}');
-        } else {
-          print('❌ Failed (${response.statusCode}): ${response.body}');
+  for (final entry in entries.entries) {
+    final key = entry.key;
+    final serviceCharge = entry.value;
+
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/service-charges"), // 👈 replace with real URL
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(serviceCharge.toJson()),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ Synced: ${serviceCharge.departureTerminal}');
+        await box.delete(key);
+
+        if (Get.context != null) {
+          Get.snackbar("Success", "Service charge synced successfully");
         }
-      } catch (e) {
-        print('❗ Sync error: $e');
+      } else {
+        print('❌ Failed (${response.statusCode}): ${response.body}');
+        if (Get.context != null) {
+          Get.snackbar("Error", "Failed to sync: ${response.statusCode}");
+        }
+      }
+    } catch (e) {
+      print('❗ Sync error: $e');
+      if (Get.context != null) {
+        Get.snackbar("Error", "Sync error: $e");
       }
     }
   }
+}
+
 }

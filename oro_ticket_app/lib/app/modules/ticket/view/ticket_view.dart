@@ -483,7 +483,7 @@ class _TicketViewState extends State<TicketView> {
                   final entryDate = DateTime(entry.dateTime.year,
                       entry.dateTime.month, entry.dateTime.day);
                   return entry.departureTerminal == trip.departureTerminalId &&
-                      entry.employeeName == trip.employeeId &&
+                      entry.employeeId == trip.employeeId &&
                       entryDate == today;
                 });
 
@@ -495,7 +495,7 @@ class _TicketViewState extends State<TicketView> {
                   // Debug updated ServiceChargeModel
                   print("💵 Updated ServiceChargeModel:");
                   print(
-                      "Terminal: ${existingEntry.departureTerminal}, Employee: ${existingEntry.employeeName}");
+                      "Terminal: ${existingEntry.departureTerminal},CompanyID: ${existingEntry.companyId}, Employee: ${existingEntry.employeeId}");
                   print(
                       "New Charge: ${existingEntry.serviceChargeAmount}, Date: ${existingEntry.dateTime}");
                 } else {
@@ -504,7 +504,7 @@ class _TicketViewState extends State<TicketView> {
                     departureTerminal: trip.departureTerminalId,
                     dateTime: now,
                     serviceChargeAmount: totalServiceCharge,
-                    employeeName: trip.employeeId,
+                    employeeId: trip.employeeId,
                     companyId: trip.companyId,
                   );
 
@@ -513,7 +513,7 @@ class _TicketViewState extends State<TicketView> {
                   // Debug new ServiceChargeModel
                   print("💰 New ServiceChargeModel:");
                   print(
-                      "Terminal: ${newCharge.departureTerminal}, Employee: ${newCharge.employeeName}");
+                      "Terminal: ${newCharge.departureTerminal}, Employee: ${newCharge.employeeId}");
                   print(
                       "Charge: ${newCharge.serviceChargeAmount}, Date: ${newCharge.dateTime}");
                 }

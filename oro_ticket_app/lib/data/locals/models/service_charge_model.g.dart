@@ -20,7 +20,7 @@ class ServiceChargeModelAdapter extends TypeAdapter<ServiceChargeModel> {
       departureTerminal: fields[0] as String,
       dateTime: fields[1] as DateTime,
       serviceChargeAmount: fields[2] as double,
-      employeeName: fields[3] as String,
+      employeeId: fields[3] as String,
       companyId: fields[4] as String,
     );
   }
@@ -36,7 +36,7 @@ class ServiceChargeModelAdapter extends TypeAdapter<ServiceChargeModel> {
       ..writeByte(2)
       ..write(obj.serviceChargeAmount)
       ..writeByte(3)
-      ..write(obj.employeeName)
+      ..write(obj.employeeId)
       ..writeByte(4)
       ..write(obj.companyId);
   }

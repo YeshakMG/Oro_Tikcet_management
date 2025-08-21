@@ -95,7 +95,7 @@ class HomeController extends GetxController {
         existingEntry = box.values.firstWhere((entry) {
           final entryDate = DateTime(
               entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
-          return entry.employeeName == currentUserId && entryDate == today;
+          return entry.employeeId == currentUserId && entryDate == today;
         });
       } catch (_) {
         existingEntry = null;
@@ -111,7 +111,7 @@ class HomeController extends GetxController {
           dateTime: existingEntry.dateTime,
           serviceChargeAmount:
               existingEntry.serviceChargeAmount + newChargeAmount,
-          employeeName: existingEntry.employeeName,
+          employeeId: existingEntry.employeeId,
           companyId: existingEntry.companyId,
         );
 
@@ -124,7 +124,7 @@ class HomeController extends GetxController {
           departureTerminal: departureTerminal,
           dateTime: now,
           serviceChargeAmount: newChargeAmount,
-          employeeName: currentUserId,
+          employeeId: currentUserId,
           companyId: user.value?.companyId ?? "Unknown",
         );
 
