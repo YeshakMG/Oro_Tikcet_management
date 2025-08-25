@@ -482,9 +482,11 @@ class _TicketViewState extends State<TicketView> {
                     serviceChargeBox.values.firstWhereOrNull((entry) {
                   final entryDate = DateTime(entry.dateTime.year,
                       entry.dateTime.month, entry.dateTime.day);
+                      
                   return entry.departureTerminal == trip.departureTerminalId &&
                       entry.employeeId == trip.employeeId &&
                       entryDate == today;
+                      
                 });
 
                 if (existingEntry != null) {
@@ -697,7 +699,7 @@ To:   $to
 Plate: $region$plateNumber
 Seat No: $seatNo
 Level: $level
-KM:              ${km.toStringAsFixed(2)}
+KM:       ${km.toStringAsFixed(2)}
 --------------------------------
 Tariff:          ${tariff.toStringAsFixed(2)}
 Service Charge:  ${serviceCharge.toStringAsFixed(2)}

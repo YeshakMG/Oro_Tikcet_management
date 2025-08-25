@@ -23,6 +23,8 @@ import '../modules/splash_screen/bindings/splash_screen_binding.dart';
 import '../modules/splash_screen/views/splash_screen_view.dart';
 import '../modules/vehicles/bindings/vehicles_bindings.dart';
 import '../modules/vehicles/views/vehicles_view.dart';
+import '../modules/reset_password/binding/reset_password_binding.dart';
+import '../modules/reset_password/view/reset_password_view.dart';
 
 part 'app_routes.dart';
 
@@ -87,6 +89,12 @@ class AppPages {
       name: _Paths.SYNC,
       page: () => SyncView(),
       binding: SyncBinding(),
-    )
+    ),
+    GetPage(
+      name: _Paths.RESET_PASSWORD,
+      page: () => const ResetPasswordView(),
+      binding: ResetPasswordBinding(),
+    ),
+
   ];
 }
