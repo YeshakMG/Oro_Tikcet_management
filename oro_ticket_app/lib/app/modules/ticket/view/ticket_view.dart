@@ -107,136 +107,124 @@ class _TicketViewState extends State<TicketView> {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Card(
-            elevation: 8,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Text("Oromia Transport Agency"),
-                  SizedBox(height: 20),
+          child: Column(
+            children: [
+              Text("Oromia Transport Agency"),
+              SizedBox(height: 20),
 
-                  // Departure Terminal (read-only)
-                  TextFormField(
-                    readOnly: true,
-                    initialValue: selectedDeparture,
-                    decoration: InputDecoration(
-                      labelText: 'Departure Terminal',
-                      prefixIcon: Icon(Icons.location_on),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  SizedBox(height: 10),
-
-                  // Destination
-                  DropdownButtonFormField<ArrivalTerminalModel>(
-                    value: selectedArrival,
-                    isExpanded: true,
-                    hint: Text('Select destination'),
-                    onChanged: (val) {
-                      setState(() {
-                        selectedArrival = val;
-                      });
-                      if (val != null) {
-                        _ticketController.locationTo.value = val.name;
-                        _ticketController.km.value =
-                            "${val.distance.toStringAsFixed(1)} km";
-                        _ticketController.tariff.value =
-                            "${val.tariff.toStringAsFixed(2)} ETB";
-                        _ticketController.calculateCharges(val.tariff);
-
-                        _ticketController.arrivalTerminalId.value = val.id;
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Destination Terminal',
-                      prefixIcon: Icon(Icons.location_on),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: arrivalTerminals
-                        .map((loc) => DropdownMenuItem(
-                              value: loc,
-                              child: Text(loc.name),
-                            ))
-                        .toList(),
-                  ),
-                  SizedBox(height: 10),
-
-                  // Plate input with suggestion
-                  TextFormField(
-                    controller: plateController,
-                    decoration: InputDecoration(
-                      labelText: 'Plate Number',
-                      prefixIcon: Icon(Icons.directions_bus),
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: _onPlateInputChanged,
-                  ),
-                  if (suggestions.isNotEmpty)
-                    Container(
-                      margin: EdgeInsets.only(top: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: suggestions.length,
-                        itemBuilder: (context, index) {
-                          final vehicle = suggestions[index];
-                          return ListTile(
-                            title: Text(vehicle.plateNumber),
-                            subtitle: Text(
-                                '${vehicle.plateRegion} • ${vehicle.fleetType}'),
-                            onTap: () {
-                              plateController.text = vehicle.plateNumber;
-                              plateInput = vehicle.plateNumber;
-                              suggestions.clear();
-
-                              _ticketController.plateNumber.value =
-                                  vehicle.plateNumber;
-                              _ticketController.level.value =
-                                  vehicle.vehicleLevel;
-                              _ticketController.seatNo.value =
-                                  vehicle.seatCapacity.toString();
-                              _ticketController.level.value =
-                                  vehicle.vehicleLevel;
-                              _ticketController.associations.value =
-                                  vehicle.associationName;
-                              _ticketController.vehicleId.value = vehicle.id;
-
-                              _ticketController.region.value =
-                                  vehicle.plateRegion;
-                              // _ticketController.departureTerminalId.value =
-                              //     _ticketController.locationFrom.value;
-
-                              _ticketController.fleetType.value =
-                                  vehicle.fleetType;
-                              // Set the date and time
-                              final now = DateTime.now();
-                              final ethDate = now.convertToEthiopian();
-
-                              _ticketController.dateTime.value =
-                                  "${TicketController.oromoWeekdays[now.weekday]} - "
-                                  "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
-                                  "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-
-                              setState(() {}); // Refresh suggestion UI
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  SizedBox(height: 20),
-
-                  // Ticket Card
-                  if (_canShowTicket) Obx(() => _redesignedTicketCard()),
-                ],
+              // Departure Terminal (read-only)
+              TextFormField(
+                readOnly: true,
+                initialValue: selectedDeparture,
+                decoration: InputDecoration(
+                  labelText: 'Departure Terminal',
+                  prefixIcon: Icon(Icons.location_on),
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
+              SizedBox(height: 10),
+
+              // Destination
+              DropdownButtonFormField<ArrivalTerminalModel>(
+                value: selectedArrival,
+                isExpanded: true,
+                hint: Text('Select destination'),
+                onChanged: (val) {
+                  setState(() {
+                    selectedArrival = val;
+                  });
+                  if (val != null) {
+                    _ticketController.locationTo.value = val.name;
+                    _ticketController.km.value =
+                        "${val.distance.toStringAsFixed(1)} km";
+                    _ticketController.tariff.value =
+                        "${val.tariff.toStringAsFixed(2)} ETB";
+                    _ticketController.calculateCharges(val.tariff);
+
+                    _ticketController.arrivalTerminalId.value = val.id;
+                  }
+                },
+                decoration: InputDecoration(
+                  labelText: 'Destination Terminal',
+                  prefixIcon: Icon(Icons.location_on),
+                  border: OutlineInputBorder(),
+                ),
+                items: arrivalTerminals
+                    .map((loc) => DropdownMenuItem(
+                          value: loc,
+                          child: Text(loc.name),
+                        ))
+                    .toList(),
+              ),
+              SizedBox(height: 10),
+
+              // Plate input with suggestion
+              TextFormField(
+                controller: plateController,
+                decoration: InputDecoration(
+                  labelText: 'Plate Number',
+                  prefixIcon: Icon(Icons.directions_bus),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: _onPlateInputChanged,
+              ),
+              if (suggestions.isNotEmpty)
+                Container(
+                  margin: EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: suggestions.length,
+                    itemBuilder: (context, index) {
+                      final vehicle = suggestions[index];
+                      return ListTile(
+                        title: Text(vehicle.plateNumber),
+                        subtitle: Text(
+                            '${vehicle.plateRegion} • ${vehicle.fleetType}'),
+                        onTap: () {
+                          plateController.text = vehicle.plateNumber;
+                          plateInput = vehicle.plateNumber;
+                          suggestions.clear();
+
+                          _ticketController.plateNumber.value =
+                              vehicle.plateNumber;
+                          _ticketController.level.value = vehicle.vehicleLevel;
+                          _ticketController.seatNo.value =
+                              vehicle.seatCapacity.toString();
+                          _ticketController.level.value = vehicle.vehicleLevel;
+                          _ticketController.associations.value =
+                              vehicle.associationName;
+                          _ticketController.vehicleId.value = vehicle.id;
+
+                          _ticketController.region.value = vehicle.plateRegion;
+                          // _ticketController.departureTerminalId.value =
+                          //     _ticketController.locationFrom.value;
+
+                          _ticketController.fleetType.value = vehicle.fleetType;
+                          // Set the date and time
+                          final now = DateTime.now();
+                          final ethDate = now.convertToEthiopian();
+
+                          _ticketController.dateTime.value =
+                              "${TicketController.oromoWeekdays[now.weekday]} - "
+                              "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
+                              "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+
+                          setState(() {}); // Refresh suggestion UI
+                        },
+                      );
+                    },
+                  ),
+                ),
+              SizedBox(height: 20),
+
+              // Ticket Card
+              if (_canShowTicket) Obx(() => _redesignedTicketCard()),
+            ],
           ),
         ),
       ),
@@ -244,238 +232,235 @@ class _TicketViewState extends State<TicketView> {
   }
 
   Widget _redesignedTicketCard() {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text("Ticket Details", style: AppTextStyles.buttonMediumB),
-            SizedBox(height: 5),
-            Text("Oromia Transport Agency", style: AppTextStyles.heading3),
-            SizedBox(height: 10),
-            Text(homeController.companyName.value,
-                style: AppTextStyles.buttonMediumB
-                    .copyWith(color: Colors.grey, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            Text("Phone: 011-1234567",
-                style: AppTextStyles.caption
-                    .copyWith(color: Colors.grey, fontWeight: FontWeight.bold)),
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  child: Icon(Icons.directions_bus, color: AppColors.primary),
-                ),
-                SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Plate Number',
-                        style: AppTextStyles.caption.copyWith(
-                            color: Colors.grey, fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Text(_ticketController.region.value,
-                            style: AppTextStyles.body2
-                                .copyWith(fontWeight: FontWeight.bold)),
-                        Text(_ticketController.plateNumber.value,
-                            style: AppTextStyles.body2
-                                .copyWith(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      child: Icon(Icons.business, color: AppColors.primary),
-                    ),
-                    SizedBox(width: 12),
-                    Text('Association',
-                        style: AppTextStyles.caption.copyWith(
-                            color: Colors.grey, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                Text(_ticketController.associations.value,
-                    style: AppTextStyles.body2
-                        .copyWith(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            Divider(height: 30),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                        backgroundColor:
-                            AppColors.primary.withValues(alpha: 0.1),
-                        child:
-                            Icon(Icons.location_pin, color: AppColors.primary)),
-                    SizedBox(width: 12),
-                    _locationColumn(_ticketController.locationFrom.value, ""),
-                  ],
-                ),
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                    CircleAvatar(
-                        backgroundColor:
-                            AppColors.primary.withValues(alpha: 0.1),
-                        child:
-                            Icon(Icons.location_pin, color: AppColors.primary)),
-                    SizedBox(width: 12),
-                    _locationColumn(_ticketController.locationTo.value, ""),
-                  ],
-                ),
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                    Text(
-                      _ticketController.dateTime.value,
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        children: [
+          Text("Ticket Details", style: AppTextStyles.buttonMediumB),
+          SizedBox(height: 5),
+          Text("Oromia Transport Agency", style: AppTextStyles.heading3),
+          SizedBox(height: 5),
+          Text(homeController.companyName.value,
+              style: AppTextStyles.buttonMediumB
+                  .copyWith(color: Colors.grey, fontWeight: FontWeight.bold)),
+          SizedBox(height: 5),
+          Text("Phone: 011-1234567",
+              style: AppTextStyles.caption
+                  .copyWith(color: Colors.grey, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: Icon(Icons.directions_bus, color: AppColors.primary),
+              ),
+              SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Plate Number',
                       style: AppTextStyles.caption.copyWith(
-                          color: Colors.grey, fontWeight: FontWeight.bold),
-                    )
-                  ],
-                )
-              ],
-            ),
-            Divider(height: 30),
-            Row(
-              children: [
-                _infoTag(
-                    Icons.event_seat, "${_ticketController.seatNo.value} Seat"),
-                SizedBox(width: 12),
-                _infoTag(Icons.grade, _ticketController.level.value),
-              ],
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Row(
-              children: [
-                _infoTag(Icons.straighten, _ticketController.km.value),
-                SizedBox(width: 12),
-                _infoTag(Icons.monetization_on, _ticketController.tariff.value),
-              ],
-            ),
-            Divider(
-              height: 30,
-            ),
-            Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Service Charge',
-                        style: AppTextStyles.caption.copyWith(
-                            color: Colors.grey, fontWeight: FontWeight.bold)),
-                    Text(
-                      _ticketController.serviceCharge.value,
+                          color: Colors.grey, fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      Text(_ticketController.region.value,
+                          style: AppTextStyles.body2
+                              .copyWith(fontWeight: FontWeight.bold)),
+                      Text(_ticketController.plateNumber.value,
+                          style: AppTextStyles.body2
+                              .copyWith(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: Icon(Icons.business, color: AppColors.primary),
+              ),
+              SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Association',
+                      style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey, fontWeight: FontWeight.bold)),
+                  Text(_ticketController.associations.value,
                       style: AppTextStyles.body2
-                          .copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                SizedBox(width: AppDimensions.horizontalSpacingLarge),
-                Column(
-                  children: [
-                    Text("Total Payment",
-                        style: AppTextStyles.caption.copyWith(
-                            color: Colors.grey, fontWeight: FontWeight.bold)),
-                    Text(
-                      _ticketController.totalPayment.value,
-                      style: AppTextStyles.body2
-                          .copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 15),
-            Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Agent Name: ${homeController.user.value?.fullName}",
-                        style: AppTextStyles.caption.copyWith(
-                            color: Colors.grey, fontWeight: FontWeight.bold)),
-                    SizedBox(
-                      height: 10,
-                    ),
-                    Text("Free Call Service: 8556",
-                        style: AppTextStyles.caption.copyWith(
-                            color: Colors.grey, fontWeight: FontWeight.bold)),
-                    Text("Terminal phone: 011-1234567",
-                        style: AppTextStyles.caption.copyWith(
-                            color: Colors.grey, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(
-              height: AppDimensions.horizontalSpacingSmall,
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
-                final serviceChargeBox =
-                    Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+                          .copyWith(fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+          Divider(
+            height: 30,
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                      child: Icon(Icons.my_location, color: AppColors.primary)),
+                  SizedBox(width: 12),
+                  _locationColumn(_ticketController.locationFrom.value),
+                ],
+              ),
+              SizedBox(height: 12),
+              Row(
+                children: [
+                  CircleAvatar(
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                      child:
+                          Icon(Icons.location_pin, color: AppColors.primary)),
+                  SizedBox(width: 12),
+                  _locationColumn(_ticketController.locationTo.value),
+                ],
+              ),
+              SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(_ticketController.dateTime.value,
+                      style: AppTextStyles.caption.copyWith(
+                          color: Colors.black, fontWeight: FontWeight.bold))
+                ],
+              )
+            ],
+          ),
+          Divider(height: 30),
+          Row(
+            children: [
+              _infoTag(
+                  Icons.event_seat, "${_ticketController.seatNo.value} Seat"),
+              SizedBox(width: 50),
+              _infoTag(Icons.grade, _ticketController.level.value),
+            ],
+          ),
+          SizedBox(
+            height: 10,
+          ),
+          Row(
+            children: [
+              _infoTag(Icons.straighten, _ticketController.km.value),
+              SizedBox(width: 35),
+              _infoTag(Icons.monetization_on, _ticketController.tariff.value),
+            ],
+          ),
+          Divider(
+            height: 30,
+          ),
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Service Charge',
+                      style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey, fontWeight: FontWeight.bold)),
+                  Text(
+                    _ticketController.serviceCharge.value,
+                    style: AppTextStyles.body2
+                        .copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              SizedBox(width: 50),
+              Column(
+                children: [
+                  Text("Total Payment",
+                      style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey, fontWeight: FontWeight.bold)),
+                  Text(
+                    _ticketController.totalPayment.value,
+                    style: AppTextStyles.body2
+                        .copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 15),
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Agent Name: ${homeController.user.value?.fullName}",
+                      style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey, fontWeight: FontWeight.bold)),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Text("Free Call Service: 8556",
+                      style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey, fontWeight: FontWeight.bold)),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Text("Terminal phone: 011-1234567",
+                      style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(
+            height: AppDimensions.horizontalSpacingMedium,
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
+              final serviceChargeBox =
+                  Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
-                final now = DateTime.now();
-                final today = DateTime(now.year, now.month, now.day);
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
 
-                double parseSafe(String value) =>
-                    double.tryParse(value.split(' ').first) ?? 0.0;
+              double parseSafe(String value) =>
+                  double.tryParse(value.split(' ').first) ?? 0.0;
 
-                // Seat count from controller (string to int)
-                final int seatCount =
-                    int.tryParse(_ticketController.seatNo.value) ?? 1;
+              // Seat count from controller (string to int)
+              final int seatCount =
+                  int.tryParse(_ticketController.seatNo.value) ?? 1;
 
-                // Multiply service charge by number of selected seats
-                final double totalServiceCharge =
-                    parseSafe(_ticketController.serviceCharge.value) *
-                        seatCount;
+              // Multiply service charge by number of selected seats
+              final double totalServiceCharge =
+                  parseSafe(_ticketController.serviceCharge.value) * seatCount;
 
-                final trip = TripModel(
-                  vehicleId: _ticketController.vehicleId.value,
-                  departureTerminalId:
-                      _ticketController.departureTerminalId.value,
-                  arrivalTerminalId: _ticketController.arrivalTerminalId.value,
-                  dateAndTime: now,
-                  km: parseSafe(_ticketController.km.value),
-                  tariff: parseSafe(_ticketController.tariff.value),
-                  serviceCharge: parseSafe(_ticketController.serviceCharge.value),
-                  totalPaid: parseSafe(_ticketController.totalPayment.value),
-                  employeeId: homeController.user.value!.id,
-                  companyId: homeController.companyId.value,
-                  departureName: selectedDeparture.toString(),
-                  arrivalName: _ticketController.locationTo.value,
-                );
+              final trip = TripModel(
+                vehicleId: _ticketController.vehicleId.value,
+                departureTerminalId:
+                    _ticketController.departureTerminalId.value,
+                arrivalTerminalId: _ticketController.arrivalTerminalId.value,
+                dateAndTime: now,
+                km: parseSafe(_ticketController.km.value),
+                tariff: parseSafe(_ticketController.tariff.value),
+                serviceCharge: parseSafe(_ticketController.serviceCharge.value),
+                totalPaid: parseSafe(_ticketController.totalPayment.value),
+                employeeId: homeController.user.value!.id,
+                companyId: homeController.companyId.value,
+                departureName: selectedDeparture.toString(),
+                arrivalName: _ticketController.locationTo.value,
+              );
 
-                // Debug TripModel print
-                print("🚌 TripModel Debug Info:");
-                print("Vehicle ID: ${trip.vehicleId}");
-                print(
-                    "From: ${trip.departureTerminalId}, To: ${trip.arrivalTerminalId}");
-                print(
-                    "KM: ${trip.km}, Tariff: ${trip.tariff}, Charge: ${trip.serviceCharge}");
-                print(
-                    "Total Paid: ${trip.totalPaid}, Employee: ${trip.employeeId}, Company: ${trip.companyId}");
-                print("Date: ${trip.dateAndTime}");
+              // Debug TripModel print
+              print("🚌 TripModel Debug Info:");
+              print("Vehicle ID: ${trip.vehicleId}");
+              print(
+                  "From: ${trip.departureTerminalId}, To: ${trip.arrivalTerminalId}");
+              print(
+                  "KM: ${trip.km}, Tariff: ${trip.tariff}, Charge: ${trip.serviceCharge}");
+              print(
+                  "Total Paid: ${trip.totalPaid}, Employee: ${trip.employeeId}, Company: ${trip.companyId}");
+              print("Date: ${trip.dateAndTime}");
 
-                final tripKey = await tripBox.add(trip);
+              final tripKey = await tripBox.add(trip);
 
                 // Check if a charge already exists for today, terminal, and employee
                 final existingEntry =
@@ -489,126 +474,117 @@ class _TicketViewState extends State<TicketView> {
                       
                 });
 
-                if (existingEntry != null) {
-                  // Add new service charge to existing
-                  existingEntry.serviceChargeAmount += totalServiceCharge;
-                  await existingEntry.save();
+              if (existingEntry != null) {
+                // Add new service charge to existing
+                existingEntry.serviceChargeAmount += totalServiceCharge;
+                await existingEntry.save();
 
-                  // Debug updated ServiceChargeModel
-                  print("💵 Updated ServiceChargeModel:");
-                  print(
-                      "Terminal: ${existingEntry.departureTerminal},CompanyID: ${existingEntry.companyId}, Employee: ${existingEntry.employeeId}");
-                  print(
-                      "New Charge: ${existingEntry.serviceChargeAmount}, Date: ${existingEntry.dateTime}");
-                } else {
-                  // Create new entry
-                  final newCharge = ServiceChargeModel(
-                    departureTerminal: trip.departureTerminalId,
-                    dateTime: now,
-                    serviceChargeAmount: totalServiceCharge,
-                    employeeId: trip.employeeId,
-                    companyId: trip.companyId,
-                  );
-
-                  await serviceChargeBox.add(newCharge);
-
-                  // Debug new ServiceChargeModel
-                  print("💰 New ServiceChargeModel:");
-                  print(
-                      "Terminal: ${newCharge.departureTerminal}, Employee: ${newCharge.employeeId}");
-                  print(
-                      "Charge: ${newCharge.serviceChargeAmount}, Date: ${newCharge.dateTime}");
-                }
-                final ticketText = formatTicketText(
-                    companyName: homeController.companyName.value,
-                    companyPhoneNo: homeController.companyPhoneNo.value,
-                    region: _ticketController.region.value,
-                    plateNumber: _ticketController.plateNumber.value,
-                    from: trip.departureName,
-                    to: trip.arrivalName,
-                    dateTime: trip.dateAndTime,
-                    seatNo: _ticketController.seatNo.value,
-                    level: _ticketController.level.value,
-                    km: trip.km,
-                    tariff: trip.tariff,
-                    serviceCharge:
-                        parseSafe(_ticketController.serviceCharge.value),
-                    totalPayment: trip.totalPaid,
-                    agent: homeController.user.value!.fullName);
-                final qrData = 'From: ${_ticketController.locationFrom.value}, '
-                    'To: ${_ticketController.locationTo.value}, '
-                    'Time: ${_ticketController.dateTime.value}'
-                    'PlateNo: ${_ticketController.plateNumber.value}';
-
-                showTicketPreview(ticketText, qrData);
-
-                // === Printing logic ===
-                // final printer = TicketPrinter();
-
-                /*      final ticketText = '''
-            Oromia Transport Agency
-            -------------------------------
-            Company: ${homeController.companyName.value},
-            Phone: ${homeController.companyPhoneNo.value},
-            Plate: ${_ticketController.region.value} ${_ticketController.plateNumber.value}
-            From: ${_ticketController.locationFrom.value}
-            To: ${_ticketController.locationTo.value}
-            Date: ${_ticketController.dateTime.value}
-            Seat No: ${_ticketController.seatNo.value}
-            Level: ${_ticketController.level.value}
-            Km: ${_ticketController.km.value}
-            Tariff: ${_ticketController.tariff.value}
-            Service Charge: ${_ticketController.serviceCharge.value}
-            Total Payment: ${_ticketController.totalPayment.value}
-            Agent: ${homeController.user.value?.fullName}
-            -------------------------------
-            Free-call: 8556
-            Terminal Phone: 011-123-4567
-
-            ''';*/
-
-                final copies =
-                    int.tryParse(_ticketController.seatNo.value) ?? 1;
-
-                // await printer.connectAndPrint(text: ticketText, copies: copies);
-
-                // Success Feedback Snackbar
-                Get.snackbar(
-                  "Saved",
-                  "Ticket & Service Charge updated and printed successfully",
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: Colors.green.withOpacity(0.8),
-                  colorText: Colors.white,
+                // Debug updated ServiceChargeModel
+                print("💵 Updated ServiceChargeModel:");
+                print(
+                    "Terminal: ${existingEntry.departureTerminal}, Employee: ${existingEntry.employeeId}");
+                print(
+                    "New Charge: ${existingEntry.serviceChargeAmount}, Date: ${existingEntry.dateTime}");
+              } else {
+                // Create new entry
+                final newCharge = ServiceChargeModel(
+                  departureTerminal: trip.departureTerminalId,
+                  dateTime: now,
+                  serviceChargeAmount: totalServiceCharge,
+                  
+                  companyId: trip.companyId, 
+                  employeeId: trip.employeeId,
                 );
-                final savedTrip = tripBox.get(tripKey);
-                if (savedTrip != null) {}
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text("Print & Save"),
-            )
-          ],
-        ),
+
+                await serviceChargeBox.add(newCharge);
+
+                // Debug new ServiceChargeModel
+                print("💰 New ServiceChargeModel:");
+                print(
+                    "Terminal: ${newCharge.departureTerminal}, Employee: ${newCharge.employeeId}");
+                print(
+                    "Charge: ${newCharge.serviceChargeAmount}, Date: ${newCharge.dateTime}");
+              }
+              final ticketText = formatTicketText(
+                  companyName: homeController.companyName.value,
+                  companyPhoneNo: homeController.companyPhoneNo.value,
+                  region: _ticketController.region.value,
+                  plateNumber: _ticketController.plateNumber.value,
+                  from: trip.departureName,
+                  to: trip.arrivalName,
+                  dateTime: trip.dateAndTime,
+                  seatNo: _ticketController.seatNo.value,
+                  association: _ticketController.associations.value,
+                  level: _ticketController.level.value,
+                  km: trip.km,
+                  tariff: trip.tariff,
+                  serviceCharge:
+                      parseSafe(_ticketController.serviceCharge.value),
+                  totalPayment: trip.totalPaid,
+                  agent: homeController.user.value!.fullName);
+              final qrcodeData =
+                  '${trip.departureName}\n${trip.arrivalName}\n${trip.dateAndTime}\n${_ticketController.region}${_ticketController.plateNumber.value}';
+
+              final printer = TicketPrinter();
+
+              final exitTicket = formatExitTicketText(
+                  companyName: homeController.companyName.value,
+                  companyPhoneNo: homeController.companyPhoneNo.value,
+                  region: _ticketController.region.value,
+                  plateNumber: _ticketController.plateNumber.value,
+                  from: trip.departureName,
+                  to: trip.arrivalName,
+                  dateTime: trip.dateAndTime,
+                  seatCapacity: _ticketController.seatNo.value,
+                  association: _ticketController.associations.value,
+                  level: _ticketController.level.value,
+                  agent: homeController.user.value!.fullName);
+              final copies = 1;
+              // int.tryParse(_ticketController.seatNo.value) ?? 1;
+
+              await printer.connectAndPrint(
+                  text: ticketText,
+                  qrCodeData: qrcodeData,
+                  copies: copies,
+                  exitText: exitTicket);
+
+              // Success Feedback Snackbar
+              Get.snackbar(
+                "Saved",
+                "Ticket & Service Charge updated and printed successfully",
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.green.withValues(alpha: 0.8),
+                colorText: Colors.white,
+              );
+              final savedTrip = tripBox.get(tripKey);
+              if (savedTrip != null) {}
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text(
+              "Print & Save",
+              style: AppTextStyles.button,
+            ),
+          )
+        ],
       ),
     );
   }
 
-  Widget _locationColumn(String label, String time) {
+  Widget _locationColumn(String label) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(label,
             style: AppTextStyles.caption2
                 .copyWith(color: Colors.black, fontWeight: FontWeight.bold)),
-        SizedBox(height: 4),
-        Text(time,
-            style: AppTextStyles.caption
-                .copyWith(color: Colors.grey, fontWeight: FontWeight.bold)),
+        SizedBox(
+          height: 5,
+        )
       ],
     );
   }
@@ -632,36 +608,6 @@ class _TicketViewState extends State<TicketView> {
       ),
     );
   }
-
-  /* void _printTicketWithQR(TripModel trip, String tripId) async {
-    final ticketWidget = PrintableTicketWidget(
-      tripId: tripId,
-      plateNumber: _ticketController.plateNumber.value,
-      region: _ticketController.region.value,
-      association: _ticketController.associations.value,
-      departure: trip.departureName,
-      arrival: trip.arrivalName,
-      level: _ticketController.level.value,
-      seat: _ticketController.seatNo.value,
-      distance: trip.km.toString(),
-      tariff: trip.tariff.toString(),
-      serviceCharge: trip.serviceCharge.toString(),
-      totalPaid: trip.totalPaid.toString(),
-      agent: homeController.user.value?.fullName ?? 'Unknown Agent',
-      dateTime: trip.dateAndTime.toString(), // You may format this
-    );
-
-    // You can preview the ticket before printing if needed
-    await Get.to(() => Scaffold(
-          appBar: AppBar(title: Text("Ticket Preview")),
-          body: Center(child: ticketWidget),
-        ));
-  // await Printing.layoutPdf(
-  //   onLayout: (PdfPageFormat format) async => pdf.save(),
-  // );
-    // OR if using a print package, you can convert `ticketWidget` to image/pdf and print
-  }
-*/
 }
 
 String formatTicketText({
@@ -673,6 +619,7 @@ String formatTicketText({
   required String to,
   required DateTime dateTime,
   required String seatNo,
+  required String association,
   required String level,
   required double km,
   required double tariff,
@@ -680,97 +627,76 @@ String formatTicketText({
   required double totalPayment,
   required String agent,
 }) {
-  // final dateStr = DateFormat('dd-MM-yyyy').format(dateTime);
+  const lineWidth = 30;
+  String line(String left, String right) {
+    final available = lineWidth - left.length;
+    return left + right.padLeft(available);
+  }
+
+  final ethDate = dateTime.convertToEthiopian();
+  final dateStr = "${ethDate.day}-${ethDate.month}-${ethDate.year}";
+  final timeStr =
+      "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')}";
+  return '''
+Oromia Transport Agency
+${'=' * lineWidth}
+${line("Company:", companyName)}
+${line("Tel:", companyPhoneNo)}
+${line("Date:", "$dateStr $timeStr")}
+${'-' * lineWidth}
+${line("From:", from)}
+${line("To:", to)}
+${line("Plate:", "$region$plateNumber")}
+${line("Association:", association)}
+${line("Seat Capacity:", seatNo)}
+${line("Level:", level)}
+${line("KM:", km.toStringAsFixed(2))}
+${'-' * lineWidth}
+${line("Tariff:", tariff.toStringAsFixed(2))}
+${line("Service Charge:", serviceCharge.toStringAsFixed(2))}
+${line("TOTAL:", totalPayment.toStringAsFixed(2))}
+${'-' * lineWidth}
+${line("Agent:", agent)}
+${line("Free-call:", "8556")}
+${line("Terminal Tel:", "011-123-4567")}''';
+}
+
+String formatExitTicketText({
+  required String companyName,
+  required String companyPhoneNo,
+  required String region,
+  required String plateNumber,
+  required String from,
+  required String to,
+  required DateTime dateTime,
+  required String seatCapacity, // total seat capacity of the vehicle
+  required String association,
+  required String level,
+  required String agent,
+}) {
+  const lineWidth = 30;
+  String line(String left, String right) {
+    final available = lineWidth - left.length;
+    return left + right.padLeft(available);
+  }
+
   final ethDate = dateTime.convertToEthiopian();
   final dateStr = "${ethDate.day}-${ethDate.month}-${ethDate.year}";
   final timeStr =
       "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')}";
 
   return '''
-================================
-      Oromia Transport
-================================
-Company: $companyName
-Tel: $companyPhoneNo
-Date: $dateStr   $timeStr
---------------------------------
-From: $from
-To:   $to
-Plate: $region$plateNumber
-Seat No: $seatNo
-Level: $level
-KM:       ${km.toStringAsFixed(2)}
---------------------------------
-Tariff:          ${tariff.toStringAsFixed(2)}
-Service Charge:  ${serviceCharge.toStringAsFixed(2)}
---------------------------------
-TOTAL:           ${totalPayment.toStringAsFixed(2)}
---------------------------------
-Agent: $agent
-Free-call: 8556
-Terminal Tel: 011-123-4567
-================================
+${line("Company:", companyName)}
+${line("Tel:", companyPhoneNo)}
+${line("Date:", "$dateStr $timeStr")}
+${'-' * lineWidth}
+${line("From:", from)}
+${line("To:", to)}
+${line("Plate:", "$region$plateNumber")}
+${line("Association:", association)}
+${line("Seat Capacity:", seatCapacity)}
+${line("Level:", level)}
+${'-' * lineWidth}
+${line("Agent:", agent)}
 ''';
-}
-
-// Example widget with QR code at the bottom
-class TicketPreview extends StatelessWidget {
-  final String ticketText;
-  final String qrData;
-
-  const TicketPreview({
-    super.key,
-    required this.ticketText,
-    required this.qrData,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          ticketText,
-          style: const TextStyle(
-              fontFamily: 'Courier', fontSize: 14, fontWeight: FontWeight.w300),
-        ),
-        const SizedBox(height: 10),
-        QrImageView(
-          data: qrData,
-          version: QrVersions.auto,
-          size: 120,
-        ),
-      ],
-    );
-  }
-}
-
-void showTicketPreview(String ticketText, String qrData) {
-  Get.dialog(
-    AlertDialog(
-      title: const Text('Ticket Preview'),
-      content: SizedBox(
-        width: 400,
-        child: SingleChildScrollView(
-          child: TicketPreview(
-            ticketText: ticketText,
-            qrData: qrData,
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Get.back(),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Get.back();
-            // Call your print method here
-            // printTicket(ticketText, qrData);
-          },
-          child: const Text('Print'),
-        ),
-      ],
-    ),
-  );
 }

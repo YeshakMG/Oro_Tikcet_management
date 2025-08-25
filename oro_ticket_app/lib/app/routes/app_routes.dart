@@ -30,6 +30,10 @@ abstract class _Paths {
   static const SESSION_CHECK = '/session-check';
   static const DEPARTURE = '/departure';
   static const HISTORY = '/LocalReportView';
+<<<<<<< HEAD
   static const SYNC = '/LocalReportView';
   static const RESET_PASSWORD = '/reset-password';
+=======
+  static const SYNC = '/SyncView';
+>>>>>>> 502d76bf557696762102986b3dcf721eaea9815c
 }

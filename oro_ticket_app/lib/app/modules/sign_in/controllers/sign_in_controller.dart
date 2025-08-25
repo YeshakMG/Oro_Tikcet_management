@@ -111,11 +111,12 @@ class SignInController extends GetxController {
     // 3. Fallback to generic error message
     Get.snackbar(
       'Login Failed',
-      result['message']?.toString() ?? 'Unknown error occurred',
+      'Unknown error occurred. Try Again Later',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColors.error,
       colorText: AppColors.titleAlt,
     );
+    print("${result['message']?.toString()} ");
   }
 
   @override

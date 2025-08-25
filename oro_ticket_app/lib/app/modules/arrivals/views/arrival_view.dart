@@ -1,14 +1,15 @@
-// lib/views/arrival_location_view.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
 import '../controllers/arrival_controllers.dart';
 
 class ArrivalLocationView extends StatelessWidget {
   final ArrivalLocationController controller =
       Get.put(ArrivalLocationController());
+  final RefreshController _refreshController = RefreshController();
 
   ArrivalLocationView({super.key});
 
@@ -17,79 +18,126 @@ class ArrivalLocationView extends StatelessWidget {
     return AppScaffold(
       title: "Arrival Locations",
       userName: "Employee Name",
-      actions: const [
-        Icon(Icons.more_horiz, color: Colors.white),
-        SizedBox(width: 16),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.more_horiz),
+          onPressed: () => controller.syncLocations(),
+          color: Colors.white,
+        ),
       ],
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: controller.syncLocations,
-                    icon: const Icon(Icons.sync),
-                    label: const Text("Sync"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.backgroundAlt,
-                      foregroundColor: AppColors.body,
-                      elevation: 0,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      onChanged: controller.filterLocations,
-                      decoration: InputDecoration(
-                        hintText: 'Search by name or town',
-                        prefixIcon: const Icon(Icons.search),
-                        filled: true,
-                        fillColor: AppColors.backgroundAlt,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+      body: Column(
+        children: [
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              onChanged: controller.filterLocations,
+              decoration: InputDecoration(
+                hintText: 'Search',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: AppColors.backgroundAlt,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
-            Obx(() => SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(AppColors.cardAlt),
-                    dataRowColor: WidgetStateProperty.all(AppColors.card),
-                    columnSpacing: 16,
-                    columns: const [
-                      DataColumn(
-                          label:
-                              Text('Name', style: AppTextStyles.buttonMedium)),
-                      DataColumn(
-                          label: Text('Distance',
-                              style: AppTextStyles.buttonMedium)),
-                      DataColumn(
-                          label: Text('Tariff (ETB)',
-                              style: AppTextStyles.buttonMedium),
-                          numeric: true),
-                    ],
-                    rows: controller.filteredLocations.map((terminal) {
-                      return DataRow(cells: [
-                        DataCell(Text(terminal.name,
-                            style: AppTextStyles.buttonMedium)),
-                        DataCell(Text(
-                            '${terminal.distance.toStringAsFixed(1)} km',
-                            style: AppTextStyles.buttonMedium)),
-                        DataCell(Text(terminal.tariff.toStringAsFixed(2),
-                            style: AppTextStyles.buttonMedium)),
-                      ]);
+          ),
+
+          // Locations list with pull-to-refresh
+          Expanded(
+            child: Obx(() {
+              return SmartRefresher(
+                controller: _refreshController,
+                onRefresh: () async {
+                  await controller.syncLocations();
+                  _refreshController.refreshCompleted();
+                },
+                child: ListView(
+                  children: [
+                    // Full-width header row
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
+                      color: AppColors.cardAlt,
+                      child: const Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Name',
+                              style: AppTextStyles.buttonMediumB,
+                              textAlign: TextAlign.left,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              'Distance',
+                              style: AppTextStyles.buttonMediumB,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              'Tariff (ETB)',
+                              style: AppTextStyles.buttonMediumB,
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Data rows with alternating colors
+                    ...controller.filteredLocations
+                        .asMap()
+                        .entries
+                        .map((entry) {
+                      final index = entry.key;
+                      final terminal = entry.value;
+                      final rowColor = index.isEven
+                          ? AppColors.card
+                          : AppColors.backgroundAlt;
+
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
+                        color: rowColor,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                terminal.name,
+                                style: AppTextStyles.buttonMedium,
+                                textAlign: TextAlign.left,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                '${terminal.distance.toStringAsFixed(1)} km',
+                                style: AppTextStyles.buttonMedium,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                terminal.tariff.toStringAsFixed(2),
+                                style: AppTextStyles.buttonMedium,
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
                     }).toList(),
-                  ),
-                )),
-          ],
-        ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }

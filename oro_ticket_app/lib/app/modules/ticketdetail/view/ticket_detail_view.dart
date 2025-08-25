@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import '../../../data/models/ticket_model.dart';
 

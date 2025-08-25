@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 import 'package:oro_ticket_app/core/constants/colors.dart';
+import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 
 import '../controller/local_report_controller.dart';
@@ -19,101 +19,183 @@ class LocalReportView extends StatelessWidget {
       currentBottomNavIndex: 2,
       body: Column(
         children: [
+          // 🔍 Full-width search bar
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.download),
-                  label: const Text("Download PDF"),
-                  onPressed: () => controller.generatePDFReport(),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.refresh),
-                  label: const Text("Refresh"),
-                  onPressed: () {
-                    controller.loadTripsFromHive();
-                    Get.snackbar("Refreshed", "Trip data reloaded");
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                ),
-                const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search),
-                      hintText: 'Search (Departure, Arrival, Plate, User...)',
-                      border: OutlineInputBorder(),
-                    ),
                     onChanged: controller.searchTrips,
+                    decoration: InputDecoration(
+                      hintText: 'Search trips',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: AppColors.backgroundAlt,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          Obx(() {
-            return Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SingleChildScrollView(
-                  child: DataTable(
-                    columnSpacing: 16,
-                    headingRowHeight: 56,
-                    columns: [
-                      DataColumn(
-                        label: Row(
+
+          // Pull-to-refresh wrapper
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await controller.loadTripsFromHive();
+                Get.snackbar("Refreshed", "Trip data reloaded");
+              },
+              child: Obx(() {
+                if (controller.filteredTrips.isEmpty) {
+                  return const Center(child: Text("No trips available"));
+                }
+
+                return ListView.builder(
+                  itemCount: controller.filteredTrips.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      // Header row
+                      return Container(
+                        color: AppColors.cardAlt,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Departure"),
-                            IconButton(
-                              icon: const Icon(Icons.sort),
-                              onPressed: controller.sortByDepartureName,
+                            Text("Plate",
+                                style: AppTextStyles.buttonMedium,
+                                textAlign: TextAlign.center),
+                            Text(
+                              "Route",
+                              style: AppTextStyles.buttonMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            Text("Total Price",
+                                style: AppTextStyles.buttonMedium,
+                                textAlign: TextAlign.center),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final trip = controller.filteredTrips[index - 1];
+                    final plate = "${trip.plateRegion}${trip.plateNumber}";
+
+                    // alternate row color
+                    final rowColor =
+                        (index % 2 == 0) ? Colors.grey[100] : Colors.white;
+
+                    return Container(
+                      color: rowColor,
+                      child: ExpansionTile(
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                        title: Row(
+                          children: [
+                            // Plate
+                            Expanded(
+                                child: Text(
+                              plate,
+                              style: AppTextStyles.caption3,
+                            )),
+
+                            // Route styled with down arrow
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    textAlign: TextAlign.center,
+                                    trip.departureName,
+                                    style: AppTextStyles.caption3,
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_downward,
+                                    size: 16,
+                                    color: AppColors.primary,
+                                  ),
+                                  Text(
+                                    textAlign: TextAlign.center,
+                                    trip.arrivalName,
+                                    style: AppTextStyles.caption3,
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Total Price
+                            Expanded(
+                              child: Text(
+                                trip.totalPrice.toStringAsFixed(2),
+                                textAlign: TextAlign.right,
+                                style: AppTextStyles.buttonMedium,
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                      const DataColumn(label: Text("Arrival")),
-                      const DataColumn(label: Text("Plate Number")),
-                      const DataColumn(label: Text("Region")),
-                      const DataColumn(label: Text("Level")),
-                      const DataColumn(label: Text("Association")),
-                      DataColumn(
-                        label: Row(
-                          children: [
-                            const Text("Price"),
-                            IconButton(
-                              icon: const Icon(Icons.sort),
-                              onPressed: controller.sortByPrice,
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 3),
+                              child: Text(
+                                  "Association: ${trip.associationName}",
+                                  style: AppTextStyles.caption3),
                             ),
-                          ],
-                        ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 3),
+                              child: Text("Level: ${trip.vehicleLevel}",
+                                  style: AppTextStyles.caption3),
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 3),
+                              child: Text(
+                                  "Price: ${trip.price.toStringAsFixed(2)}",
+                                  style: AppTextStyles.caption3),
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 3),
+                              child: Text(
+                                  "Service Charge: ${trip.serviceCharge.toStringAsFixed(2)}",
+                                  style: AppTextStyles.caption3),
+                            ),
+                          ),
+                        ],
                       ),
-                      const DataColumn(label: Text("Service Charge")),
-                      const DataColumn(label: Text("Total Price")),
-                      
-                    ],
-                    rows: controller.filteredTrips.map((trip) {
-                      return DataRow(cells: [
-                        DataCell(Text(trip.departureName)),
-                        DataCell(Text(trip.arrivalName)),
-                        DataCell(Text(trip.plateNumber)),
-                        DataCell(Text(trip.plateRegion)),
-                        DataCell(Text(trip.vehicleLevel)),
-                        DataCell(Text(trip.associationName)),
-                        DataCell(Text(trip.price.toStringAsFixed(2))),
-                        DataCell(Text(trip.serviceCharge.toStringAsFixed(2))),
-                        DataCell(Text(trip.totalPrice.toStringAsFixed(2))),
-                        
-                      ]);
-                    }).toList(),
-                  ),
-                ),
-              ),
-            );
-          }),
+                    );
+                  },
+                );
+              }),
+            ),
+          ),
         ],
       ),
+      actions: [
+        IconButton(
+          icon: const Icon(
+            Icons.download,
+            color: AppColors.background,
+          ),
+          onPressed: () => controller.generatePDFReport(),
+        ),
+      ],
     );
   }
 }

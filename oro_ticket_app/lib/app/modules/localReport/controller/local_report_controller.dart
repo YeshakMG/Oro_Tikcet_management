@@ -53,10 +53,12 @@ class LocalReportController extends GetxController {
     try {
       final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
       final vehicleBox = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
-      final departureBox = Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
-      final arrivalBox = Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
+      final departureBox =
+          Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
+      final arrivalBox =
+          Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
 
-      print("📦 tripBox length: \${tripBox.length}");
+      print("📦 tripBox length: ${tripBox.length}");
       if (tripBox.isEmpty) {
         print("❌ tripBox is empty — no data.");
         allTrips.clear();
@@ -65,9 +67,12 @@ class LocalReportController extends GetxController {
       }
 
       final loadedTrips = tripBox.values.map((trip) {
-        final vehicle = vehicleBox.values.firstWhereOrNull((v) => v.id == trip.vehicleId);
-        final departure = departureBox.values.firstWhereOrNull((d) => d.id == trip.departureTerminalId);
-        final arrival = arrivalBox.values.firstWhereOrNull((a) => a.id == trip.arrivalTerminalId);
+        final vehicle =
+            vehicleBox.values.firstWhereOrNull((v) => v.id == trip.vehicleId);
+        final departure = departureBox.values
+            .firstWhereOrNull((d) => d.id == trip.departureTerminalId);
+        final arrival = arrivalBox.values
+            .firstWhereOrNull((a) => a.id == trip.arrivalTerminalId);
 
         return TripReportItem(
           departureName: departure?.name ?? 'Unknown',
@@ -123,7 +128,9 @@ class LocalReportController extends GetxController {
   void sortByPrice() {
     sortAsc.value = !sortAsc.value;
     filteredTrips.sort((a, b) {
-      return sortAsc.value ? a.price.compareTo(b.price) : b.price.compareTo(a.price);
+      return sortAsc.value
+          ? a.price.compareTo(b.price)
+          : b.price.compareTo(a.price);
     });
     filteredTrips.refresh();
   }
@@ -170,7 +177,8 @@ class LocalReportController extends GetxController {
     );
 
     final outputDir = await getApplicationDocumentsDirectory();
-    final file = File('\${outputDir.path}/local_trip_report_\${DateTime.now().millisecondsSinceEpoch}.pdf');
+    final file = File(
+        '\${outputDir.path}/local_trip_report_\${DateTime.now().millisecondsSinceEpoch}.pdf');
     await file.writeAsBytes(await pdf.save());
 
     print('✅ PDF generated at: \${file.path}');

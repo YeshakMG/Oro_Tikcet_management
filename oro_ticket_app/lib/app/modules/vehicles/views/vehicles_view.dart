@@ -23,13 +23,6 @@ class VehiclesView extends StatelessWidget {
   }
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    _refreshController.dispose();
-    // super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Vehicles',
@@ -53,33 +46,31 @@ class VehiclesView extends StatelessWidget {
               : IconButton(
                   icon: const Icon(Icons.sync),
                   onPressed: () => controller.loadLocalVehicles(),
+                  color: AppColors.background,
                 ),
         ),
       ],
       body: Column(
         children: [
+          // 🔍 Full-width search bar
           Padding(
             padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: controller.filterVehicles,
-                    decoration: InputDecoration(
-                      hintText: 'Search by plate/status',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: AppColors.backgroundAlt,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
+            child: TextField(
+              onChanged: controller.filterVehicles,
+              decoration: InputDecoration(
+                hintText: 'Search by plate number or status',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: AppColors.backgroundAlt,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
-              ],
+              ),
             ),
           ),
+
+          // Vehicles list
           Obx(() {
             if (controller.isLoading.value && controller.allVehicles.isEmpty) {
               return const Expanded(
@@ -110,64 +101,124 @@ class VehiclesView extends StatelessWidget {
                   await controller.refreshVehicles();
                   _refreshController.refreshCompleted();
                 },
-                child: SingleChildScrollView(
+                child: ListView.builder(
                   controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: Column(
-                      children: [
-                        DataTable(
-                          headingRowColor:
-                              WidgetStateProperty.all(AppColors.cardAlt),
-                          dataRowColor: WidgetStateProperty.all(AppColors.card),
-                          columnSpacing: 16,
-                          columns: const [
-                            DataColumn(
-                                label: Text('Plate No',
-                                    style: AppTextStyles.buttonMedium)),
-                            DataColumn(
-                                label: Text('Seats',
-                                    style: AppTextStyles.buttonMedium)),
-                            DataColumn(
-                                label: Text('Level',
-                                    style: AppTextStyles.buttonMedium)),
-                            DataColumn(
-                                label: Text('Fleet Type',
-                                    style: AppTextStyles.buttonMedium)),
-                            DataColumn(
-                                label: Text('Status',
-                                    style: AppTextStyles.buttonMedium)),
+                  itemCount: controller.paginatedVehicles.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      // Header row
+                      return Container(
+                        color: AppColors.cardAlt,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
+                        child: const Row(
+                          children: [
+                            Expanded(
+                                child: Text("Plate Number",
+                                    style: AppTextStyles.buttonMedium,
+                                    textAlign: TextAlign.center)),
+                            Expanded(
+                                child: Text("Level",
+                                    style: AppTextStyles.buttonMedium,
+                                    textAlign: TextAlign.center)),
+                            Expanded(
+                                child: Text("Fleet Type",
+                                    style: AppTextStyles.buttonMedium,
+                                    textAlign: TextAlign.left)),
                           ],
-                          rows: controller.paginatedVehicles.map((vehicle) {
-                            return DataRow(
-                              cells: [
-                                DataCell(Text(
-                                  '${vehicle.plateRegion}-${vehicle.plateNumber}',
-                                  style: AppTextStyles.buttonMediumB,
-                                )),
-                                DataCell(Text('${vehicle.seatCapacity}')),
-                                DataCell(Text(vehicle.vehicleLevel)),
-                                DataCell(Text(vehicle.fleetType)),
-                                DataCell(Text(vehicle.status ?? 'N/A')),
-                              ],
-                            );
-                          }).toList(),
                         ),
-                        if (controller.isPageLoading.value)
-                          const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: CircularProgressIndicator(),
-                          )
-                        else if (controller.hasMore.value)
-                          TextButton(
-                            onPressed: () => controller.loadMoreVehicles(),
-                            child: const Text('Load More',
-                                style: AppTextStyles.buttonMediumB),
+                      );
+                    }
+
+                    final vehicle = controller.paginatedVehicles[index - 1];
+                    final rowColor =
+                        (index % 2 == 0) ? Colors.grey[100] : Colors.white;
+
+                    return Container(
+                      color: rowColor,
+                      child: ExpansionTile(
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            // Plate Number
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
+                                child: Text(
+                                  "${vehicle.plateRegion}${vehicle.plateNumber}",
+                                  style: AppTextStyles.buttonMediumB,
+                                ),
+                              ),
+                            ),
+
+                            // level
+                            Align(
+                              alignment: Alignment.center,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
+                                child: Text(
+                                  vehicle.vehicleLevel,
+                                ),
+                              ),
+                            ), // Fleet Type
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 15),
+                                child: Text(
+                                  vehicle.fleetType,
+                                  style: AppTextStyles.buttonMedium,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                  "Seat Capacity: ${vehicle.seatCapacity}",
+                                  style: AppTextStyles.caption3),
+                            ),
                           ),
-                      ],
-                    ),
-                  ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                children: [
+                                  const Text("Status: ",
+                                      style: AppTextStyles.caption3),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: (vehicle.status == "active")
+                                          ? Colors.green
+                                          : Colors.grey,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      vehicle.status ?? 'N/A',
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             );
