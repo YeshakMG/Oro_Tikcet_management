@@ -14,7 +14,7 @@ class ServiceChargeModel extends HiveObject {
   double serviceChargeAmount;
 
   @HiveField(3)
-  String employeeName;
+  String employeeId;
 
   @HiveField(4)
   String companyId;
@@ -23,7 +23,7 @@ class ServiceChargeModel extends HiveObject {
     required this.departureTerminal,
     required this.dateTime,
     required this.serviceChargeAmount,
-    required this.employeeName,
+    required this.employeeId,
     required this.companyId,
   });
 
@@ -31,7 +31,7 @@ class ServiceChargeModel extends HiveObject {
     "departure_terminal_id": departureTerminal,
     "date_and_time": dateTime.toIso8601String(),
     "service_charge_amount": serviceChargeAmount,
-    "employee_name": employeeName,
+    "employee_id": employeeId,
     "company_id": companyId,
   };
 }

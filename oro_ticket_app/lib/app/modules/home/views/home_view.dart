@@ -159,40 +159,81 @@ class HomeView extends StatelessWidget {
         
                 // Reset Dashboard Button
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Get.dialog(
-                          ResetDashboardDialog(
-                            onReset: () {
-                              homeController.resetDashboard();
-                              Get.back(); // Close dialog
-                              Get.snackbar(
-                                'Success',
-                                'Dashboard reset successfully',
-                                snackPosition: SnackPosition.BOTTOM,
-                                backgroundColor: AppColors.primaryHover,
-                                colorText: AppColors.background,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Get.defaultDialog(
+                        title: "Reset Dashboard",
+                        middleText: "Do you want to sync service charges before resetting?",
+                        textCancel: "No",
+                        textConfirm: "Yes",
+                        confirmTextColor: Colors.white,
+                        onCancel: () {
+                          // Do nothing if "No" is clicked
+                        },
+                        onConfirm: () async {
+                          try {
+                            // Show loading snackbar
+                            Get.snackbar(
+                              'Syncing',
+                              'Please wait...',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.blueGrey,
+                              colorText: Colors.white,
+                              showProgressIndicator: true,
+                              isDismissible: false,
+                              duration: const Duration(seconds: 2), // Stay until manually closed
+                            );
+
+                            await homeController.syncServiceCharge();
+
+                            // Close loading snackbar before showing success
+                            Get.closeAllSnackbars();
+
+                            // If sync successful → reset dashboard
+                            homeController.resetDashboard();
+
+                            Get.back(); // Close dialog
+                            Get.snackbar(
+                              'Success',
+                              'Service charge synced and dashboard reset',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: AppColors.primaryHover,
+                              colorText: AppColors.background,
+                            );
+                          } catch (e) {
+                            // Close loading snackbar before showing error
+                            Get.closeAllSnackbars();
+
+                            // Sync failed → don't reset
+                            Get.snackbar(
+                              'Error',
+                              'Failed to sync: $e',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.red,
+                              colorText: Colors.white,
+                            );
+                          }
+                        },
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        "Reset Dashboard",
-                        style: AppTextStyles.button,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text(
+                      "Reset Dashboard",
+                      style: AppTextStyles.button,
                     ),
                   ),
+                
+
+                ),
                 ),
               ],
             ),
