@@ -29,5 +29,5 @@ abstract class _Paths {
   static const SESSION_CHECK = '/session-check';
   static const DEPARTURE = '/departure';
   static const HISTORY = '/LocalReportView';
-  static const SYNC = '/LocalReportView';
+  static const SYNC = '/SyncView';
 }

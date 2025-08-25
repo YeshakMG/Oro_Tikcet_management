@@ -1,6 +1,4 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/data/locals/models/user_model.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
@@ -8,9 +6,6 @@ import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart'
 import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
-
-import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
-import 'package:oro_ticket_app/app/modules/utils/ticket_printer.dart'; // Import the printer
 
 class TicketController extends GetxController {
   final locationFrom = ''.obs;
@@ -40,7 +35,6 @@ class TicketController extends GetxController {
   final selectedVehicle = Rxn<VehicleModel>();
   final selectedArrival = Rxn<ArrivalTerminalModel>();
   final selectedDepartureTerminal = Rxn<DepartureTerminalModel>();
-
 
   var arrivalTerminalId = ''.obs;
   var departureTerminalId = ''.obs;
@@ -84,9 +78,9 @@ class TicketController extends GetxController {
     final ethDate = now.convertToEthiopian();
     final weekdayOromo = oromoWeekdays[now.weekday] ?? '';
     final formattedDate =
-        "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')}";
+        "${ethDate.day.toString().padLeft(2, '0')}-${ethDate.month.toString().padLeft(2, '0')}-${ethDate.year}";
     final formattedTime =
-        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+        "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')}";
 
     dateTime.value = "$weekdayOromo - $formattedDate $formattedTime";
     calculateCharges(arrival.tariff);
@@ -106,7 +100,7 @@ class TicketController extends GetxController {
   }
 
   // New method to print ticket with copies = seatNo count
-  Future<void> printTicket() async {
+/*  Future<void> printTicket() async {
     // parse seat count safely (default to 1)
     final copies = int.tryParse(seatNo.value) ?? 1;
 
@@ -132,6 +126,8 @@ class TicketController extends GetxController {
   ''';
 
     final printer = TicketPrinter();
-    await printer.connectAndPrint(text: ticketText, copies: copies);
+    await printer.connectAndPrint(
+        text: ticketText, copies: copies, qrCodeData: '');
   }
+*/
 }

@@ -34,7 +34,7 @@ class _SessionCheckViewState extends State<SessionCheckView> {
         Get.offNamed('/home');
       }
     } else {
-      Get.offAllNamed('/sign-in');
+      Get.offAllNamed('/splash-screen');
     }
   }
 

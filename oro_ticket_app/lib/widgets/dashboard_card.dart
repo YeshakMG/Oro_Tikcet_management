@@ -24,7 +24,7 @@ class _DashboardCardState extends State<DashboardCard> {
   Widget build(BuildContext context) {
     return Obx(() {
       final tickets = controller.ticketsSoldToday.value;
-      final revenue = controller.revenueToday.value * tickets;
+      final revenue = controller.revenueToday.value;
       final growth = controller.dailyGrowth.value;
       final serviceCharge = controller.totalServiceCharge * tickets;
       return Container(
@@ -131,11 +131,6 @@ class DashboardController extends GetxController {
         ticketsSoldToday.value = totalSeatsSold;
       }
     }
-    // numberofVehicles = vehicleStorageService.getVehicles();
-    final yesterdayTrips = trips.where((trip) {
-      return trip.dateAndTime.isSameDay(today.subtract(Duration(days: 1)));
-    }).toList();
-
     // ticketsSoldToday.value = todayTrips.length;
     totalServiceCharge.value = todayTrips.fold(
       0.0,
@@ -146,17 +141,5 @@ class DashboardController extends GetxController {
       0.0,
       (sum, trip) => sum + trip.totalPaid,
     );
-
-    double yesterdayRevenue = yesterdayTrips.fold(
-      0.0,
-      (sum, trip) => sum + trip.totalPaid,
-    );
-
-    if (yesterdayRevenue > 0) {
-      dailyGrowth.value =
-          ((revenueToday.value - yesterdayRevenue) / yesterdayRevenue) * 100;
-    } else {
-      dailyGrowth.value = 0;
-    }
   }
 }

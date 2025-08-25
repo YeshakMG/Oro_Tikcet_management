@@ -100,25 +100,25 @@ class AuthService {
         }
       }
 
-      // 2️⃣ Proceed with normal logout
-      final token = await _storage.read(key: _tokenKey);
-      if (token == null) throw Exception('No token found');
+      // // 2️⃣ Proceed with normal logout
+      // final token = await _storage.read(key: _tokenKey);
+      // if (token == null) throw Exception('No token found');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/logout'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // final response = await http.post(
+      //   Uri.parse('$baseUrl/auth/logout'),
+      //   headers: {
+      //     'Authorization': 'Bearer $token',
+      //     'Content-Type': 'application/json',
+      //   },
+      // );
 
-      if (response.statusCode == 200) {
+      // if (response.statusCode == 200) {
         await _clearStorage();
         Get.offAllNamed('/login');
-      } else {
-        print('❌ Logout failed: ${response.statusCode} ${response.body}');
-        throw Exception('Logout failed with status ${response.statusCode}');
-      }
+      // } else {
+      //   print('❌ Logout failed: ${response.statusCode} ${response.body}');
+      //   throw Exception('Logout failed with status ${response.statusCode}');
+      // }
     } catch (e) {
       Get.snackbar(
         'Logout Error!',

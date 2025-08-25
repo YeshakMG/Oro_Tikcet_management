@@ -4,9 +4,11 @@ import 'package:oro_ticket_app/app/modules/departure/controllers/departure_contr
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
 
 class DepartureView extends GetView<DepartureControllers> {
   final DepartureControllers controller = Get.put(DepartureControllers());
+  final RefreshController _refreshController = RefreshController();
 
   DepartureView({super.key});
 
@@ -15,90 +17,67 @@ class DepartureView extends GetView<DepartureControllers> {
     return AppScaffold(
       title: 'Departure',
       userName: 'Employee Name',
-      // currentBottomNavIndex: 0,
       showBottomNavBar: true,
-      actions: const [
-        Icon(Icons.more_horiz, color: Colors.white),
-        SizedBox(width: 16),
+      actions: [
+        IconButton(
+            onPressed: () {},
+            icon: Icon(
+              Icons.more_horiz,
+              color: AppColors.background,
+            ))
       ],
-      body: Obx(() {
-        final terminal = controller.terminal.value;
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Expanded(
+              child: Obx(() {
+                final terminal = controller.terminal.value;
 
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AppColors.background),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: controller.loadTerminal,
-                      icon: const Icon(Icons.sync),
-                      label: const Text("Sync"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.backgroundAlt,
-                        foregroundColor: AppColors.body,
-                        elevation: 0,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search',
-                          prefixIcon: const Icon(Icons.search),
-                          filled: true,
-                          fillColor: AppColors.backgroundAlt,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
+                return SmartRefresher(
+                  controller: _refreshController,
+                  onRefresh: () async {
+                    controller.loadTerminal();
+                    _refreshController.refreshCompleted();
+                  },
+                  child: terminal == null
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(height: 120),
+                            Center(child: Text('No terminal found')),
+                          ],
+                        )
+                      : ListView(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 16),
+                              color: AppColors.cardAlt,
+                              child: const Text(
+                                'Departure Terminal Name',
+                                style: AppTextStyles.buttonMedium,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 16),
+                              color: AppColors.card,
+                              child: Text(
+                                terminal.name,
+                                style: AppTextStyles.buttonMedium,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              terminal == null
-                  ? const Text('No terminal found')
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        headingRowColor:
-                            WidgetStateProperty.all(AppColors.cardAlt),
-                        dataRowColor: WidgetStateProperty.all(AppColors.card),
-                        columns: const [
-                          DataColumn(
-                              label: Text(
-                            'No',
-                            style: AppTextStyles.buttonMedium,
-                          )),
-                          DataColumn(
-                              label: Text('Departure Terminal Name',
-                                  style: AppTextStyles.buttonMedium)),
-                        ],
-                        rows: [
-                          DataRow(cells: [
-                            const DataCell(
-                                Text('', style: AppTextStyles.buttonMedium)),
-                            DataCell(Text(terminal.name,
-                                style: AppTextStyles.buttonMedium)),
-                          ])
-                        ],
-                      ),
-                    ),
-            ],
-          ),
-        );
-      }),
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

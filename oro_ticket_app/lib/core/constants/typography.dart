@@ -88,6 +88,14 @@ class AppTextStyles {
     fontWeight: FontWeight.w500,
     color: Colors.black,
   );
+
+  static const TextStyle buttonMediumW = TextStyle(
+    fontFamily: 'Poppins',
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+  );
+
   static const TextStyle buttonMediumB = TextStyle(
     fontFamily: 'Poppins',
     fontSize: 15,
@@ -142,5 +150,11 @@ class AppTextStyles {
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.secondaryPressed,
+  );
+  static const TextStyle caption3 = TextStyle(
+    fontFamily: 'Poppins',
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: AppColors.secondary,
   );
 }
