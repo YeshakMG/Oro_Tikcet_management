@@ -491,8 +491,8 @@ class _TicketViewState extends State<TicketView> {
                   departureTerminal: trip.departureTerminalId,
                   dateTime: now,
                   serviceChargeAmount: totalServiceCharge,
-                  
-                  companyId: trip.companyId, 
+                  employeeName: homeController.user.value!.fullName,
+                  companyId: trip.companyId,
                   employeeId: trip.employeeId,
                 );
 

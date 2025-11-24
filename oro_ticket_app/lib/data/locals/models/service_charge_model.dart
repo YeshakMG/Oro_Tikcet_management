@@ -35,7 +35,6 @@ class ServiceChargeModel extends HiveObject {
         "departure_terminal_id": departureTerminal,
         "date_and_time": dateTime.toIso8601String(),
         "service_charge_amount": serviceChargeAmount,
-        "employee_name": employeeName,
         "employee_id": employeeId,
         "company_id": companyId,
       };
