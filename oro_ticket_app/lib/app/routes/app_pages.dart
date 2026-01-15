@@ -26,6 +26,7 @@ import '../modules/vehicles/views/vehicles_view.dart';
 import '../modules/reset_password/binding/reset_password_binding.dart';
 import '../modules/reset_password/view/reset_password_view.dart';
 
+
 part 'app_routes.dart';
 
 class AppPages {
@@ -95,6 +96,7 @@ class AppPages {
       page: () => const ResetPasswordView(),
       binding: ResetPasswordBinding(),
     ),
+    
 
   ];
 }

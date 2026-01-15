@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -7,13 +8,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:oro_ticket_app/app/modules/sync/view/sync_view.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
+import 'package:oro_ticket_app/core/utils/security_utils.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/user_storage_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 import '../../../../data/locals/hive_boxes.dart';
+import '../../../../data/locals/models/service_charge_model.dart';
 import '../../../../data/locals/models/user_model.dart';
+import '../controllers/sign_in_controller.dart';
 
 class AuthService {
   static final _storage = const FlutterSecureStorage();
@@ -21,15 +25,62 @@ class AuthService {
   static const _userKey = 'auth_user';
   final SyncRepository syncRepo = Get.put(SyncRepository());
 
-  final String baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+  // Use secure HTTP client for all network requests
+  late final http.Client _secureClient;
+  bool _secureClientInitialized = false;
+
+  AuthService() {
+    // Initialize cleanup timer for rate limits (runs every hour)
+    Timer.periodic(const Duration(hours: 1), (_) async => await SecurityUtils.cleanupRateLimits());
+  }
+
+  // Initialize secure client
+  Future<void> _initSecureClient() async {
+    _secureClient = await SecurityUtils.createSecureHttpClient();
+  }
+
+  static const String baseUrl = 'https://admin.ota.gov.et/api';
+  static const _loginRateLimitKey = 'login_rate_limit';
 
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
+    // Check if base URL is configured
+    if (baseUrl.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Base URL not configured. Please check app configuration.',
+        'error_type': 'config'
+      };
+    }
+
+    // Initialize secure client if not already done
+    if (!_secureClientInitialized) {
+      await _initSecureClient();
+      _secureClientInitialized = true;
+    }
+
+    // Check rate limiting - max 5 attempts per minute
+    final isAllowed = await SecurityUtils.checkRateLimit(
+      _loginRateLimitKey,
+      maxRequests: 5,
+      window: const Duration(minutes: 1)
+    );
+
+    if (!isAllowed) {
+      return {
+        'success': false,
+        'message': 'Too many login attempts. Please wait 1 minute before trying again.',
+        'rate_limited': true,
+        'snackbar_title': 'Rate Limit Exceeded',
+        'snackbar_message': 'For security reasons, login attempts are limited. Please wait 1 minute before trying again.'
+      };
+    }
+
     try {
       final url = Uri.parse('$baseUrl/auth/company-user/login');
-      final response = await http
+      final response = await _secureClient
           .post(
             url,
             headers: {'Content-Type': 'application/json'},
@@ -43,9 +94,20 @@ class AuthService {
         final token = data['data']['token'];
         final user = UserModel.fromLoginJson(data['data']);
 
-        // Store in secure storage and Hive
-        await _storage.write(key: _tokenKey, value: token);
+        // Store in secure storage with encryption
+        print('🔐 Encrypting and storing token securely...');
+        await SecurityUtils.secureStore(_tokenKey, token);
         await UserStorageService.saveUser(user);
+
+        // Verify token was stored and can be decrypted
+        final storedToken = await SecurityUtils.secureRetrieve(_tokenKey);
+        if (storedToken == null) {
+          throw Exception('Failed to store authentication token securely');
+        }
+        if (storedToken != token) {
+          throw Exception('Token encryption/decryption verification failed');
+        }
+        print('✅ Token encrypted and stored successfully');
 
         // Sync critical data in background
         syncUserDataAfterLogin();
@@ -55,14 +117,15 @@ class AuthService {
         return {
           'success': false,
           'message': data['message'] ?? 'Login failed',
-          'errors': data['errors'] ?? []
+          'errors': data['errors'] ?? [],
+          'statusCode': response.statusCode
         };
       }
     } catch (e) {
       // Check if we have cached user data for offline login
       final lastUser = await UserStorageService.getUser();
       if (lastUser != null && email == lastUser.email) {
-        final token = await _storage.read(key: _tokenKey);
+        final token = await SecurityUtils.secureRetrieve(_tokenKey);
         if (token != null) {
           return {
             'success': true,
@@ -72,7 +135,12 @@ class AuthService {
           };
         }
       }
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': 'Connection failed: ${e.toString()}',
+        'error_type': 'network',
+        'details': e.toString()
+      };
     }
   }
 
@@ -89,59 +157,72 @@ class AuthService {
     }
   }
 
-  Future<void> logout() async {
+  Future<bool> logout() async {
     try {
-      // 1️⃣ Check for unsynced trips (unless forced logout)
+      print('🔄 Step 1: Starting logout process...');
+
+      // 1️⃣ Check for any unsynced data
+      print('🔍 Step 2: Checking for unsynced data...');
       final unsyncedTrips = _getUnsyncedTrips();
-      if (unsyncedTrips.isNotEmpty) {
-        if (unsyncedTrips.isNotEmpty) {
-          _redirectToHomeForSync(unsyncedTrips.length);
-          return;
-        }
+      final unsyncedServiceCharges = _getUnsyncedServiceCharges();
+
+      print('🔍 Step 3: Found ${unsyncedTrips.length} unsynced trips and ${unsyncedServiceCharges.length} unsynced service charges');
+
+      if (unsyncedTrips.isNotEmpty || unsyncedServiceCharges.isNotEmpty) {
+        print('❌ Step 4: Unsynced data detected - aborting logout');
+        print('   - Unsynced trips: ${unsyncedTrips.length}');
+        print('   - Unsynced service charges: ${unsyncedServiceCharges.length}');
+        print('❌ Logout aborted due to unsynced data');
+        return false; // Don't logout if unsynced data exists
       }
 
-      // // 2️⃣ Proceed with normal logout
-      // final token = await _storage.read(key: _tokenKey);
-      // if (token == null) throw Exception('No token found');
+      print('✅ Step 4: No unsynced data found - proceeding with logout');
 
-      // final response = await http.post(
-      //   Uri.parse('$baseUrl/auth/logout'),
-      //   headers: {
-      //     'Authorization': 'Bearer $token',
-      //     'Content-Type': 'application/json',
-      //   },
-      // );
+      print('🧹 Step 5: Clearing local storage...');
+      // 2️⃣ Proceed with logout - clear local storage and navigate
+      await _clearStorage();
+      print('✅ Step 6: Storage cleared successfully');
 
-      // if (response.statusCode == 200) {
-        await _clearStorage();
-        Get.offAllNamed('/login');
-      // } else {
-      //   print('❌ Logout failed: ${response.statusCode} ${response.body}');
-      //   throw Exception('Logout failed with status ${response.statusCode}');
-      // }
+      print('🔀 Step 7: Navigating to sign-in page...');
+
+      // Ensure sign-in fields are cleared by deleting any existing controller
+      if (Get.isRegistered<SignInController>()) {
+        Get.delete<SignInController>();
+      }
+
+      Get.offAllNamed('/sign-in');
+      print('✅ Step 8: Navigation completed');
+
+      // Optional: Try server logout in background (don't block on it)
+      print('🌐 Step 9: Attempting server logout in background...');
+      _performServerLogout();
+
+      print('🎉 Step 10: Logout process completed successfully');
+      return true;
+
     } catch (e) {
-      Get.snackbar(
-        'Logout Error!',
-        'Try Again Later',
-        // e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      print("error: $e");
-      rethrow;
+      print('❌ Logout error in step processing: $e');
+      return false;
     }
   }
 
-  void _redirectToHomeForSync(int unsyncedCount) {
-    Get.off(SyncView());
-    Get.snackbar(
-      'Unsynced Trips Found',
-      'Please sync your $unsyncedCount trip(s) before logging out',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.error,
-      colorText: AppColors.background,
-      duration: Duration(seconds: 5),
-    );
+  Future<void> _performServerLogout() async {
+    try {
+      // Initialize secure client if needed
+      if (!_secureClientInitialized) {
+        await _initSecureClient();
+        _secureClientInitialized = true;
+      }
+
+      // Note: We don't have a stored token anymore since we cleared storage
+      // If server logout is needed, we'd need to call it before clearing storage
+      // For now, just local logout is sufficient
+      print('✅ Local logout completed');
+    } catch (e) {
+      print('⚠️ Server logout failed (local logout still successful): $e');
+    }
   }
+
 
   /// Helper method to get unsynced trips
   List<TripModel> _getUnsyncedTrips() {
@@ -149,22 +230,47 @@ class AuthService {
     return tripBox.values.where((trip) => trip.isSynced != true).toList();
   }
 
-  Future<void> _clearStorage() async {
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _userKey);
-    UserStorageService.clearUser();
-    await Hive.box<TripModel>(HiveBoxes.tripBox).clear();
+  /// Helper method to get unsynced service charges
+  List<ServiceChargeModel> _getUnsyncedServiceCharges() {
+    final serviceChargeBox = Hive.box<ServiceChargeModel>('serviceChargeBox');
+    return serviceChargeBox.values.toList();
   }
 
-  Future<String?> getToken() => _storage.read(key: _tokenKey);
+  Future<void> _clearStorage() async {
+    print('   - Deleting authentication token...');
+    await SecurityUtils.secureDelete(_tokenKey);
+    print('   - Deleting user data...');
+    await _storage.delete(key: _userKey); // User data doesn't need encryption
+    UserStorageService.clearUser();
+    print('   - Clearing trip data...');
+    await Hive.box<TripModel>(HiveBoxes.tripBox).clear();
+    print('   - Storage cleanup completed');
+  }
+
+  Future<String?> getToken() async {
+    // Ensure secure client is initialized for any subsequent API calls
+    if (!_secureClientInitialized) {
+      await _initSecureClient();
+      _secureClientInitialized = true;
+    }
+    final token = await SecurityUtils.secureRetrieve(_tokenKey);
+    print('🔑 Retrieved encrypted token: ${token != null ? "YES (length: ${token.length})" : "NO"}');
+    return token;
+  }
 
   Future<UserModel?> getUser() async {
     try {
+      // Initialize secure client if needed
+      if (!_secureClientInitialized) {
+        await _initSecureClient();
+        _secureClientInitialized = true;
+      }
+
       // Try to get fresh data if online
       if (await syncRepo.isOnline) {
-        final token = await _storage.read(key: _tokenKey);
+        final token = await SecurityUtils.secureRetrieve(_tokenKey);
         if (token != null) {
-          final response = await http.get(
+          final response = await _secureClient.get(
             Uri.parse('$baseUrl/auth/company-user/profile'),
             headers: {'Authorization': 'Bearer $token'},
           ).timeout(const Duration(seconds: 5));
@@ -186,7 +292,7 @@ class AuthService {
   }
 
   Future<bool> isLoggedIn() async {
-    final token = await _storage.read(key: _tokenKey);
+    final token = await SecurityUtils.secureRetrieve(_tokenKey);
     if (token == null) return false;
 
     // Check if we have user data
@@ -199,7 +305,7 @@ class AuthService {
     if (token == null) return;
 
     final url = Uri.parse('$baseUrl/auth/company-user/profile');
-    final response = await http.get(
+    final response = await _secureClient.get(
       url,
       headers: {
         'Authorization': 'Bearer $token',

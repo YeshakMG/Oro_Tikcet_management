@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
+import 'package:oro_ticket_app/core/utils/security_utils.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
@@ -29,6 +30,15 @@ class SyncRepository {
   final Connectivity _connectivity = Connectivity();
   final _vehicleChanges = StreamController<void>.broadcast();
   Stream<void> get vehicleChanges => _vehicleChanges.stream;
+
+  // Use secure HTTP client for all network requests
+  late final http.Client _secureClient;
+  bool _secureClientInitialized = false;
+
+  // Initialize secure client
+  Future<void> _initSecureClient() async {
+    _secureClient = await SecurityUtils.createSecureHttpClient();
+  }
 
   // Helper method to check network connectivity
   Future<bool> get _isOnline async {
@@ -75,6 +85,12 @@ class SyncRepository {
   }
 
   Future<void> syncAllCompanyUserVehicles({bool forceSync = false}) async {
+    // Initialize secure client if not already done
+    if (!_secureClientInitialized) {
+      await _initSecureClient();
+      _secureClientInitialized = true;
+    }
+
     if (!await _isOnline && !forceSync) {
       print('🚫 Offline - Skipping vehicle sync');
       return;
@@ -83,6 +99,10 @@ class SyncRepository {
     try {
       final authService = Get.find<AuthService>();
       final token = await authService.getToken();
+      if (token == null) {
+        print('❌ No token available for sync');
+        return;
+      }
       final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
 
       int currentPage = 1;
@@ -91,7 +111,7 @@ class SyncRepository {
       final Set<String> apiVehicleIds = {};
 
       while (hasMorePages) {
-        final response = await http.get(
+        final response = await _secureClient.get(
           Uri.parse(
               '$baseUrl/vehicles/company-user/my-vehicles?page=$currentPage'),
           headers: {
@@ -238,7 +258,7 @@ class SyncRepository {
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
 
-    final response = await http.get(
+    final response = await _secureClient.get(
       Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
       headers: {
         'Authorization': 'Bearer $token',
@@ -332,7 +352,7 @@ class SyncRepository {
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
 
-    final response = await http.get(
+    final response = await _secureClient.get(
       Uri.parse('$baseUrl/commission-rules'),
       headers: {
         'Authorization': 'Bearer $token',
@@ -368,6 +388,12 @@ class SyncRepository {
   }
 
   Future<void> syncTripsToServer() async {
+    // Initialize secure client if not already done
+    if (!_secureClientInitialized) {
+      await _initSecureClient();
+      _secureClientInitialized = true;
+    }
+
     try {
       final authService = Get.find<AuthService>();
       final token = await authService.getToken();
@@ -383,7 +409,7 @@ class SyncRepository {
       // Send each trip individually instead of nested array
       for (final trip in trips) {
         try {
-          final response = await http.post(
+          final response = await _secureClient.post(
             Uri.parse('$baseUrl/trips'),
             headers: {
               'Content-Type': 'application/json',
@@ -433,7 +459,7 @@ Future<void> syncServiceChargeToServer() async {
     final serviceCharge = entry.value;
 
     try {
-      final response = await http.post(
+      final response = await _secureClient.post(
         Uri.parse("$baseUrl/service-charges"), // 👈 replace with real URL
         headers: {
           'Content-Type': 'application/json',

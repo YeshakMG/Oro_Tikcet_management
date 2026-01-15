@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:hive/hive.dart';
 
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
 import 'package:oro_ticket_app/app/modules/sync/view/sync_view.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
+import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import 'package:oro_ticket_app/widgets/daily_info_tile.dart';
 import 'package:oro_ticket_app/widgets/dashboard_card.dart';
@@ -89,7 +92,7 @@ class HomeView extends StatelessWidget {
         
                               try {
                                 await homeController.syncTrips();
-                                Get.back(); // Close loading snackbar
+                                Get.closeCurrentSnackbar(); // Close loading snackbar
                                 Get.snackbar(
                                   'Success',
                                   'Synced Successfully!',
@@ -98,7 +101,7 @@ class HomeView extends StatelessWidget {
                                   colorText: AppColors.background,
                                 );
                               } catch (e) {
-                                Get.back(); // Close loading snackbar
+                                Get.closeCurrentSnackbar(); // Close loading snackbar
                                 Get.snackbar(
                                   'Error',
                                   e.toString(),
@@ -164,59 +167,108 @@ class HomeView extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      Get.defaultDialog(
-                        title: "Reset Dashboard",
-                        middleText: "Do you want to sync service charges before resetting?",
-                        textCancel: "No",
-                        textConfirm: "Yes",
-                        confirmTextColor: Colors.white,
-                        onCancel: () {
-                          // Do nothing if "No" is clicked
-                        },
-                        onConfirm: () async {
-                          try {
-                            // Show loading snackbar
-                            Get.snackbar(
-                              'Syncing',
-                              'Please wait...',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: Colors.blueGrey,
-                              colorText: Colors.white,
-                              showProgressIndicator: true,
-                              isDismissible: false,
-                              duration: const Duration(seconds: 2), // Stay until manually closed
-                            );
+                      final isSyncing = false.obs;
+                      final showMessage = false.obs;
+                      String message = '';
 
-                            await homeController.syncServiceCharge();
+                      Get.dialog(
+                        Obx(() => AlertDialog(
+                          title: const Text("Reset Dashboard"),
+                          content: isSyncing.value
+                              ? const Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircularProgressIndicator(),
+                                    SizedBox(height: 16),
+                                    Text('Syncing service charges...'),
+                                  ],
+                                )
+                              : showMessage.value
+                                  ? Text(message)
+                                  : const Text("Do you want to sync service charges before resetting?"),
+                          actions: isSyncing.value
+                              ? null // No actions during sync
+                              : showMessage.value
+                                  ? [
+                                      TextButton(
+                                        onPressed: () {
+                                          print('Message acknowledged');
+                                          Get.back();
+                                        },
+                                        child: const Text('OK'),
+                                      ),
+                                    ]
+                                  : [
+                                      TextButton(
+                                        onPressed: () {
+                                          print('Cancel clicked');
+                                          Get.back();
+                                        },
+                                        child: const Text('No'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          print('Confirm clicked');
 
-                            // Close loading snackbar before showing success
-                            Get.closeAllSnackbars();
+                                          // Check if there are service charges to sync
+                                          final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+                                          if (box.isEmpty) {
+                                            print('No service charges found');
+                                            // Show message in dialog for 3 seconds
+                                            message = 'No service charges to sync';
+                                            showMessage.value = true;
 
-                            // If sync successful → reset dashboard
-                            homeController.resetDashboard();
+                                            // Auto-close after 3 seconds
+                                            Future.delayed(const Duration(seconds: 3), () {
+                                              if (Get.isDialogOpen ?? false) {
+                                                Get.back();
+                                              }
+                                            });
+                                            return;
+                                          }
 
-                            Get.back(); // Close dialog
-                            Get.snackbar(
-                              'Success',
-                              'Service charge synced and dashboard reset',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: AppColors.primaryHover,
-                              colorText: AppColors.background,
-                            );
-                          } catch (e) {
-                            // Close loading snackbar before showing error
-                            Get.closeAllSnackbars();
+                                          print('Starting sync...');
+                                          isSyncing.value = true;
 
-                            // Sync failed → don't reset
-                            Get.snackbar(
-                              'Error',
-                              'Failed to sync: $e',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: Colors.red,
-                              colorText: Colors.white,
-                            );
-                          }
-                        },
+                                          try {
+                                            await homeController.syncServiceCharge();
+
+                                            // If sync successful → reset dashboard
+                                            homeController.resetDashboard();
+
+                                            // Show success message in dialog for 3 seconds
+                                            message = 'Service charge synced and dashboard reset successfully';
+                                            showMessage.value = true;
+                                            isSyncing.value = false;
+
+                                            // Auto-close after 3 seconds
+                                            Future.delayed(const Duration(seconds: 3), () {
+                                              if (Get.isDialogOpen ?? false) {
+                                                Get.back();
+                                              }
+                                            });
+                                          } catch (e) {
+                                            print('Sync failed: $e');
+                                            isSyncing.value = false; // Reset loading state
+
+                                            // Show error but keep dialog open for retry
+                                            Get.snackbar(
+                                              'Error',
+                                              'Failed to sync: $e',
+                                              snackPosition: SnackPosition.BOTTOM,
+                                              backgroundColor: Colors.red,
+                                              colorText: Colors.white,
+                                            );
+                                          }
+                                        },
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        child: const Text('Yes'),
+                                      ),
+                                    ],
+                        )),
+                        barrierDismissible: !isSyncing.value && !showMessage.value,
                       );
                     },
                     style: ElevatedButton.styleFrom(

@@ -132,52 +132,78 @@ class _AppScaffoldState extends State<AppScaffold> {
 Future<void> confirmLogout() async {
   final authService = Get.find<AuthService>();
   final isLoading = false.obs;
+  String? errorMessage;
+
+  print('🔄 Logout confirmation dialog shown');
+
+  // Close any existing snackbars before showing dialog
+  try {
+    Get.closeCurrentSnackbar();
+  } catch (e) {
+    // Ignore if no snackbar to close
+  }
 
   final result = await Get.dialog<bool>(
-    AlertDialog(
+    Obx(() => AlertDialog(
       title: const Text('Confirm Logout'),
-      content: Obx(() => isLoading.value
+      content: isLoading.value
           ? const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 16),
-                Text('Processing...'),
+                Text('Logging out...'),
               ],
             )
-          : const Text('Are you sure you want to logout?')),
-      actions: [
-        if (!isLoading.value) ...[
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              isLoading.value = true;
-              Get.back(result: true);
-            },
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ],
-    ),
+          : errorMessage != null
+              ? Text(errorMessage!)
+              : const Text('Are you sure you want to logout?'),
+      actions: isLoading.value
+          ? null // Disable actions while loading
+          : errorMessage != null
+              ? [
+                  TextButton(
+                    onPressed: () {
+                      print('👌 User acknowledged error message');
+                      Get.back(result: false);
+                    },
+                    child: const Text('OK'),
+                  ),
+                ]
+              : [
+                  TextButton(
+                    onPressed: () {
+                      print('❌ User cancelled logout');
+                      Get.back(result: false);
+                    },
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      print('✅ User confirmed logout - starting logout process');
+                      isLoading.value = true;
+                      errorMessage = null; // Clear any previous error
+
+                      print('🚀 Executing logout service...');
+                      final logoutSuccess = await authService.logout();
+
+                      if (logoutSuccess) {
+                        print('✅ Logout successful');
+                        Get.back(result: true);
+                      } else {
+                        print('❌ Logout aborted due to unsynced data');
+                        isLoading.value = false;
+                        errorMessage = 'You have unsynced trips and/or service charges. Please sync your data before logging out.';
+                        // Dialog stays open with error message
+                      }
+                    },
+                    child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+    )),
   );
 
-  if (result == true) {
-    try {
-      isLoading.value = true;
-      await authService
-          .logout(); // Will redirect to home if unsynced trips exist
-    } catch (e) {
-      isLoading.value = false;
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      isLoading.value = false;
-    }
+  if (result != true) {
+    print('🚫 Logout cancelled or failed');
   }
 }

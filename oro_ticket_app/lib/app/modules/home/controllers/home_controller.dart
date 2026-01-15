@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 
 import 'package:oro_ticket_app/data/locals/models/user_model.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
@@ -31,14 +32,15 @@ class HomeController extends GetxController {
   }
 
   void loadUser() async {
-    final token = await AuthService().getToken();
+    final authService = Get.find<AuthService>();
+    final token = await authService.getToken();
 
     if (token == null) {
       debugPrint('No token found — skipping user load');
       return;
     }
 
-    final loadedUser = await AuthService().getUser();
+    final loadedUser = await authService.getUser();
 
     if (loadedUser != null && loadedUser.companyName != null) {
       user.value = loadedUser;
@@ -53,7 +55,7 @@ class HomeController extends GetxController {
 
   Future<void> loadTodayServiceCharge() async {
     try {
-      final box = Hive.box<ServiceChargeModel>('serviceChargeBox');
+      final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
       // Get the first entry if available
       final entry = box.isNotEmpty ? box.getAt(0) : null;
@@ -82,7 +84,7 @@ class HomeController extends GetxController {
     required String departureTerminal,
   }) async {
     try {
-      final box = Hive.box<ServiceChargeModel>('serviceChargeBox');
+      final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
 
@@ -180,9 +182,17 @@ class HomeController extends GetxController {
     }
   }
 
-  void resetDashboard() {
+  void resetDashboard() async {
     serviceChargeToday.value = 0.0;
-    // Reset other dashboard data if any
+
+    // Clear all service charge data from local storage
+    try {
+      final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+      await box.clear();
+      print('✅ Service charge data cleared from local storage');
+    } catch (e) {
+      print('❌ Error clearing service charge data: $e');
+    }
   }
 
   void refreshDashboard() {
