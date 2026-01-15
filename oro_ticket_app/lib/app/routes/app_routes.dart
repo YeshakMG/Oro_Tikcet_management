@@ -15,6 +15,7 @@ abstract class Routes {
   static const HISTORY = _Paths.HISTORY;
   static const SYNC = _Paths.SYNC;
   static const RESET_PASSWORD = _Paths.RESET_PASSWORD;
+  static const CHANGE_PASSWORD = _Paths.CHANGE_PASSWORD;
 }
 
 abstract class _Paths {
@@ -32,4 +33,5 @@ abstract class _Paths {
   static const HISTORY = '/LocalReportView';
   static const SYNC = '/SyncView';
   static const RESET_PASSWORD = '/reset-password';
+  static const CHANGE_PASSWORD = '/change-password';
 }

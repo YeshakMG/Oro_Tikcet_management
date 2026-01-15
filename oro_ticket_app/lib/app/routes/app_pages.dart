@@ -25,6 +25,8 @@ import '../modules/vehicles/bindings/vehicles_bindings.dart';
 import '../modules/vehicles/views/vehicles_view.dart';
 import '../modules/reset_password/binding/reset_password_binding.dart';
 import '../modules/reset_password/view/reset_password_view.dart';
+import '../modules/change_password/binding/change_password_binding.dart';
+import '../modules/change_password/view/change_password_view.dart';
 
 
 part 'app_routes.dart';
@@ -96,7 +98,11 @@ class AppPages {
       page: () => const ResetPasswordView(),
       binding: ResetPasswordBinding(),
     ),
-    
+    GetPage(
+      name: _Paths.CHANGE_PASSWORD,
+      page: () => const ChangePasswordView(),
+      binding: ChangePasswordBinding(),
+    ),
 
   ];
 }

@@ -24,6 +24,10 @@ class DrawerItems {
     //   'icon': Icons.price_change,
     // },
     {
+      'title': 'Change Password',
+      'icon': Icons.lock,
+    },
+    {
       'title': 'Logout',
       'icon': Icons.logout,
       'isDividerNeeded': true,

@@ -73,6 +73,9 @@ class _AppScaffoldState extends State<AppScaffold> {
               // case 'Tariff':
               //   Get.to(TariffView());
               //   break;
+              case 'Change Password':
+                Get.toNamed(Routes.CHANGE_PASSWORD);
+                break;
               case 'Logout':
                 confirmLogout();
                 break;

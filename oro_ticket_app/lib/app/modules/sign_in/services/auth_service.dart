@@ -88,6 +88,7 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 10));
 
+      print('Change Password Response: ${response.body}');
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['status'] == 'success') {
@@ -298,6 +299,71 @@ class AuthService {
     // Check if we have user data
     final user = await UserStorageService.getUser();
     return user != null;
+  }
+
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    // Check if base URL is configured
+    if (baseUrl.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Base URL not configured. Please check app configuration.',
+        'error_type': 'config'
+      };
+    }
+
+    // Initialize secure client if not already done
+    if (!_secureClientInitialized) {
+      await _initSecureClient();
+      _secureClientInitialized = true;
+    }
+
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found. Please log in again.',
+        };
+      }
+
+      final url = Uri.parse('$baseUrl/users/password/change-password');
+      final response = await _secureClient
+          .put(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'current_password': currentPassword,
+              'new_password': newPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['status'] == 'success') {
+        return {'success': true, 'message': 'Password changed successfully'};
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to change password',
+          'errors': data['errors'] ?? [],
+          'statusCode': response.statusCode
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Connection failed: ${e.toString()}',
+        'error_type': 'network',
+        'details': e.toString()
+      };
+    }
   }
 
   Future<void> fetchAndStoreProfileData() async {
