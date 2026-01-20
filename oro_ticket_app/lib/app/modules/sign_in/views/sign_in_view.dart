@@ -118,12 +118,16 @@ class SignInView extends StatelessWidget {
                         onPressed: controller.isLoading.value
                             ? null
                             : () {
+                                print('🔘 Login button pressed');
                                 // Trigger form validation to show field errors
                                 final isValid = controller.formKey.currentState?.validate() ?? false;
+                                print('✅ Form validation result: $isValid');
 
                                 if (isValid) {
+                                  print('🚀 Calling controller.login()');
                                   controller.login();
                                 } else {
+                                  print('❌ Form validation failed - showing snackbar');
                                   // Validation errors are already shown on fields
                                   // Optional: Show snackbar for additional feedback
                                   Get.snackbar(

@@ -1,18 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:oro_ticket_app/app/modules/sync/view/sync_view.dart';
-import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/utils/security_utils.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/user_storage_service.dart';
+import 'package:oro_ticket_app/data/locals/service/token_storage_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 import '../../../../data/locals/hive_boxes.dart';
 import '../../../../data/locals/models/service_charge_model.dart';
@@ -20,9 +16,6 @@ import '../../../../data/locals/models/user_model.dart';
 import '../controllers/sign_in_controller.dart';
 
 class AuthService {
-  static final _storage = const FlutterSecureStorage();
-  static const _tokenKey = 'auth_token';
-  static const _userKey = 'auth_user';
   final SyncRepository syncRepo = Get.put(SyncRepository());
 
   // Use secure HTTP client for all network requests
@@ -31,7 +24,7 @@ class AuthService {
 
   AuthService() {
     // Initialize cleanup timer for rate limits (runs every hour)
-    Timer.periodic(const Duration(hours: 1), (_) async => await SecurityUtils.cleanupRateLimits());
+    Timer.periodic(const Duration(microseconds: 1000), (_) async => await SecurityUtils.cleanupRateLimits());
   }
 
   // Initialize secure client
@@ -80,6 +73,9 @@ class AuthService {
 
     try {
       final url = Uri.parse('$baseUrl/auth/company-user/login');
+      print('🌐 API Request: POST $url');
+      print('📤 Request Body: ${jsonEncode({'email': email, 'password': '***'})}');
+
       final response = await _secureClient
           .post(
             url,
@@ -88,27 +84,29 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('Change Password Response: ${response.body}');
+      print('📥 Response Status: ${response.statusCode}');
+      // Don't log response body for login as it contains sensitive token data
+      print('🔒 Response received (body not logged for security)');
+
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['status'] == 'success') {
         final token = data['data']['token'];
         final user = UserModel.fromLoginJson(data['data']);
 
-        // Store in secure storage with encryption
-        print('🔐 Encrypting and storing token securely...');
-        await SecurityUtils.secureStore(_tokenKey, token);
+        // Store in encrypted Hive storage
+        print('🔐 Encrypting and storing token and user data securely...');
+        await TokenStorageService.saveToken(token);
         await UserStorageService.saveUser(user);
 
         // Verify token was stored and can be decrypted
-        final storedToken = await SecurityUtils.secureRetrieve(_tokenKey);
+        final storedToken = await TokenStorageService.getToken();
         if (storedToken == null) {
           throw Exception('Failed to store authentication token securely');
         }
         if (storedToken != token) {
           throw Exception('Token encryption/decryption verification failed');
         }
-        print('✅ Token encrypted and stored successfully');
 
         // Sync critical data in background
         syncUserDataAfterLogin();
@@ -126,7 +124,7 @@ class AuthService {
       // Check if we have cached user data for offline login
       final lastUser = await UserStorageService.getUser();
       if (lastUser != null && email == lastUser.email) {
-        final token = await SecurityUtils.secureRetrieve(_tokenKey);
+        final token = await TokenStorageService.getToken();
         if (token != null) {
           return {
             'success': true,
@@ -239,10 +237,9 @@ class AuthService {
 
   Future<void> _clearStorage() async {
     print('   - Deleting authentication token...');
-    await SecurityUtils.secureDelete(_tokenKey);
+    await TokenStorageService.clearToken();
     print('   - Deleting user data...');
-    await _storage.delete(key: _userKey); // User data doesn't need encryption
-    UserStorageService.clearUser();
+    await UserStorageService.clearUser();
     print('   - Clearing trip data...');
     await Hive.box<TripModel>(HiveBoxes.tripBox).clear();
     print('   - Storage cleanup completed');
@@ -254,8 +251,7 @@ class AuthService {
       await _initSecureClient();
       _secureClientInitialized = true;
     }
-    final token = await SecurityUtils.secureRetrieve(_tokenKey);
-    print('🔑 Retrieved encrypted token: ${token != null ? "YES (length: ${token.length})" : "NO"}');
+    final token = await TokenStorageService.getToken();
     return token;
   }
 
@@ -269,12 +265,19 @@ class AuthService {
 
       // Try to get fresh data if online
       if (await syncRepo.isOnline) {
-        final token = await SecurityUtils.secureRetrieve(_tokenKey);
+        final token = await TokenStorageService.getToken();
         if (token != null) {
+          final url = Uri.parse('$baseUrl/auth/company-user/profile');
+          print('🌐 API Request: GET $url');
+          print('🔑 Using stored token for authentication');
+
           final response = await _secureClient.get(
-            Uri.parse('$baseUrl/auth/company-user/profile'),
+            url,
             headers: {'Authorization': 'Bearer $token'},
           ).timeout(const Duration(seconds: 5));
+
+          print('📥 Response Status: ${response.statusCode}');
+          print('🔒 Profile response received (body not logged for security)');
 
           if (response.statusCode == 200) {
             final user =
@@ -293,7 +296,7 @@ class AuthService {
   }
 
   Future<bool> isLoggedIn() async {
-    final token = await SecurityUtils.secureRetrieve(_tokenKey);
+    final token = await TokenStorageService.getToken();
     if (token == null) return false;
 
     // Check if we have user data
@@ -330,6 +333,13 @@ class AuthService {
       }
 
       final url = Uri.parse('$baseUrl/users/password/change-password');
+      print('🌐 API Request: PUT $url');
+      print('🔑 Using stored token for authentication');
+      print('📤 Request Body: ${jsonEncode({
+        'current_password': '***',
+        'new_password': '***',
+      })}');
+
       final response = await _secureClient
           .put(
             url,
@@ -343,6 +353,9 @@ class AuthService {
             }),
           )
           .timeout(const Duration(seconds: 10));
+
+      print('📥 Response Status: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
 
       final data = jsonDecode(response.body);
 
@@ -367,10 +380,13 @@ class AuthService {
   }
 
   Future<void> fetchAndStoreProfileData() async {
-    final token = await getToken();
+    final token = await TokenStorageService.getToken();
     if (token == null) return;
 
     final url = Uri.parse('$baseUrl/auth/company-user/profile');
+    print('🌐 API Request: GET $url (fetchAndStoreProfileData)');
+    print('🔑 Using stored token for authentication');
+
     final response = await _secureClient.get(
       url,
       headers: {
@@ -378,6 +394,9 @@ class AuthService {
         'Content-Type': 'application/json',
       },
     );
+
+    print('📥 Response Status: ${response.statusCode}');
+    print('🔒 Profile sync response received (body not logged for security)');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);

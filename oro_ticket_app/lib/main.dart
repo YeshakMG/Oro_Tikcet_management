@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive/hive.dart';
@@ -36,17 +37,18 @@ Future<void> _initializeSecurity() async {
     final isEmulator = await SecurityUtils.isRunningOnEmulator();
     if (isEmulator) {
       print('🚫 SECURITY ALERT: App cannot run on emulator/simulator');
-      // Show error dialog and exit
-      runApp(const EmulatorErrorApp());
+      // Show error and exit
+      runApp(const SecurityErrorApp(message: 'This application cannot run on emulators or simulators for security reasons.\n\nPlease use a physical device.'));
       return;
     }
 
     // Check for rooted/jailbroken devices
     final isRooted = await SecurityUtils.isDeviceRooted();
     if (isRooted) {
-      print('⚠️ SECURITY ALERT: Device appears to be rooted/jailbroken');
-      // In production, you might want to show a warning or limit functionality
-      // For now, we'll just log it and continue
+      print('🚫 SECURITY ALERT: Device appears to be rooted/jailbroken');
+      // Show error and exit
+      runApp(const SecurityErrorApp(message: 'This application cannot run on rooted or jailbroken devices for security reasons.\n\nPlease use a standard device.'));
+      return;
     }
 
     // Initialize rate limiting cleanup
@@ -83,8 +85,24 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class EmulatorErrorApp extends StatelessWidget {
-  const EmulatorErrorApp({super.key});
+class SecurityErrorApp extends StatefulWidget {
+  final String message;
+
+  const SecurityErrorApp({super.key, required this.message});
+
+  @override
+  State<SecurityErrorApp> createState() => _SecurityErrorAppState();
+}
+
+class _SecurityErrorAppState extends State<SecurityErrorApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Exit the app after showing the error for 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      exit(0);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,8 +128,14 @@ class EmulatorErrorApp extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'This application cannot run on emulators or simulators for security reasons.\n\nPlease use a physical device.',
+                  widget.message,
                   style: AppTextStyles.body1,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Application will close in 3 seconds...',
+                  style: AppTextStyles.body2.copyWith(color: AppColors.error),
                   textAlign: TextAlign.center,
                 ),
               ],

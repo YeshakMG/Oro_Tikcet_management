@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:device_info_plus/device_info_plus.dart';
 
 class SecurityUtils {
   static final _storage = const FlutterSecureStorage();
@@ -363,6 +364,14 @@ class SecurityUtils {
 
   static Future<bool> _checkAndroidEmulator() async {
     try {
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+
+      // Check if it's running on emulator
+      if (androidInfo.isPhysicalDevice == false) {
+        return true;
+      }
+
       // Check build properties for emulator signatures
       final buildProps = await _readAndroidBuildProps();
 
@@ -432,14 +441,18 @@ class SecurityUtils {
 
   static Future<bool> _checkIOSSimulator() async {
     try {
-      // Check for simulator-specific properties
-      final result = await Process.run('sysctl', ['hw.machine']);
-      if (result.exitCode == 0) {
-        final machine = result.stdout.toString().toLowerCase();
-        if (machine.contains('x86_64') || machine.contains('i386')) {
-          // iOS simulators run on x86 architecture
-          return true;
-        }
+      final deviceInfo = DeviceInfoPlugin();
+      final iosInfo = await deviceInfo.iosInfo;
+
+      // Check if it's running on simulator
+      if (iosInfo.isPhysicalDevice == false) {
+        return true;
+      }
+
+      // Additional checks for simulator
+      final model = iosInfo.model?.toLowerCase() ?? '';
+      if (model.contains('simulator') || model.contains('x86') || model.contains('i386')) {
+        return true;
       }
 
       // Check for simulator environment variables
@@ -453,17 +466,6 @@ class SecurityUtils {
         if (Platform.environment.containsKey(varName)) {
           return true;
         }
-      }
-
-      // Check bundle identifier for simulator
-      try {
-        final result = await MethodChannel('flutter/platform')
-            .invokeMethod<String>('getBundleIdentifier');
-        if (result != null && result.contains('simulator')) {
-          return true;
-        }
-      } catch (e) {
-        // Method not available
       }
 
       return false;
