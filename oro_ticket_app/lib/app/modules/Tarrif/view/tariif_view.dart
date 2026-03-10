@@ -11,16 +11,20 @@ class TariffView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return AppScaffold(
       title: 'Tariff Management',
       userName: '',
       currentBottomNavIndex: 0,
-      actions: const [
-        Icon(Icons.more_horiz, color: Colors.white),
-        SizedBox(width: 16),
+      actions: [
+        const Icon(Icons.more_horiz, color: Colors.white),
+        SizedBox(width: paddingHorizontal),
       ],
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(paddingHorizontal),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -39,7 +43,7 @@ class TariffView extends StatelessWidget {
                           ))
                       .toList(),
                 )),
-            SizedBox(height: 20),
+            SizedBox(height: paddingVertical * 2.5),
             Obx(() => Expanded(
                   child: DataTable(
                     columns: const [

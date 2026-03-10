@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:oro_ticket_app/app/modules/sync/view/sync_view.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/user_storage_service.dart';
@@ -21,7 +22,7 @@ class AuthService {
   static const _userKey = 'auth_user';
   final SyncRepository syncRepo = Get.put(SyncRepository());
 
-  final String baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://196.189.247.242:4501/api';
 
   Future<Map<String, dynamic>> login({
     required String email,
@@ -29,6 +30,13 @@ class AuthService {
   }) async {
     try {
       final url = Uri.parse('$baseUrl/auth/company-user/login');
+      
+      // Print full request details
+      print('=== LOGIN REQUEST ===');
+      print('URL: $url');
+      print('Email: $email');
+      print('===================');
+      
       final response = await http
           .post(
             url,
@@ -38,6 +46,12 @@ class AuthService {
           .timeout(const Duration(seconds: 10));
 
       final data = jsonDecode(response.body);
+
+      // Print full response details
+      print('=== LOGIN RESPONSE ===');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: $data');
+      print('======================');
 
       if (response.statusCode == 200 && data['status'] == 'success') {
         final token = data['data']['token'];
@@ -91,42 +105,31 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      // 1️⃣ Check for unsynced trips (unless forced logout)
+      // 1️⃣ Check for unsynced trips
       final unsyncedTrips = _getUnsyncedTrips();
-      if (unsyncedTrips.isNotEmpty) {
-        if (unsyncedTrips.isNotEmpty) {
-          _redirectToHomeForSync(unsyncedTrips.length);
-          return;
-        }
+
+      // 2️⃣ Check for unsynced service charges (any service charges in the box need syncing)
+      final serviceChargeBox = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+      final hasUnsyncedServiceCharges = serviceChargeBox.isNotEmpty;
+
+      if (unsyncedTrips.isNotEmpty || hasUnsyncedServiceCharges) {
+        final tripCount = unsyncedTrips.length;
+        final serviceChargeCount = hasUnsyncedServiceCharges ? 1 : 0; // Simplified count
+
+        _redirectToHomeForSync(tripCount + serviceChargeCount);
+        return;
       }
 
-      // // 2️⃣ Proceed with normal logout
-      // final token = await _storage.read(key: _tokenKey);
-      // if (token == null) throw Exception('No token found');
-
-      // final response = await http.post(
-      //   Uri.parse('$baseUrl/auth/logout'),
-      //   headers: {
-      //     'Authorization': 'Bearer $token',
-      //     'Content-Type': 'application/json',
-      //   },
-      // );
-
-      // if (response.statusCode == 200) {
-        await _clearStorage();
-        Get.offAllNamed('/login');
-      // } else {
-      //   print('❌ Logout failed: ${response.statusCode} ${response.body}');
-      //   throw Exception('Logout failed with status ${response.statusCode}');
-      // }
+      // 3️⃣ Proceed with normal logout if everything is synced
+      await _clearStorage();
+      Get.offAllNamed('/sign-in');
     } catch (e) {
+      print('Logout error: $e');
       Get.snackbar(
         'Logout Error!',
         'Try Again Later',
-        // e.toString(),
         snackPosition: SnackPosition.BOTTOM,
       );
-      print("error: $e");
       rethrow;
     }
   }
@@ -134,8 +137,8 @@ class AuthService {
   void _redirectToHomeForSync(int unsyncedCount) {
     Get.off(SyncView());
     Get.snackbar(
-      'Unsynced Trips Found',
-      'Please sync your $unsyncedCount trip(s) before logging out',
+      'Unsynced Data Found',
+      'Please sync your data before logging out',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColors.error,
       colorText: AppColors.background,
@@ -150,10 +153,21 @@ class AuthService {
   }
 
   Future<void> _clearStorage() async {
+    // Clear secure storage
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _userKey);
+
+    // Clear user storage service
     UserStorageService.clearUser();
+
+    // Clear all Hive boxes
     await Hive.box<TripModel>(HiveBoxes.tripBox).clear();
+    await Hive.box(HiveBoxes.vehiclesBox).clear();
+    await Hive.box(HiveBoxes.departureTerminalsBox).clear();
+    await Hive.box(HiveBoxes.arrivalTerminalsBox).clear();
+    await Hive.box(HiveBoxes.commissionRulesBox).clear();
+    await Hive.box(HiveBoxes.serviceChargeBox).clear();
+    await Hive.box(HiveBoxes.userBox).clear();
   }
 
   Future<String?> getToken() => _storage.read(key: _tokenKey);

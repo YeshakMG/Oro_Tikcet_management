@@ -11,6 +11,8 @@ import 'package:oro_ticket_app/app/modules/ticket/view/ticket_view.dart';
 
 import '../modules/arrivals/bindings/arrival_bindings.dart';
 import '../modules/arrivals/views/arrival_view.dart';
+import '../modules/change_password/binding/change_password_binding.dart';
+import '../modules/change_password/view/change_password_view.dart';
 import '../modules/fleettype/bindings/fleettype_bindings.dart';
 import '../modules/fleettype/views/fleettype_view.dart';
 import '../modules/home/bindings/home_binding.dart';
@@ -94,6 +96,11 @@ class AppPages {
       name: _Paths.RESET_PASSWORD,
       page: () => const ResetPasswordView(),
       binding: ResetPasswordBinding(),
+    ),
+    GetPage(
+      name: _Paths.CHANGE_PASSWORD,
+      page: () => const ChangePasswordView(),
+      binding: ChangePasswordBinding(),
     ),
 
   ];

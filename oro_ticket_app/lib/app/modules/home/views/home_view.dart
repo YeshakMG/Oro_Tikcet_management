@@ -17,12 +17,16 @@ class HomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return Obx(() {
       final user = homeController.user.value;
       final companyName = homeController.companyName.value;
 
       return PopScope(
-        
+
         child: AppScaffold(
           title: 'Oromia Transport Agency',
           userName: user?.fullName ?? 'Employee',
@@ -33,7 +37,7 @@ class HomeView extends StatelessWidget {
                 Container(
                   color: AppColors.primary,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                      EdgeInsets.symmetric(horizontal: paddingHorizontal, vertical: paddingVertical * 2.5),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -48,7 +52,7 @@ class HomeView extends StatelessWidget {
                             style: AppTextStyles.subtitle1
                                 .copyWith(color: Colors.white),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: paddingVertical * 0.2),
                           Text(
                             user?.fullName ?? 'Employee Name',
                             style: AppTextStyles.buttonMedium
@@ -69,8 +73,8 @@ class HomeView extends StatelessWidget {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: paddingHorizontal, vertical: paddingVertical),
                               textStyle: AppTextStyles.button,
                             ),
                             child: const Text('Sync'),
@@ -86,7 +90,7 @@ class HomeView extends StatelessWidget {
                                 showProgressIndicator: true,
                                 isDismissible: false,
                               );
-        
+
                               try {
                                 await homeController.syncTrips();
                                 Get.back(); // Close loading snackbar
@@ -115,20 +119,20 @@ class HomeView extends StatelessWidget {
                     ],
                   ),
                 ),
-        
+
                 // Dashboard Metrics
                 DashboardCard(),
-                const SizedBox(height: 16),
-        
+                SizedBox(height: paddingVertical * 2),
+
                 // Daily Info Section
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: paddingHorizontal),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text("Daily Information",
                           style: AppTextStyles.heading3),
-                      const SizedBox(height: 12),
+                      SizedBox(height: paddingVertical * 1.5),
                       Obx(() => DailyInfoTile(
                             icon: Icons.credit_card_rounded,
                             label: "Total Service Charge",
@@ -145,7 +149,7 @@ class HomeView extends StatelessWidget {
                               );
                             },
                           )),
-                      const SizedBox(height: 10),
+                      SizedBox(height: paddingVertical * 1.25),
                       Obx(() => DailyInfoTile(
                             icon: Icons.calendar_month_sharp,
                             label: "Date",
@@ -154,86 +158,98 @@ class HomeView extends StatelessWidget {
                     ],
                   ),
                 ),
-        
-                const SizedBox(height: 20),
-        
+
+                SizedBox(height: paddingVertical * 2.5),
+
                 // Reset Dashboard Button
                 Padding(
-                                  padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Get.defaultDialog(
-                        title: "Reset Dashboard",
-                        middleText: "Do you want to sync service charges before resetting?",
-                        textCancel: "No",
-                        textConfirm: "Yes",
-                        confirmTextColor: Colors.white,
-                        onCancel: () {
-                          // Do nothing if "No" is clicked
-                        },
-                        onConfirm: () async {
-                          try {
-                            // Show loading snackbar
-                            Get.snackbar(
-                              'Syncing',
-                              'Please wait...',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: Colors.blueGrey,
-                              colorText: Colors.white,
-                              showProgressIndicator: true,
-                              isDismissible: false,
-                              duration: const Duration(seconds: 2), // Stay until manually closed
+                  padding: EdgeInsets.all(paddingHorizontal),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text("Reset Dashboard"),
+                              content: const Text("Do you want to sync service charges before resetting?"),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop(); // Close dialog
+                                  },
+                                  child: const Text("No"),
+                                ),
+                                TextButton(
+                                  onPressed: () async {
+                                    Navigator.of(context).pop(); // Close dialog immediately
+                                    try {
+                                      // Show loading snackbar
+                                      Get.snackbar(
+                                        'Syncing',
+                                        'Please wait...',
+                                        snackPosition: SnackPosition.BOTTOM,
+                                        backgroundColor: Colors.blueGrey,
+                                        colorText: Colors.white,
+                                        showProgressIndicator: true,
+                                        isDismissible: false,
+                                        duration: const Duration(seconds: 2), // Stay until manually closed
+                                      );
+
+                                      await homeController.syncServiceCharge();
+
+                                      // Close loading snackbar before showing success
+                                      Get.closeAllSnackbars();
+
+                                      // If sync successful → reset dashboard
+                                      homeController.resetDashboard();
+
+                                      Get.snackbar(
+                                        'Success',
+                                        'Service charge synced and dashboard reset',
+                                        snackPosition: SnackPosition.BOTTOM,
+                                        backgroundColor: AppColors.primaryHover,
+                                        colorText: AppColors.background,
+                                      );
+                                    } catch (e) {
+                                      // Close loading snackbar before showing error
+                                      Get.closeAllSnackbars();
+
+                                      // Sync failed → don't reset
+                                      Get.snackbar(
+                                        'Error',
+                                        'Failed to sync: $e',
+                                        snackPosition: SnackPosition.BOTTOM,
+                                        backgroundColor: Colors.red,
+                                        colorText: Colors.white,
+                                      );
+                                    }
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  child: const Text("Yes"),
+                                ),
+                              ],
                             );
-
-                            await homeController.syncServiceCharge();
-
-                            // Close loading snackbar before showing success
-                            Get.closeAllSnackbars();
-
-                            // If sync successful → reset dashboard
-                            homeController.resetDashboard();
-
-                            Get.back(); // Close dialog
-                            Get.snackbar(
-                              'Success',
-                              'Service charge synced and dashboard reset',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: AppColors.primaryHover,
-                              colorText: AppColors.background,
-                            );
-                          } catch (e) {
-                            // Close loading snackbar before showing error
-                            Get.closeAllSnackbars();
-
-                            // Sync failed → don't reset
-                            Get.snackbar(
-                              'Error',
-                              'Failed to sync: $e',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: Colors.red,
-                              colorText: Colors.white,
-                            );
-                          }
-                        },
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                          },
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: paddingVertical * 1.75),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text(
-                      "Reset Dashboard",
-                      style: AppTextStyles.button,
+                      child: const Text(
+                        "Reset Dashboard",
+                        style: AppTextStyles.button,
+                      ),
                     ),
                   ),
-                
-
-                ),
                 ),
               ],
             ),

@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
@@ -18,6 +19,7 @@ import 'package:ethiopian_datetime/ethiopian_datetime.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:printing/printing.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -95,22 +97,26 @@ class _TicketViewState extends State<TicketView> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return AppScaffold(
       title: "Ticket",
       userName: "Employee Name",
       currentBottomNavIndex: 1,
       showBottomNavBar: true,
-      actions: const [
-        Icon(Icons.more_horiz, color: Colors.white),
-        SizedBox(width: 16),
+      actions: [
+        const Icon(Icons.more_horiz, color: Colors.white),
+        SizedBox(width: paddingHorizontal),
       ],
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(paddingHorizontal),
           child: Column(
             children: [
               Text("Oromia Transport Agency"),
-              SizedBox(height: 20),
+              SizedBox(height: paddingVertical * 2.5),
 
               // Departure Terminal (read-only)
               TextFormField(
@@ -122,7 +128,7 @@ class _TicketViewState extends State<TicketView> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              SizedBox(height: 10),
+              SizedBox(height: paddingVertical * 1.25),
 
               // Destination
               DropdownButtonFormField<ArrivalTerminalModel>(
@@ -156,7 +162,7 @@ class _TicketViewState extends State<TicketView> {
                         ))
                     .toList(),
               ),
-              SizedBox(height: 10),
+              SizedBox(height: paddingVertical * 1.25),
 
               // Plate input with suggestion
               TextFormField(
@@ -170,7 +176,7 @@ class _TicketViewState extends State<TicketView> {
               ),
               if (suggestions.isNotEmpty)
                 Container(
-                  margin: EdgeInsets.only(top: 8),
+                  margin: EdgeInsets.only(top: paddingVertical),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     border: Border.all(color: Colors.grey.shade300),
@@ -220,10 +226,10 @@ class _TicketViewState extends State<TicketView> {
                     },
                   ),
                 ),
-              SizedBox(height: 20),
+              SizedBox(height: paddingVertical * 2.5),
 
               // Ticket Card
-              if (_canShowTicket) Obx(() => _redesignedTicketCard()),
+              if (_canShowTicket) Obx(() => _redesignedTicketCard(size, paddingHorizontal, paddingVertical)),
             ],
           ),
         ),
@@ -231,7 +237,7 @@ class _TicketViewState extends State<TicketView> {
     );
   }
 
-  Widget _redesignedTicketCard() {
+  Widget _redesignedTicketCard(Size size, double paddingHorizontal, double paddingVertical) {
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Column(
@@ -415,149 +421,227 @@ class _TicketViewState extends State<TicketView> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
-              final serviceChargeBox =
-                  Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
-
-              final now = DateTime.now();
-              final today = DateTime(now.year, now.month, now.day);
-
-              double parseSafe(String value) =>
-                  double.tryParse(value.split(' ').first) ?? 0.0;
-
-              // Seat count from controller (string to int)
-              final int seatCount =
-                  int.tryParse(_ticketController.seatNo.value) ?? 1;
-
-              // Multiply service charge by number of selected seats
-              final double totalServiceCharge =
-                  parseSafe(_ticketController.serviceCharge.value) * seatCount;
-
-              final trip = TripModel(
-                vehicleId: _ticketController.vehicleId.value,
-                departureTerminalId:
-                    _ticketController.departureTerminalId.value,
-                arrivalTerminalId: _ticketController.arrivalTerminalId.value,
-                dateAndTime: now,
-                km: parseSafe(_ticketController.km.value),
-                tariff: parseSafe(_ticketController.tariff.value),
-                serviceCharge: parseSafe(_ticketController.serviceCharge.value),
-                totalPaid: parseSafe(_ticketController.totalPayment.value),
-                employeeId: homeController.user.value!.id,
-                companyId: homeController.companyId.value,
-                departureName: selectedDeparture.toString(),
-                arrivalName: _ticketController.locationTo.value,
+              // Show confirmation dialog - prevent dismissing by tapping outside
+              final result = await showDialog<bool>(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  title: Text("Confirm Action", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  content: Text("Do you want to proceed with printing and saving?"),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context, false);
+                      },
+                      child: Text("Cancel", style: TextStyle(color: Colors.grey)),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context, true);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                      child: Text("Proceed", style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
               );
 
-              // Debug TripModel print
-              print("🚌 TripModel Debug Info:");
-              print("Vehicle ID: ${trip.vehicleId}");
-              print(
-                  "From: ${trip.departureTerminalId}, To: ${trip.arrivalTerminalId}");
-              print(
-                  "KM: ${trip.km}, Tariff: ${trip.tariff}, Charge: ${trip.serviceCharge}");
-              print(
-                  "Total Paid: ${trip.totalPaid}, Employee: ${trip.employeeId}, Company: ${trip.companyId}");
-              print("Date: ${trip.dateAndTime}");
+              // Handle result - proceed only if result is explicitly true
+              if (result != true) {
+                return; // User cancelled or dismissed, do nothing
+              }
 
-              final tripKey = await tripBox.add(trip);
+              // User clicked Proceed - execute save and print logic
+
+              // Show loading dialog
+              Get.dialog(
+                PopScope(
+                  canPop: false,
+                  child: AlertDialog(
+                    content: Row(
+                      children: [
+                        CircularProgressIndicator(color: AppColors.primary),
+                        SizedBox(width: 20),
+                        Text("Processing...", style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+                barrierDismissible: false,
+              );
+
+              // User clicked Proceed - execute save and print logic
+              try {
+                final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
+                final serviceChargeBox =
+                    Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+
+                double parseSafe(String value) =>
+                    double.tryParse(value.split(' ').first) ?? 0.0;
+
+                // Seat count from controller (string to int)
+                final int seatCount =
+                    int.tryParse(_ticketController.seatNo.value) ?? 1;
+
+                // Multiply service charge by number of selected seats
+                final double totalServiceCharge =
+                    parseSafe(_ticketController.serviceCharge.value) * seatCount;
+
+                final trip = TripModel(
+                  vehicleId: _ticketController.vehicleId.value,
+                  departureTerminalId:
+                      _ticketController.departureTerminalId.value,
+                  arrivalTerminalId: _ticketController.arrivalTerminalId.value,
+                  dateAndTime: now,
+                  km: parseSafe(_ticketController.km.value),
+                  tariff: parseSafe(_ticketController.tariff.value),
+                  serviceCharge: parseSafe(_ticketController.serviceCharge.value),
+                  totalPaid: parseSafe(_ticketController.totalPayment.value),
+                  employeeId: homeController.user.value!.id,
+                  companyId: homeController.companyId.value,
+                  departureName: selectedDeparture.toString(),
+                  arrivalName: _ticketController.locationTo.value,
+                );
+
+                // Debug TripModel payload
+                print("===========================================");
+                print("🚌 TRIP PAYLOAD:");
+                print("===========================================");
+                print(jsonEncode(trip.toJson()));
+                print("===========================================");
+
+                final tripKey = await tripBox.add(trip);
 
                 // Check if a charge already exists for today, terminal, and employee
                 final existingEntry =
                     serviceChargeBox.values.firstWhereOrNull((entry) {
                   final entryDate = DateTime(entry.dateTime.year,
                       entry.dateTime.month, entry.dateTime.day);
-                      
+                  
                   return entry.departureTerminal == trip.departureTerminalId &&
                       entry.employeeId == trip.employeeId &&
                       entryDate == today;
-                      
+                  
                 });
 
-              if (existingEntry != null) {
-                // Add new service charge to existing
-                existingEntry.serviceChargeAmount += totalServiceCharge;
-                await existingEntry.save();
+                if (existingEntry != null) {
+                  // Add new service charge to existing
+                  existingEntry.serviceChargeAmount += totalServiceCharge;
+                  await existingEntry.save();
 
-                // Debug updated ServiceChargeModel
-                print("💵 Updated ServiceChargeModel:");
-                print(
-                    "Terminal: ${existingEntry.departureTerminal}, Employee: ${existingEntry.employeeId}");
-                print(
-                    "New Charge: ${existingEntry.serviceChargeAmount}, Date: ${existingEntry.dateTime}");
-              } else {
-                // Create new entry
-                final newCharge = ServiceChargeModel(
-                  departureTerminal: trip.departureTerminalId,
-                  dateTime: now,
-                  serviceChargeAmount: totalServiceCharge,
-                  employeeName: homeController.user.value!.fullName,
-                  companyId: trip.companyId,
-                  employeeId: trip.employeeId,
+                  // Debug updated ServiceChargeModel payload
+                  print("===========================================");
+                  print("💵 SERVICE CHARGE PAYLOAD (UPDATED):");
+                  print("===========================================");
+                  print(jsonEncode(existingEntry.toJson()));
+                  print("===========================================");
+                } else {
+                  // Create new entry
+                  final newCharge = ServiceChargeModel(
+                    departureTerminal: trip.departureTerminalId,
+                    dateTime: now,
+                    serviceChargeAmount: totalServiceCharge,
+                    employeeName: homeController.user.value!.fullName,
+                    companyId: trip.companyId,
+                    employeeId: trip.employeeId,
+                  );
+
+                  await serviceChargeBox.add(newCharge);
+
+                  // Debug new ServiceChargeModel payload
+                  print("===========================================");
+                  print("💰 SERVICE CHARGE PAYLOAD (NEW):");
+                  print("===========================================");
+                  print(jsonEncode(newCharge.toJson()));
+                  print("===========================================");
+                }
+                final ticketText = formatTicketText(
+                    companyName: homeController.companyName.value,
+                    companyPhoneNo: homeController.companyPhoneNo.value,
+                    region: _ticketController.region.value,
+                    plateNumber: _ticketController.plateNumber.value,
+                    from: trip.departureName,
+                    to: trip.arrivalName,
+                    dateTime: trip.dateAndTime,
+                    seatNo: _ticketController.seatNo.value,
+                    association: _ticketController.associations.value,
+                    level: _ticketController.level.value,
+                    km: trip.km,
+                    tariff: trip.tariff,
+                    serviceCharge:
+                        parseSafe(_ticketController.serviceCharge.value),
+                    totalPayment: trip.totalPaid,
+                    agent: homeController.user.value!.fullName);
+                final qrcodeData =
+                    '${trip.departureName}\n${trip.arrivalName}\n${trip.dateAndTime}\n${_ticketController.region}${_ticketController.plateNumber.value}';
+
+                final printer = TicketPrinter();
+
+                final exitTicket = formatExitTicketText(
+                    companyName: homeController.companyName.value,
+                    companyPhoneNo: homeController.companyPhoneNo.value,
+                    region: _ticketController.region.value,
+                    plateNumber: _ticketController.plateNumber.value,
+                    from: trip.departureName,
+                    to: trip.arrivalName,
+                    dateTime: trip.dateAndTime,
+                    seatCapacity: _ticketController.seatNo.value,
+                    association: _ticketController.associations.value,
+                    level: _ticketController.level.value,
+                    agent: homeController.user.value!.fullName);
+                // Get seat count for number of copies to print
+                final copies = int.tryParse(_ticketController.seatNo.value) ?? 1;
+                debugPrint('DEBUG: Printing $copies ticket(s) for seat capacity: ${_ticketController.seatNo.value}');
+
+                await printer.connectAndPrint(
+                    text: ticketText,
+                    qrCodeData: qrcodeData,
+                    copies: copies,
+                    exitText: exitTicket);
+
+                // Close loading dialog
+                Get.back();
+
+                // Show success message
+                Get.dialog(
+                  AlertDialog(
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green, size: 48),
+                        SizedBox(height: 16),
+                        Text("Successfully ordered tickets!", 
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    actions: [
+                      ElevatedButton(
+                        onPressed: () => Get.back(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                        ),
+                        child: Text("OK"),
+                      ),
+                    ],
+                  ),
                 );
-
-                await serviceChargeBox.add(newCharge);
-
-                // Debug new ServiceChargeModel
-                print("💰 New ServiceChargeModel:");
-                print(
-                    "Terminal: ${newCharge.departureTerminal}, Employee: ${newCharge.employeeId}");
-                print(
-                    "Charge: ${newCharge.serviceChargeAmount}, Date: ${newCharge.dateTime}");
+              } catch (e) {
+                // Close loading dialog on error
+                Get.back();
+                // Show error message
+                Get.snackbar(
+                  "Error",
+                  "Failed to process ticket: $e",
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red.withValues(alpha: 0.8),
+                  colorText: Colors.white,
+                );
               }
-              final ticketText = formatTicketText(
-                  companyName: homeController.companyName.value,
-                  companyPhoneNo: homeController.companyPhoneNo.value,
-                  region: _ticketController.region.value,
-                  plateNumber: _ticketController.plateNumber.value,
-                  from: trip.departureName,
-                  to: trip.arrivalName,
-                  dateTime: trip.dateAndTime,
-                  seatNo: _ticketController.seatNo.value,
-                  association: _ticketController.associations.value,
-                  level: _ticketController.level.value,
-                  km: trip.km,
-                  tariff: trip.tariff,
-                  serviceCharge:
-                      parseSafe(_ticketController.serviceCharge.value),
-                  totalPayment: trip.totalPaid,
-                  agent: homeController.user.value!.fullName);
-              final qrcodeData =
-                  '${trip.departureName}\n${trip.arrivalName}\n${trip.dateAndTime}\n${_ticketController.region}${_ticketController.plateNumber.value}';
-
-              final printer = TicketPrinter();
-
-              final exitTicket = formatExitTicketText(
-                  companyName: homeController.companyName.value,
-                  companyPhoneNo: homeController.companyPhoneNo.value,
-                  region: _ticketController.region.value,
-                  plateNumber: _ticketController.plateNumber.value,
-                  from: trip.departureName,
-                  to: trip.arrivalName,
-                  dateTime: trip.dateAndTime,
-                  seatCapacity: _ticketController.seatNo.value,
-                  association: _ticketController.associations.value,
-                  level: _ticketController.level.value,
-                  agent: homeController.user.value!.fullName);
-              final copies = 1;
-              // int.tryParse(_ticketController.seatNo.value) ?? 1;
-
-              await printer.connectAndPrint(
-                  text: ticketText,
-                  qrCodeData: qrcodeData,
-                  copies: copies,
-                  exitText: exitTicket);
-
-              // Success Feedback Snackbar
-              Get.snackbar(
-                "Saved",
-                "Ticket & Service Charge updated and printed successfully",
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.green.withValues(alpha: 0.8),
-                colorText: Colors.white,
-              );
-              final savedTrip = tripBox.get(tripKey);
-              if (savedTrip != null) {}
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,

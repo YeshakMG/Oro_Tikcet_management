@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
+import 'package:oro_ticket_app/app/modules/home/views/home_view.dart';
 import 'package:oro_ticket_app/app/modules/reset_password/view/reset_password_view.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/views/sign_in_view.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
@@ -21,11 +22,17 @@ void main() async {
   Get.put(HomeController());
   Get.put(ResetPasswordController());
 
-  runApp(const MyApp());
+  // Check if user is already logged in
+  final authService = Get.find<AuthService>();
+  final isLoggedIn = await authService.isLoggedIn();
+
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -34,8 +41,8 @@ class MyApp extends StatelessWidget {
 
     return GetMaterialApp(
       theme: AppTheme.lightTheme,
-      // ✅ If first install → ResetPasswordView, else → SignInView
-      home: isFirstInstall ? const ResetPasswordView() : SignInView(),
+      // If user is already logged in, go to home, otherwise go to sign-in
+      home: isLoggedIn ? HomeView() : SignInView(),
       getPages: AppPages.routes,
       title: 'Oro Ticket App',
       debugShowCheckedModeBanner: false,

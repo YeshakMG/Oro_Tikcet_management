@@ -14,6 +14,7 @@ import 'package:oro_ticket_app/data/locals/service/arrival_storage_service.dart'
 import 'package:oro_ticket_app/data/locals/service/commission_rule_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/trip_storage_service.dart';
+import 'package:oro_ticket_app/data/locals/service/user_storage_service.dart';
 
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
 
@@ -23,7 +24,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SyncRepository {
-  final String baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://196.189.247.242:4501/api';
 
   final storage = FlutterSecureStorage();
   final Connectivity _connectivity = Connectivity();
@@ -85,15 +86,25 @@ class SyncRepository {
       final token = await authService.getToken();
       final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
 
+      // Get the assigned terminal from local storage
+      final terminal = DepartureTerminalStorageService.getTerminal();
+      final terminalId = terminal?.id;
+      
+      if (terminalId == null) {
+        print('⚠️ No terminal assigned to user, cannot fetch vehicles');
+        return;
+      }
+
       int currentPage = 1;
       bool hasMorePages = true;
       int totalSynced = 0;
       final Set<String> apiVehicleIds = {};
 
       while (hasMorePages) {
+        print('🔄 Fetching vehicles page $currentPage...');
         final response = await http.get(
           Uri.parse(
-              '$baseUrl/vehicles/company-user/my-vehicles?page=$currentPage'),
+              '$baseUrl/vehicles/company-user/my-vehicles?terminal_id=$terminalId&page=$currentPage'),
           headers: {
             'Authorization': 'Bearer $token',
             'Accept': 'application/json',
@@ -102,9 +113,27 @@ class SyncRepository {
 
         if (response.statusCode == 200) {
           final json = jsonDecode(response.body);
-          final vehicles = json['data']['vehicles'] as List<dynamic>;
-          final pagination = json['data']['pagination'];
-
+          print('📥 API Response keys: ${json.keys}'); // Debug: see response structure
+          
+          // Try different possible pagination paths
+          Map<String, dynamic>? pagination;
+          var vehicles = <dynamic>[];
+          
+          // Check if data.vehicles exists directly
+          if (json['data'] is Map) {
+            final data = json['data'] as Map<String, dynamic>;
+            vehicles = data['vehicles'] as List<dynamic>? ?? [];
+            pagination = data['pagination'] as Map<String, dynamic>?;
+            
+            // Also try 'meta' for pagination (common Laravel format)
+            if (pagination == null) {
+              pagination = data['meta'] as Map<String, dynamic>?;
+            }
+          }
+          
+          print('📦 Found ${vehicles.length} vehicles on page $currentPage');
+          print('📄 Pagination data: $pagination');
+          
           final validVehicles = vehicles
               .where((e) => e['deleted_at'] == null)
               .map((e) => VehicleModel.fromJson(e))
@@ -119,9 +148,31 @@ class SyncRepository {
 
           totalSynced += validVehicles.length;
           print(
-              '📦 Synced ${validVehicles.length} vehicles from page $currentPage');
+              '✅ Synced ${validVehicles.length} vehicles from page $currentPage (total: $totalSynced)');
 
-          hasMorePages = pagination['current_page'] < pagination['last_page'];
+          // Handle pagination safely - check multiple possible structures
+          if (pagination != null && pagination.isNotEmpty) {
+            // Try different pagination field names
+            final currentPageVal = pagination['current_page'] ?? 
+                                   pagination['page'] ?? 
+                                   pagination['currentPage'] ?? 
+                                   1;
+            final lastPageVal = pagination['last_page'] ?? 
+                                pagination['total_pages'] ?? 
+                                pagination['lastPage'] ?? 
+                                pagination['total'] != null 
+                                  ? ((pagination['total'] as int) / (pagination['per_page'] ?? pagination['perPage'] ?? 15)).ceil()
+                                  : 1;
+            
+            print('📊 Pagination: current=$currentPageVal, last=$lastPageVal');
+            hasMorePages = currentPageVal < lastPageVal;
+          } else {
+            // No pagination info - check if there's more data by seeing if we got a full page
+            // If we got 10 vehicles (common page size), assume there might be more pages
+            // Continue fetching until we get fewer vehicles than the page size
+            hasMorePages = validVehicles.length >= 10; // Common page size is 10
+            print('📊 No pagination info, checking if more pages: hasMore=$hasMorePages (got ${validVehicles.length} vehicles)');
+          }
           currentPage++;
         } else {
           print('⚠️ API returned ${response.statusCode}, stopping sync');
@@ -149,6 +200,16 @@ class SyncRepository {
     } catch (e) {
       print('❌ Error getting local vehicles: $e');
       return [];
+    }
+  }
+
+  Future<void> clearLocalVehicles() async {
+    try {
+      final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
+      await box.clear();
+      print('🗑️ Local vehicles cleared');
+    } catch (e) {
+      print('❌ Error clearing local vehicles: $e');
     }
   }
 
@@ -238,8 +299,9 @@ class SyncRepository {
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
 
+    // New API endpoint for terminals with destinations
     final response = await http.get(
-      Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
+      Uri.parse('$baseUrl/terminals/company-user/arrival-terminals'),
       headers: {
         'Authorization': 'Bearer $token',
         'Accept': 'application/json',
@@ -248,73 +310,57 @@ class SyncRepository {
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> json = jsonDecode(response.body);
-      final vehicles = json['data']['vehicles'] as List<dynamic>;
-
+      print('📡 Arrival Terminals API Response: $json');
+      
+      // Handle the new response format - extract arrival_terminals from data
+      final Map<String, dynamic>? data = json['data'] as Map<String, dynamic>?;
+      final List<dynamic> terminals = data?['arrival_terminals'] is List ? data!['arrival_terminals'] : [];
+      
       final arrivalTerminals = <ArrivalTerminalModel>[];
+      final seenTerminalIds = <String>{};
 
-      for (final vehicle in vehicles) {
-        final destinations =
-            vehicle['vehicleTerminalDestinations'] as List<dynamic>?;
-
-        if (destinations != null) {
-          for (final dest in destinations) {
-            final terminalDestination = dest['terminalDestination'];
-
-            if (terminalDestination != null) {
-              print('Full terminalDestination JSON: $terminalDestination');
-              final arrivalTerminal =
-                  terminalDestination['arrivalTerminal'] ?? {};
-
-              // Debug print raw arrivalTerminal JSON to inspect actual content
-              print('Raw arrivalTerminal JSON: $arrivalTerminal');
-
-              // Try to extract id and name directly or check nested keys if needed
-              // Example if nested deeper, you can add logic here after seeing the debug output
-
-              final terminalId = arrivalTerminal['id'] ??
-                  arrivalTerminal['arrival_terminal_id'] ??
-                  '';
-
-              final terminalName = arrivalTerminal['name'] ??
-                  arrivalTerminal['terminal_name'] ??
-                  '';
-
-              print("Parsed terminal: id=$terminalId, name=$terminalName");
-
-              // Handle tariff conversion
-              dynamic tariffValue = vehicle['tariff']?['tariff'] ?? 0.0;
-              double parsedTariff = 0.0;
-
-              if (tariffValue is String) {
-                parsedTariff = double.tryParse(tariffValue) ?? 0.0;
-              } else if (tariffValue is int) {
-                parsedTariff = tariffValue.toDouble();
-              } else if (tariffValue is double) {
-                parsedTariff = tariffValue;
-              }
-
-              // Handle distance conversion
-              dynamic distanceValue = terminalDestination['distance'] ?? 0.0;
-              double parsedDistance = 0.0;
-
-              if (distanceValue is String) {
-                parsedDistance = double.tryParse(distanceValue) ?? 0.0;
-              } else if (distanceValue is int) {
-                parsedDistance = distanceValue.toDouble();
-              } else if (distanceValue is double) {
-                parsedDistance = distanceValue;
-              }
-
-              arrivalTerminals.add(
-                ArrivalTerminalModel.fromJson({
-                  'id': terminalId,
-                  'name': terminalName,
-                  'tariff': parsedTariff,
-                  'distance': parsedDistance,
-                }),
-              );
-            }
+      for (final terminal in terminals) {
+        final terminalId = terminal['terminal_id']?.toString() ?? '';
+        final terminalName = terminal['terminal_name']?.toString() ?? '';
+        
+        // Avoid duplicates
+        if (terminalId.isNotEmpty && !seenTerminalIds.contains(terminalId)) {
+          seenTerminalIds.add(terminalId);
+          
+          // Handle tariff conversion
+          dynamic tariffValue = terminal['tariff'] ?? 0.0;
+          double parsedTariff = 0.0;
+          
+          if (tariffValue is String) {
+            parsedTariff = double.tryParse(tariffValue) ?? 0.0;
+          } else if (tariffValue is int) {
+            parsedTariff = tariffValue.toDouble();
+          } else if (tariffValue is double) {
+            parsedTariff = tariffValue;
           }
+          
+          // Handle distance conversion
+          dynamic distanceValue = terminal['distance'] ?? 0.0;
+          double parsedDistance = 0.0;
+          
+          if (distanceValue is String) {
+            parsedDistance = double.tryParse(distanceValue) ?? 0.0;
+          } else if (distanceValue is int) {
+            parsedDistance = distanceValue.toDouble();
+          } else if (distanceValue is double) {
+            parsedDistance = distanceValue;
+          }
+          
+          arrivalTerminals.add(
+            ArrivalTerminalModel.fromJson({
+              'id': terminalId,
+              'name': terminalName,
+              'tariff': parsedTariff,
+              'distance': parsedDistance,
+            }),
+          );
+          
+          print("Parsed terminal from new API: id=$terminalId, name=$terminalName, distance=$parsedDistance, tariff=$parsedTariff");
         }
       }
 
@@ -322,8 +368,10 @@ class SyncRepository {
       await syncArrivalTerminals(
         arrivalTerminals.map((e) => e.toJson()).toList(),
       );
+      
+      print('Total arrival terminals saved: ${arrivalTerminals.length}');
     } else {
-      throw Exception('Failed to sync arrival terminals: ${response.body}');
+      throw Exception('Failed to sync arrival terminals: ${response.statusCode} - ${response.body}');
     }
   }
 

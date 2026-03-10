@@ -18,16 +18,20 @@ class SyncView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return AppScaffold(
       title: "Sync Tickets",
       userName: '',
-      actions: const [
-        Icon(Icons.more_horiz, color: Colors.white),
-        SizedBox(width: 16),
+      actions: [
+        const Icon(Icons.more_horiz, color: Colors.white),
+        SizedBox(width: paddingHorizontal),
       ],
       body: Column(
         children: [
-          _buildTopBar(),
+          _buildTopBar(size, paddingHorizontal),
           Expanded(
             child: Obx(() {
               final tickets = controller.filteredTickets;
@@ -39,7 +43,7 @@ class SyncView extends StatelessWidget {
                 child: ListView.builder(
                   itemCount: tickets.length,
                   itemBuilder: (context, index) {
-                    return _buildTicketCard(tickets[index]);
+                    return _buildTicketCard(tickets[index], size, paddingHorizontal, paddingVertical);
                   },
                 ),
               );
@@ -50,9 +54,11 @@ class SyncView extends StatelessWidget {
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(Size size, double paddingHorizontal) {
+    final spacing = size.width * 0.02; // 2% for spacing
+
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      padding: EdgeInsets.all(paddingHorizontal),
       child: Row(
         children: [
           Expanded(
@@ -66,24 +72,12 @@ class SyncView extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: controller.refreshTickets,
-            icon: Icon(Icons.sync, color: AppColors.card),
-            label: Text("Sync", style: AppTextStyles.buttonSmall),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildTicketCard(TripModel trip) {
+  Widget _buildTicketCard(TripModel trip, Size size, double paddingHorizontal, double paddingVertical) {
     final vehicleBox = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
     final departureBox =
         Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
@@ -121,7 +115,7 @@ class SyncView extends StatelessWidget {
     final ethDate = trip.dateAndTime.convertToEthiopian();
 
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: EdgeInsets.symmetric(horizontal: paddingHorizontal, vertical: paddingVertical),
       elevation: 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -136,7 +130,7 @@ class SyncView extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(paddingHorizontal),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -171,7 +165,7 @@ class SyncView extends StatelessWidget {
               Row(
                 children: [
                   Icon(Icons.place, size: 18, color: Colors.red),
-                  SizedBox(width: 8),
+                  SizedBox(width: size.width * 0.02),
                   Expanded(
                     child: Text(
                       "${departure.name} → ${arrival.name}",
@@ -180,34 +174,34 @@ class SyncView extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: 8),
+              SizedBox(height: paddingVertical),
 
               // Association information
               Row(
                 children: [
                   Icon(Icons.business, size: 18, color: Colors.blue),
-                  SizedBox(width: 8),
+                  SizedBox(width: size.width * 0.02),
                   Text(
                     vehicle.associationName,
                     style: AppTextStyles.buttonMediumB,
                   ),
                 ],
               ),
-              SizedBox(height: 12),
+              SizedBox(height: paddingVertical * 1.5),
               Row(
                 children: [
                   Icon(Icons.event_seat, size: 18, color: Colors.blue),
-                  SizedBox(width: 8),
+                  SizedBox(width: size.width * 0.02),
                   Text(
                     'Seat Number-${vehicle.seatCapacity.toString()}',
                     style: AppTextStyles.buttonMediumB,
                   ),
                 ],
               ),
-              SizedBox(height: 12),
+              SizedBox(height: paddingVertical * 1.5),
               // Pricing section
               Container(
-                padding: EdgeInsets.all(12),
+                padding: EdgeInsets.all(paddingHorizontal),
                 decoration: BoxDecoration(
                   color: Colors.blue.shade100.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(10),
@@ -222,14 +216,14 @@ class SyncView extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(height: 12),
+              SizedBox(height: paddingVertical * 1.5),
 
               // Date and time
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Icon(Icons.access_time, size: 16, color: Colors.grey),
-                  SizedBox(width: 4),
+                  SizedBox(width: size.width * 0.01),
                   Text(
                     "${ethDate.day}-${ethDate.month}-${ethDate.year} ${ethDate.hour}:${ethDate.minute.toString().padLeft(2, '0')}",
                     style: AppTextStyles.caption.copyWith(

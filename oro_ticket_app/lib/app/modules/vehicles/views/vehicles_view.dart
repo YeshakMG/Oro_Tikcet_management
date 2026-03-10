@@ -9,52 +9,54 @@ import 'package:pull_to_refresh/pull_to_refresh.dart';
 class VehiclesView extends StatelessWidget {
   final VehiclesController controller = Get.put(VehiclesController());
   final RefreshController _refreshController = RefreshController();
-  final ScrollController _scrollController = ScrollController();
 
-  VehiclesView({super.key}) {
-    _scrollController.addListener(_scrollListener);
-  }
-
-  void _scrollListener() {
-    if (_scrollController.position.pixels ==
-        _scrollController.position.maxScrollExtent) {
-      controller.loadMoreVehicles();
-    }
-  }
+  VehiclesView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return AppScaffold(
       title: 'Vehicles',
       userName: 'Employee',
       showBottomNavBar: true,
       currentBottomNavIndex: 0,
       actions: [
-        Obx(
-          () => controller.isSyncing.value
-              ? const Padding(
-                  padding: EdgeInsets.only(right: 16),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
+        Obx(() => IconButton(
+          icon: controller.isSyncing.value
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
                   ),
                 )
-              : IconButton(
-                  icon: const Icon(Icons.sync),
-                  onPressed: () => controller.loadLocalVehicles(),
-                  color: AppColors.background,
-                ),
-        ),
+              : const Icon(Icons.refresh, color: Colors.white),
+          onPressed: controller.isSyncing.value ? null : controller.refreshVehicles,
+          tooltip: 'Refresh vehicles',
+        )),
       ],
       body: Column(
         children: [
+          // Vehicles count header
+          Obx(() => Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(
+                vertical: paddingVertical, horizontal: paddingHorizontal),
+            color: AppColors.primary,
+            child: Text(
+              'Total Vehicles: ${controller.allVehicles.length}',
+              style: AppTextStyles.subtitle1.copyWith(color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
+          )),
+
           // 🔍 Full-width search bar
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: EdgeInsets.all(paddingHorizontal),
             child: TextField(
               onChanged: controller.filterVehicles,
               decoration: InputDecoration(
@@ -82,7 +84,7 @@ class VehiclesView extends StatelessWidget {
               return Expanded(
                 child: Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(paddingHorizontal),
                     child: Text(
                       controller.errorMessage.value,
                       textAlign: TextAlign.center,
@@ -102,15 +104,14 @@ class VehiclesView extends StatelessWidget {
                   _refreshController.refreshCompleted();
                 },
                 child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: controller.paginatedVehicles.length + 1,
+                  itemCount: controller.filteredVehicles.length + 1,
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       // Header row
                       return Container(
                         color: AppColors.cardAlt,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 16),
+                        padding: EdgeInsets.symmetric(
+                            vertical: paddingVertical, horizontal: paddingHorizontal),
                         child: const Row(
                           children: [
                             Expanded(
@@ -130,14 +131,14 @@ class VehiclesView extends StatelessWidget {
                       );
                     }
 
-                    final vehicle = controller.paginatedVehicles[index - 1];
+                    final vehicle = controller.filteredVehicles[index - 1];
                     final rowColor =
                         (index % 2 == 0) ? Colors.grey[100] : Colors.white;
 
                     return Container(
                       color: rowColor,
                       child: ExpansionTile(
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                        tilePadding: EdgeInsets.symmetric(horizontal: paddingHorizontal),
                         title: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
@@ -146,7 +147,7 @@ class VehiclesView extends StatelessWidget {
                               alignment: Alignment.centerLeft,
                               child: Padding(
                                 padding:
-                                    const EdgeInsets.symmetric(horizontal: 10),
+                                    EdgeInsets.symmetric(horizontal: paddingHorizontal * 0.625),
                                 child: Text(
                                   "${vehicle.plateRegion}${vehicle.plateNumber}",
                                   style: AppTextStyles.buttonMediumB,
@@ -159,7 +160,7 @@ class VehiclesView extends StatelessWidget {
                               alignment: Alignment.center,
                               child: Padding(
                                 padding:
-                                    const EdgeInsets.symmetric(horizontal: 10),
+                                    EdgeInsets.symmetric(horizontal: paddingHorizontal * 0.625),
                                 child: Text(
                                   vehicle.vehicleLevel,
                                 ),
@@ -169,7 +170,7 @@ class VehiclesView extends StatelessWidget {
                               alignment: Alignment.centerRight,
                               child: Padding(
                                 padding:
-                                    const EdgeInsets.symmetric(horizontal: 15),
+                                    EdgeInsets.symmetric(horizontal: paddingHorizontal * 0.9375),
                                 child: Text(
                                   vehicle.fleetType,
                                   style: AppTextStyles.buttonMedium,
@@ -180,7 +181,7 @@ class VehiclesView extends StatelessWidget {
                         ),
                         children: [
                           Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: EdgeInsets.all(paddingHorizontal * 0.5),
                             child: Align(
                               alignment: Alignment.centerLeft,
                               child: Text(
@@ -189,7 +190,7 @@ class VehiclesView extends StatelessWidget {
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: EdgeInsets.all(paddingHorizontal * 0.5),
                             child: Align(
                               alignment: Alignment.centerLeft,
                               child: Row(
@@ -197,8 +198,8 @@ class VehiclesView extends StatelessWidget {
                                   const Text("Status: ",
                                       style: AppTextStyles.caption3),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 4),
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: paddingHorizontal * 0.625, vertical: paddingVertical * 0.5),
                                     decoration: BoxDecoration(
                                       color: (vehicle.status == "active")
                                           ? Colors.green

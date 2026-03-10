@@ -20,7 +20,11 @@ class HomeController extends GetxController {
   final RxString ethiopianDate = ''.obs;
   final RxString serviceChargeText = ''.obs;
   final RxString companyPhoneNo = ''.obs;
+  final RxBool isDashboardReset = false.obs;
   final SyncRepository _syncRepository = SyncRepository();
+
+  // Get the AuthService instance from GetX
+  AuthService get _authService => Get.find<AuthService>();
 
   @override
   void onInit() {
@@ -31,14 +35,14 @@ class HomeController extends GetxController {
   }
 
   void loadUser() async {
-    final token = await AuthService().getToken();
+    final token = await _authService.getToken();
 
     if (token == null) {
       debugPrint('No token found — skipping user load');
       return;
     }
 
-    final loadedUser = await AuthService().getUser();
+    final loadedUser = await _authService.getUser();
 
     if (loadedUser != null && loadedUser.companyName != null) {
       user.value = loadedUser;
@@ -182,6 +186,7 @@ class HomeController extends GetxController {
 
   void resetDashboard() {
     serviceChargeToday.value = 0.0;
+    isDashboardReset.value = true;
     // Reset other dashboard data if any
   }
 

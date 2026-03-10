@@ -13,6 +13,10 @@ class LocalReportView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return AppScaffold(
       title: 'Local Report',
       userName: 'Employee Name',
@@ -21,7 +25,7 @@ class LocalReportView extends StatelessWidget {
         children: [
           // 🔍 Full-width search bar
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: EdgeInsets.all(paddingHorizontal),
             child: Row(
               children: [
                 Expanded(
@@ -62,8 +66,8 @@ class LocalReportView extends StatelessWidget {
                       // Header row
                       return Container(
                         color: AppColors.cardAlt,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 16),
+                        padding: EdgeInsets.symmetric(
+                            vertical: paddingVertical, horizontal: paddingHorizontal),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -93,7 +97,7 @@ class LocalReportView extends StatelessWidget {
                     return Container(
                       color: rowColor,
                       child: ExpansionTile(
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                        tilePadding: EdgeInsets.symmetric(horizontal: paddingHorizontal),
                         title: Row(
                           children: [
                             // Plate
@@ -141,8 +145,8 @@ class LocalReportView extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 3),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: paddingHorizontal, vertical: paddingVertical * 0.15),
                               child: Text(
                                   "Association: ${trip.associationName}",
                                   style: AppTextStyles.caption3),
@@ -151,8 +155,8 @@ class LocalReportView extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 3),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: paddingHorizontal, vertical: paddingVertical * 0.15),
                               child: Text("Level: ${trip.vehicleLevel}",
                                   style: AppTextStyles.caption3),
                             ),
@@ -160,8 +164,8 @@ class LocalReportView extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 3),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: paddingHorizontal, vertical: paddingVertical * 0.15),
                               child: Text(
                                   "Price: ${trip.price.toStringAsFixed(2)}",
                                   style: AppTextStyles.caption3),
@@ -170,8 +174,8 @@ class LocalReportView extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 3),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: paddingHorizontal, vertical: paddingVertical * 0.15),
                               child: Text(
                                   "Service Charge: ${trip.serviceCharge.toStringAsFixed(2)}",
                                   style: AppTextStyles.caption3),
@@ -187,15 +191,6 @@ class LocalReportView extends StatelessWidget {
           ),
         ],
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(
-            Icons.download,
-            color: AppColors.background,
-          ),
-          onPressed: () => controller.generatePDFReport(),
-        ),
-      ],
     );
   }
 }

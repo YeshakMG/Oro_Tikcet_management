@@ -56,6 +56,8 @@ dependencies:
   handy_extensions: ^0.2.27
   connectivity_plus: ^6.1.5
   pull_to_refresh: ^2.0.0
+  open_file: ^3.3.2
+  share_plus: ^7.2.2
 
 dev_dependencies:
   flutter_test:
@@ -90,6 +92,8 @@ flutter:
     - assets/logo/
     - assets/fonts/
     - .env
+  # Ensure .env is included in release builds
+  # --dart-define=API_BASE_URL=http://196.189.247.242:4501/api
 
   fonts:
     - family: Poppins

@@ -57,6 +57,9 @@ class _AppScaffoldState extends State<AppScaffold> {
           companyLogoUrl: homeController.companyLogoUrl.value,
           companyName: companyName,
           onItemSelected: (item) async {
+            // Close the drawer first
+            Navigator.of(context).pop();
+
             switch (item) {
               case 'Vehicles':
                 Get.toNamed(Routes.VEHICLES);
@@ -73,8 +76,11 @@ class _AppScaffoldState extends State<AppScaffold> {
               // case 'Tariff':
               //   Get.to(TariffView());
               //   break;
+              case 'Change password':
+                Get.toNamed(Routes.CHANGE_PASSWORD);
+                break;
               case 'Logout':
-                confirmLogout();
+                await confirmLogout();
                 break;
             }
           },
@@ -130,54 +136,36 @@ class _AppScaffoldState extends State<AppScaffold> {
 }
 
 Future<void> confirmLogout() async {
-  final authService = Get.find<AuthService>();
-  final isLoading = false.obs;
+  Get.snackbar('Debug', 'confirmLogout called', duration: Duration(seconds: 1));
 
   final result = await Get.dialog<bool>(
     AlertDialog(
       title: const Text('Confirm Logout'),
-      content: Obx(() => isLoading.value
-          ? const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Processing...'),
-              ],
-            )
-          : const Text('Are you sure you want to logout?')),
+      content: const Text('Are you sure you want to logout?'),
       actions: [
-        if (!isLoading.value) ...[
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              isLoading.value = true;
-              Get.back(result: true);
-            },
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+        TextButton(
+          onPressed: () {
+            Get.snackbar('Debug', 'Cancel pressed', duration: Duration(seconds: 1));
+            Navigator.of(Get.context!).pop(false);
+          },
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            Get.snackbar('Debug', 'Logout pressed', duration: Duration(seconds: 1));
+            Navigator.of(Get.context!).pop(true);
+          },
+          child: const Text('Logout', style: TextStyle(color: Colors.red)),
+        ),
       ],
     ),
+    barrierDismissible: false,
   );
 
   if (result == true) {
-    try {
-      isLoading.value = true;
-      await authService
-          .logout(); // Will redirect to home if unsynced trips exist
-    } catch (e) {
-      isLoading.value = false;
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      isLoading.value = false;
-    }
+    // Navigate directly to sign-in page
+    Future.delayed(Duration.zero, () {
+      Get.offAllNamed(Routes.SIGN_IN);
+    });
   }
 }

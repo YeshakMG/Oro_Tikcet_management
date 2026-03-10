@@ -9,18 +9,23 @@ class FleetTypeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+    final spacing = size.width * 0.03; // 3% for spacing
+
     final controller = Get.find<FleetTypeController>();
 
     return AppScaffold(
       title: 'Fleet Type',
       userName: 'Employee Name',
       showBottomNavBar: true,
-      actions: const [
-        Icon(Icons.more_horiz, color: Colors.white),
-        SizedBox(width: 16),
+      actions: [
+        const Icon(Icons.more_horiz, color: Colors.white),
+        SizedBox(width: paddingHorizontal),
       ],
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(paddingHorizontal),
         child: Column(
           children: [
             // Filter & Search Bar
@@ -35,7 +40,7 @@ class FleetTypeView extends StatelessWidget {
                     foregroundColor: AppColors.primary,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: spacing),
                 Expanded(
                   child: TextField(
                     onChanged: controller.filterFleetType,
@@ -49,11 +54,11 @@ class FleetTypeView extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: spacing),
             // Table Header
             Container(
               color: AppColors.backgroundAlt,
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              padding: EdgeInsets.symmetric(vertical: paddingVertical * 0.5, horizontal: paddingHorizontal * 0.5),
               child: Row(
                 children: const [
                   Expanded(flex: 2, child: Text('Name')),
@@ -69,8 +74,8 @@ class FleetTypeView extends StatelessWidget {
                     itemBuilder: (_, index) {
                       final item = controller.fleetTypes[index];
                       return Container(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 8),
+                        padding: EdgeInsets.symmetric(
+                            vertical: paddingVertical, horizontal: paddingHorizontal * 0.5),
                         decoration: BoxDecoration(
                           border: Border(
                             bottom: BorderSide(color: AppColors.divider),

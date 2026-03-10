@@ -7,10 +7,14 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return Scaffold(
       appBar: AppBar(title: const Text("Reset Password")),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(paddingHorizontal),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -21,7 +25,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: paddingVertical * 2),
             Obx(() {
               if (controller.isLoading.value) {
                 return const Center(child: CircularProgressIndicator());
@@ -31,7 +35,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
                 child: const Text("Reset Password"),
               );
             }),
-            const SizedBox(height: 16),
+            SizedBox(height: paddingVertical * 2),
             Obx(() => Text(
                   controller.resetError.value,
                   style: const TextStyle(color: Colors.red),

@@ -27,7 +27,13 @@ class DepartureControllers extends GetxController {
     }
   }
 
+  Future<void> refreshTerminal() async {
+    // Just reload from local storage (don't clear)
+    loadTerminal();
+  }
+
   Future<void> syncTerminalFromApi(Map<String, dynamic> json) async {
+    // Save terminal (this will clear old data and save new)
     await syncRepo.syncDepartureTerminal(json);
     loadTerminal();
   }
