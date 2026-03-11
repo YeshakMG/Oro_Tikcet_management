@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
@@ -415,7 +416,7 @@ class SyncRepository {
     }
   }
 
-  Future<void> syncTripsToServer() async {
+  Future<int> syncTripsToServer() async {
     try {
       final authService = Get.find<AuthService>();
       final token = await authService.getToken();
@@ -424,10 +425,16 @@ class SyncRepository {
 
       if (trips.isEmpty) {
         print('No trips to sync');
-        Get.snackbar("", "No trips to sync");
-        return;
+        if (Get.context != null) {
+          Get.snackbar("Info", "No trips to sync",
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.orange,
+              colorText: Colors.white);
+        }
+        return 0;
       }
 
+      int syncedCount = 0;
       // Send each trip individually instead of nested array
       for (final trip in trips) {
         try {
@@ -447,6 +454,7 @@ class SyncRepository {
             await tripStorageService.clearTrips();
             print('All trips processed');
             print('Sent payload: ${jsonEncode(trip.toJson())}');
+            syncedCount++;
           } else {
             print('Failed to sync trip: ${response.body}');
             print('Sent payload: ${jsonEncode(trip.toJson())}');
@@ -456,25 +464,51 @@ class SyncRepository {
           continue; // Continue with next trip if one fails
         }
       }
+
+      // Show success message after all trips are synced
+      if (syncedCount > 0 && Get.context != null) {
+        Get.snackbar("Success", "$syncedCount trip(s) synced successfully",
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green,
+            colorText: Colors.white);
+      } else if (Get.context != null) {
+        Get.snackbar("Warning", "No trips were synced",
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.orange,
+            colorText: Colors.white);
+      }
+
+      return syncedCount;
     } catch (e) {
       print('Error in sync process: $e');
+      if (Get.context != null) {
+        Get.snackbar("Error", "Failed to sync trips: $e",
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white);
+      }
       throw Exception('Error syncing trips: $e');
     }
   }
 
-Future<void> syncServiceChargeToServer() async {
+Future<int> syncServiceChargeToServer() async {
   final authService = Get.find<AuthService>();
   final token = await authService.getToken();
   final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
   if (box.isEmpty) {
     if (Get.context != null) {
-      Get.snackbar("Info", "No service charges to sync");
+      Get.snackbar("Info", "No service charges to sync",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white);
     }
-    return;
+    return 0;
   }
 
   final entries = box.toMap();
+  int syncedCount = 0;
+  int failedCount = 0;
 
   for (final entry in entries.entries) {
     final key = entry.key;
@@ -494,23 +528,38 @@ Future<void> syncServiceChargeToServer() async {
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('✅ Synced: ${serviceCharge.departureTerminal}');
         await box.delete(key);
-
-        if (Get.context != null) {
-          Get.snackbar("Success", "Service charge synced successfully");
-        }
+        syncedCount++;
       } else {
         print('❌ Failed (${response.statusCode}): ${response.body}');
-        if (Get.context != null) {
-          Get.snackbar("Error", "Failed to sync: ${response.statusCode}");
-        }
+        failedCount++;
       }
     } catch (e) {
       print('❗ Sync error: $e');
-      if (Get.context != null) {
-        Get.snackbar("Error", "Sync error: $e");
-      }
+      failedCount++;
     }
   }
+
+  // Show single success message after all are processed
+  if (Get.context != null) {
+    if (syncedCount > 0 && failedCount == 0) {
+      Get.snackbar("Success", "$syncedCount service charge(s) synced successfully",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white);
+    } else if (syncedCount > 0 && failedCount > 0) {
+      Get.snackbar("Warning", "$syncedCount synced, $failedCount failed",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white);
+    } else if (failedCount > 0) {
+      Get.snackbar("Error", "$failedCount service charge(s) failed to sync",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
+    }
+  }
+
+  return syncedCount;
 }
 
 }

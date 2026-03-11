@@ -149,14 +149,17 @@ class HomeController extends GetxController {
   // Dummy placeholder for syncing trips
   Future<void> syncTrips() async {
     try {
-      await _syncRepository.syncTripsToServer();
-      Get.snackbar(
-        "Success",
-        "Data synced successfully",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.primaryHover,
-        colorText: AppColors.background,
-      );
+      final count = await _syncRepository.syncTripsToServer();
+      if (count > 0) {
+        Get.snackbar(
+          "Success",
+          "$count trip(s) synced successfully",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.primaryHover,
+          colorText: AppColors.background,
+        );
+      }
+      // Note: The repository already shows appropriate messages for empty/failure cases
     } catch (e) {
       Get.snackbar(
         "Error",
@@ -171,14 +174,17 @@ class HomeController extends GetxController {
 
   Future<void> syncServiceCharge() async {
     try {
-      await _syncRepository.syncServiceChargeToServer();
-      Get.snackbar(
-        "Success",
-        "Service charge synced successfully",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.primaryHover,
-        colorText: AppColors.background,
-      );
+      final count = await _syncRepository.syncServiceChargeToServer();
+      if (count > 0) {
+        Get.snackbar(
+          "Success",
+          "$count service charge(s) synced successfully",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.primaryHover,
+          colorText: AppColors.background,
+        );
+      }
+      // Note: The repository already shows appropriate messages for empty/failure cases
     } catch (e) {
       Get.snackbar("Error", "Failed to sync service charge: $e");
       rethrow;
