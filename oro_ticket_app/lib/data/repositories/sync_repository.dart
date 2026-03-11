@@ -425,12 +425,11 @@ class SyncRepository {
 
       if (trips.isEmpty) {
         print('No trips to sync');
-        if (Get.context != null) {
-          Get.snackbar("Info", "No trips to sync",
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange,
-              colorText: Colors.white);
-        }
+        Get.snackbar("Info", "No trips to sync",
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3));
         return 0;
       }
 
@@ -466,27 +465,28 @@ class SyncRepository {
       }
 
       // Show success message after all trips are synced
-      if (syncedCount > 0 && Get.context != null) {
+      if (syncedCount > 0) {
         Get.snackbar("Success", "$syncedCount trip(s) synced successfully",
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.green,
-            colorText: Colors.white);
-      } else if (Get.context != null) {
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3));
+      } else {
         Get.snackbar("Warning", "No trips were synced",
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.orange,
-            colorText: Colors.white);
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3));
       }
 
       return syncedCount;
     } catch (e) {
       print('Error in sync process: $e');
-      if (Get.context != null) {
-        Get.snackbar("Error", "Failed to sync trips: $e",
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.red,
-            colorText: Colors.white);
-      }
+      Get.snackbar("Error", "Failed to sync trips: $e",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4));
       throw Exception('Error syncing trips: $e');
     }
   }
@@ -497,12 +497,11 @@ Future<int> syncServiceChargeToServer() async {
   final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
   if (box.isEmpty) {
-    if (Get.context != null) {
-      Get.snackbar("Info", "No service charges to sync",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white);
-    }
+    Get.snackbar("Info", "No service charges to sync",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3));
     return 0;
   }
 
@@ -540,23 +539,24 @@ Future<int> syncServiceChargeToServer() async {
   }
 
   // Show single success message after all are processed
-  if (Get.context != null) {
-    if (syncedCount > 0 && failedCount == 0) {
-      Get.snackbar("Success", "$syncedCount service charge(s) synced successfully",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white);
-    } else if (syncedCount > 0 && failedCount > 0) {
-      Get.snackbar("Warning", "$syncedCount synced, $failedCount failed",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white);
-    } else if (failedCount > 0) {
-      Get.snackbar("Error", "$failedCount service charge(s) failed to sync",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
-    }
+  if (syncedCount > 0 && failedCount == 0) {
+    Get.snackbar("Success", "$syncedCount service charge(s) synced successfully",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3));
+  } else if (syncedCount > 0 && failedCount > 0) {
+    Get.snackbar("Warning", "$syncedCount synced, $failedCount failed",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3));
+  } else if (failedCount > 0) {
+    Get.snackbar("Error", "$failedCount service charge(s) failed to sync",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4));
   }
 
   return syncedCount;

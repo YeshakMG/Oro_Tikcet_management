@@ -149,25 +149,18 @@ class HomeController extends GetxController {
   // Sync trips and return count
   Future<int> syncTrips() async {
     try {
+      // Repository will show the snackbar with appropriate message
       final count = await _syncRepository.syncTripsToServer();
-      if (count > 0) {
-        Get.snackbar(
-          "Success",
-          "$count trip(s) synced successfully",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColors.primaryHover,
-          colorText: AppColors.background,
-        );
-      }
-      // Note: The repository already shows appropriate messages for empty/failure cases
       return count;
     } catch (e) {
+      // Repository already shows error snackbar, but we can add a fallback
       Get.snackbar(
         "Error",
         "Failed to sync data: $e",
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: AppColors.error,
         colorText: AppColors.background,
+        duration: const Duration(seconds: 4),
       );
       rethrow;
     }
@@ -175,20 +168,16 @@ class HomeController extends GetxController {
 
   Future<int> syncServiceCharge() async {
     try {
+      // Repository will show the snackbar with appropriate message
       final count = await _syncRepository.syncServiceChargeToServer();
-      if (count > 0) {
-        Get.snackbar(
-          "Success",
-          "$count service charge(s) synced successfully",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColors.primaryHover,
-          colorText: AppColors.background,
-        );
-      }
-      // Note: The repository already shows appropriate messages for empty/failure cases
       return count;
     } catch (e) {
-      Get.snackbar("Error", "Failed to sync service charge: $e");
+      // Repository already shows error snackbar, but we can add a fallback
+      Get.snackbar("Error", "Failed to sync service charge: $e",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: AppColors.background,
+          duration: const Duration(seconds: 4));
       rethrow;
     }
   }
