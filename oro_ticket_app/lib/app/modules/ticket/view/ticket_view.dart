@@ -81,7 +81,9 @@ class _TicketViewState extends State<TicketView> {
     final vehicleBox = Hive.box<VehicleModel>('vehiclesBox');
 
     final filtered = vehicleBox.values
-        .where((v) => v.plateNumber.toLowerCase().contains(input.toLowerCase()))
+        .where((v) =>
+            v.plateNumber.toLowerCase().contains(input.toLowerCase()) &&
+            v.status.toLowerCase() == 'active')
         .toList();
 
     setState(() {

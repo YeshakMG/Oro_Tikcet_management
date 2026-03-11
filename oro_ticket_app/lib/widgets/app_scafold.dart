@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/app/modules/arrivals/views/arrival_view.dart';
 import 'package:oro_ticket_app/app/modules/departure/view/departure_view.dart';
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
@@ -11,6 +12,9 @@ import 'package:oro_ticket_app/app/modules/vehicles/views/vehicles_view.dart';
 import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
+import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
+import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/widgets/bottom_navbar.dart';
 import 'package:oro_ticket_app/widgets/custom_drawer.dart';
 
@@ -136,25 +140,52 @@ class _AppScaffoldState extends State<AppScaffold> {
 }
 
 Future<void> confirmLogout() async {
-  Get.snackbar('Debug', 'confirmLogout called', duration: Duration(seconds: 1));
-
+  // Check if Hive boxes are empty
+  final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
+  final serviceChargeBox = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+  
+  final isTripBoxEmpty = tripBox.isEmpty;
+  final isServiceChargeBoxEmpty = serviceChargeBox.isEmpty;
+  
+  String warningMessage = '';
+  if (!isTripBoxEmpty && !isServiceChargeBoxEmpty) {
+    warningMessage = 'You have unsynced trips and service charge data. Please sync before logging out.';
+  } else if (!isTripBoxEmpty) {
+    warningMessage = 'You have unsynced trips. Please sync before logging out.';
+  } else if (!isServiceChargeBoxEmpty) {
+    warningMessage = 'You have unsynced service charge data. Please sync before logging out.';
+  }
+  
+  if (warningMessage.isNotEmpty) {
+    // Show warning dialog
+    await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('Unsynced Data'),
+        content: Text(warningMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(Get.context!).pop(false),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+    return; // Don't proceed with logout
+  }
+  
+  // If both boxes are empty, proceed with logout
   final result = await Get.dialog<bool>(
     AlertDialog(
       title: const Text('Confirm Logout'),
       content: const Text('Are you sure you want to logout?'),
       actions: [
         TextButton(
-          onPressed: () {
-            Get.snackbar('Debug', 'Cancel pressed', duration: Duration(seconds: 1));
-            Navigator.of(Get.context!).pop(false);
-          },
+          onPressed: () => Navigator.of(Get.context!).pop(false),
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: () {
-            Get.snackbar('Debug', 'Logout pressed', duration: Duration(seconds: 1));
-            Navigator.of(Get.context!).pop(true);
-          },
+          onPressed: () => Navigator.of(Get.context!).pop(true),
           child: const Text('Logout', style: TextStyle(color: Colors.red)),
         ),
       ],
@@ -163,9 +194,8 @@ Future<void> confirmLogout() async {
   );
 
   if (result == true) {
-    // Navigate directly to sign-in page
-    Future.delayed(Duration.zero, () {
-      Get.offAllNamed(Routes.SIGN_IN);
-    });
+    // Use AuthService to logout properly
+    final authService = Get.find<AuthService>();
+    await authService.logout();
   }
 }

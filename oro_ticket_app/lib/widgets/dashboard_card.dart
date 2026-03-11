@@ -67,7 +67,7 @@ class _DashboardCardState extends State<DashboardCard> {
                   BubbleNode.leaf(
                     value: 50,
                     options: BubbleOptions(
-                      child: Text("2%", style: AppTextStyles.buttonSmall),
+                      child: Text("1%", style: AppTextStyles.buttonSmall),
                       color: Colors.lightGreen,
                     ),
                   ),

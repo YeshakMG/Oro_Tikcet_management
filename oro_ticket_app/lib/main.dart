@@ -6,6 +6,7 @@ import 'package:oro_ticket_app/app/modules/home/views/home_view.dart';
 import 'package:oro_ticket_app/app/modules/reset_password/view/reset_password_view.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/views/sign_in_view.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
+import 'package:oro_ticket_app/app/modules/utils/device_security_checker.dart';
 import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/theme/app_theme.dart';
@@ -14,6 +15,16 @@ import 'package:oro_ticket_app/app/modules/reset_password/controller/reset_passw
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Check device security before starting the app
+  final isSecure = await DeviceSecurityChecker.isDeviceSecure();
+  if (!isSecure) {
+    DeviceSecurityChecker.showSecurityErrorAndExit(
+      DeviceSecurityChecker.blockedReason,
+    );
+    return;
+  }
+  
   await HiveBoxes.init();
   await Hive.openBox('appState');
   await dotenv.load(fileName: ".env");

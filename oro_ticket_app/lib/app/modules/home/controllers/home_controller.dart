@@ -7,6 +7,7 @@ import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
 import 'package:oro_ticket_app/data/locals/models/user_model.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
+import 'package:oro_ticket_app/widgets/dashboard_card.dart'; // Import DashboardController
 
 // Fix the import for Ethiopian datetime
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
@@ -187,7 +188,16 @@ class HomeController extends GetxController {
   void resetDashboard() {
     serviceChargeToday.value = 0.0;
     isDashboardReset.value = true;
-    // Reset other dashboard data if any
+    
+    // Reset DashboardController values if it exists
+    if (Get.isRegistered<DashboardController>()) {
+      final dashboardController = Get.find<DashboardController>();
+      dashboardController.ticketsSoldToday.value = 0;
+      dashboardController.revenueToday.value = 0.0;
+      dashboardController.dailyGrowth.value = 0.0;
+      dashboardController.totalServiceCharge.value = 0.0;
+      dashboardController.numberofVehicles.value = 0;
+    }
   }
 
   void refreshDashboard() {

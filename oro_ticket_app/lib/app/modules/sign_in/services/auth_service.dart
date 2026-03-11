@@ -15,6 +15,7 @@ import 'package:oro_ticket_app/data/locals/service/user_storage_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 import '../../../../data/locals/hive_boxes.dart';
 import '../../../../data/locals/models/user_model.dart';
+import '../controllers/sign_in_controller.dart';
 
 class AuthService {
   static final _storage = const FlutterSecureStorage();
@@ -105,32 +106,18 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      // 1️⃣ Check for unsynced trips
-      final unsyncedTrips = _getUnsyncedTrips();
-
-      // 2️⃣ Check for unsynced service charges (any service charges in the box need syncing)
-      final serviceChargeBox = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
-      final hasUnsyncedServiceCharges = serviceChargeBox.isNotEmpty;
-
-      if (unsyncedTrips.isNotEmpty || hasUnsyncedServiceCharges) {
-        final tripCount = unsyncedTrips.length;
-        final serviceChargeCount = hasUnsyncedServiceCharges ? 1 : 0; // Simplified count
-
-        _redirectToHomeForSync(tripCount + serviceChargeCount);
-        return;
+      // Clear the sign-in input fields
+      if (Get.isRegistered<SignInController>()) {
+        Get.find<SignInController>().clearFields();
       }
-
-      // 3️⃣ Proceed with normal logout if everything is synced
+      
+      // Clear storage and navigate to sign-in
       await _clearStorage();
       Get.offAllNamed('/sign-in');
     } catch (e) {
       print('Logout error: $e');
-      Get.snackbar(
-        'Logout Error!',
-        'Try Again Later',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      rethrow;
+      // Even if there's an error, try to navigate to sign-in
+      Get.offAllNamed('/sign-in');
     }
   }
 

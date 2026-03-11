@@ -242,7 +242,7 @@ class HomeView extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        padding: EdgeInsets.symmetric(vertical: paddingVertical * 1.75),
+                        padding: EdgeInsets.symmetric(vertical: paddingVertical * 1.0),
                       ),
                       child: const Text(
                         "Reset Dashboard",

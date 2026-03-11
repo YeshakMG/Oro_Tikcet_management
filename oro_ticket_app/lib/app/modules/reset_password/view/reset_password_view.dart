@@ -12,7 +12,7 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
     final paddingVertical = size.height * 0.02; // 2% of screen height
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Reset Password")),
+      appBar: AppBar(title: const Text("Reset Password", style: TextStyle(fontSize: 16))),
       body: Padding(
         padding: EdgeInsets.all(paddingHorizontal),
         child: Column(
@@ -20,8 +20,10 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
           children: [
             TextField(
               controller: controller.emailController,
+              style: const TextStyle(fontSize: 14),
               decoration: const InputDecoration(
                 labelText: "Email",
+                labelStyle: TextStyle(fontSize: 14),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -32,17 +34,17 @@ class ResetPasswordView extends GetView<ResetPasswordController> {
               }
               return ElevatedButton(
                 onPressed: controller.resetPassword,
-                child: const Text("Reset Password"),
+                child: const Text("Reset Password", style: TextStyle(fontSize: 14)),
               );
             }),
             SizedBox(height: paddingVertical * 2),
             Obx(() => Text(
                   controller.resetError.value,
-                  style: const TextStyle(color: Colors.red),
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
                 )),
             Obx(() => Text(
                   controller.resetSuccess.value,
-                  style: const TextStyle(color: Colors.green),
+                  style: const TextStyle(color: Colors.green, fontSize: 12),
                 )),
           ],
         ),

@@ -15,7 +15,7 @@ class ChangePasswordView extends GetView<ChangePasswordController> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Change Password"),
+        title: const Text("Change Password", style: TextStyle(fontSize: 16)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -169,7 +169,7 @@ class ChangePasswordView extends GetView<ChangePasswordController> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: paddingVertical * 1.5),
+                    padding: EdgeInsets.symmetric(vertical: paddingVertical * 1.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -181,17 +181,6 @@ class ChangePasswordView extends GetView<ChangePasswordController> {
                   ),
                 );
               }),
-              SizedBox(height: paddingVertical * 2),
-              // Cancel Button
-              TextButton(
-                onPressed: () => Get.back(),
-                child: const Text(
-                  "Cancel",
-                  style: TextStyle(
-                    color: AppColors.secondary,
-                  ),
-                ),
-              ),
             ],
           ),
         ),

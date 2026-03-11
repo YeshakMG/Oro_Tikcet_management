@@ -14,17 +14,33 @@ class TicketPrinter {
     debugPrint('DEBUG: TicketPrinter.connectAndPrint called');
     debugPrint('DEBUG: Number of copies to print: $copies');
     
-    List<BluetoothDevice> devices = await printer.getBondedDevices();
-    debugPrint('DEBUG: Found ${devices.length} bonded devices');
+    // Check if already connected to the built-in printer
+    final isConnected = await printer.isConnected ?? false;
+    debugPrint('DEBUG: Printer isConnected: $isConnected');
     
-    if (devices.isEmpty) {
-      Get.snackbar("Printer Error", "No bonded Bluetooth printer found");
-      return;
-    }
+    if (!isConnected) {
+      // Get bonded devices
+      List<BluetoothDevice> devices = await printer.getBondedDevices();
+      debugPrint('DEBUG: Found ${devices.length} bonded devices');
+      
+      // Only connect if there's exactly one device (built-in printer)
+      // Block connection if multiple devices found (external printers)
+      if (devices.isEmpty) {
+        Get.snackbar("Printer Error", "No printer found. Please pair the built-in printer in Bluetooth settings.");
+        return;
+      }
+      
+      if (devices.length > 1) {
+        Get.snackbar("Printer Error", "Multiple Bluetooth devices found. Only built-in printer is allowed.");
+        debugPrint('DEBUG: Blocked connection - multiple external devices detected');
+        return;
+      }
 
-    BluetoothDevice printerDevice = devices.first;
-    debugPrint('DEBUG: Connecting to printer: ${printerDevice.name}');
-    await printer.connect(printerDevice);
+      // Only one device - connect to it (assumed to be built-in printer)
+      BluetoothDevice printerDevice = devices.first;
+      debugPrint('DEBUG: Connecting to built-in printer: ${printerDevice.name}');
+      await printer.connect(printerDevice);
+    }
 
     // Print normal tickets (based on copies)
     for (int i = 0; i < copies; i++) {
@@ -52,7 +68,7 @@ class TicketPrinter {
     }
 
     await printer.paperCut(); // optional if your printer supports
-    debugPrint('DEBUG: Printing completed, disconnecting printer');
-    await printer.disconnect();
+    debugPrint('DEBUG: Printing completed');
+    // Keep printer connected for next print
   }
 }

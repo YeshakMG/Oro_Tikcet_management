@@ -36,6 +36,13 @@ class SignInController extends GetxController {
     loginError.value = '';
   }
 
+  // Clear input fields
+  void clearFields() {
+    emailController.clear();
+    passwordController.clear();
+    clearErrors();
+  }
+
   // Validate email format (simple check)
   bool isValidEmail(String email) {
     return email.contains('@') && email.contains('.');
