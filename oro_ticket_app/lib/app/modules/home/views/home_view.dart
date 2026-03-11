@@ -80,29 +80,9 @@ class HomeView extends StatelessWidget {
                             child: const Text('Sync'),
                           ),
                           IconButton(
-                            onPressed: () async {
-                              // Show loading dialog
-                              Get.dialog(
-                                PopScope(
-                                  canPop: false,
-                                  child: AlertDialog(
-                                    content: Row(
-                                      children: [
-                                        CircularProgressIndicator(color: AppColors.primary),
-                                        SizedBox(width: 20),
-                                        Text("Syncing trips...", style: TextStyle(fontSize: 16)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                barrierDismissible: false,
-                              );
-
-                              // Perform sync
-                              await homeController.syncTrips();
-
-                              // Close loading dialog
-                              Get.back();
+                            onPressed: () {
+                              // Direct call - controller will show snackbar
+                              homeController.syncTrips();
                             },
                             icon: const Icon(Icons.sync, color: Colors.white),
                           ),
@@ -177,31 +157,9 @@ class HomeView extends StatelessWidget {
                                   onPressed: () async {
                                     Navigator.of(context).pop(); // Close dialog
                                     
-                                    // Show loading dialog
-                                    Get.dialog(
-                                      PopScope(
-                                        canPop: false,
-                                        child: AlertDialog(
-                                          content: Row(
-                                            children: [
-                                              CircularProgressIndicator(color: AppColors.primary),
-                                              SizedBox(width: 20),
-                                              Text("Syncing service charge...", style: TextStyle(fontSize: 16)),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      barrierDismissible: false,
-                                    );
-
-                                    // Perform sync
+                                    // Direct call - controller will show snackbar
                                     await homeController.syncServiceCharge();
-                                    
-                                    // Reset dashboard
                                     homeController.resetDashboard();
-
-                                    // Close loading dialog
-                                    Get.back();
                                   },
                                   style: TextButton.styleFrom(
                                     foregroundColor: Colors.white,
