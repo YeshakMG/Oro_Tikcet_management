@@ -81,32 +81,22 @@ class HomeView extends StatelessWidget {
                           ),
                           IconButton(
                             onPressed: () async {
-                              // Show loading indicator
-                              Get.dialog(
-                                PopScope(
-                                  canPop: false,
-                                  child: AlertDialog(
-                                    content: Row(
-                                      children: [
-                                        CircularProgressIndicator(color: AppColors.primary),
-                                        SizedBox(width: 20),
-                                        Text("Syncing trips...", style: TextStyle(fontSize: 16)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                barrierDismissible: false,
+                              // Show loading snackbar
+                              Get.snackbar(
+                                'Syncing',
+                                'Please wait...',
+                                snackPosition: SnackPosition.BOTTOM,
+                                backgroundColor: Colors.blueGrey,
+                                colorText: Colors.white,
+                                showProgressIndicator: true,
+                                isDismissible: false,
+                                duration: const Duration(seconds: 30),
                               );
 
                               try {
                                 await homeController.syncTrips();
                               } catch (e) {
                                 // Error is already handled in controller
-                              } finally {
-                                // Close loading dialog
-                                if (Get.isDialogOpen == true) {
-                                  Get.back();
-                                }
                               }
                             },
                             icon: const Icon(Icons.sync, color: Colors.white),
@@ -180,47 +170,26 @@ class HomeView extends StatelessWidget {
                                 ),
                                 TextButton(
                                   onPressed: () async {
-                                    Navigator.of(context).pop(); // Close dialog immediately
+                                    Navigator.of(context).pop(); // Close dialog
+                                    
+                                    // Show loading snackbar
+                                    Get.snackbar(
+                                      'Syncing',
+                                      'Please wait...',
+                                      snackPosition: SnackPosition.BOTTOM,
+                                      backgroundColor: Colors.blueGrey,
+                                      colorText: Colors.white,
+                                      showProgressIndicator: true,
+                                      isDismissible: false,
+                                      duration: const Duration(seconds: 30),
+                                    );
+
                                     try {
-                                      // Show loading dialog
-                                      Get.dialog(
-                                        PopScope(
-                                          canPop: false,
-                                          child: AlertDialog(
-                                            content: Row(
-                                              children: [
-                                                CircularProgressIndicator(color: AppColors.primary),
-                                                SizedBox(width: 20),
-                                                Text("Syncing service charge...", style: TextStyle(fontSize: 16)),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        barrierDismissible: false,
-                                      );
-
                                       await homeController.syncServiceCharge();
-
-                                      // Close loading dialog
-                                      if (Get.isDialogOpen == true) {
-                                        Get.back();
-                                      }
-
                                       // Reset dashboard
                                       homeController.resetDashboard();
                                     } catch (e) {
-                                      // Close loading dialog
-                                      if (Get.isDialogOpen == true) {
-                                        Get.back();
-                                      }
-                                      // Sync failed → don't reset
-                                      Get.snackbar(
-                                        'Error',
-                                        'Failed to sync: $e',
-                                        snackPosition: SnackPosition.BOTTOM,
-                                        backgroundColor: Colors.red,
-                                        colorText: Colors.white,
-                                      );
+                                      // Error is already handled in controller
                                     }
                                   },
                                   style: TextButton.styleFrom(
