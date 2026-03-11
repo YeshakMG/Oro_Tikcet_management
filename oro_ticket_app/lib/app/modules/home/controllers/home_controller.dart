@@ -146,8 +146,8 @@ class HomeController extends GetxController {
     }
   }
 
-  // Dummy placeholder for syncing trips
-  Future<void> syncTrips() async {
+  // Sync trips and return count
+  Future<int> syncTrips() async {
     try {
       final count = await _syncRepository.syncTripsToServer();
       if (count > 0) {
@@ -160,6 +160,7 @@ class HomeController extends GetxController {
         );
       }
       // Note: The repository already shows appropriate messages for empty/failure cases
+      return count;
     } catch (e) {
       Get.snackbar(
         "Error",
@@ -172,7 +173,7 @@ class HomeController extends GetxController {
     }
   }
 
-  Future<void> syncServiceCharge() async {
+  Future<int> syncServiceCharge() async {
     try {
       final count = await _syncRepository.syncServiceChargeToServer();
       if (count > 0) {
@@ -185,6 +186,7 @@ class HomeController extends GetxController {
         );
       }
       // Note: The repository already shows appropriate messages for empty/failure cases
+      return count;
     } catch (e) {
       Get.snackbar("Error", "Failed to sync service charge: $e");
       rethrow;

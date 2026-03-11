@@ -92,15 +92,27 @@ class HomeView extends StatelessWidget {
                               );
 
                               try {
-                                await homeController.syncTrips();
+                                final count = await homeController.syncTrips();
                                 Get.back(); // Close loading snackbar
-                                Get.snackbar(
-                                  'Success',
-                                  'Synced Successfully!',
-                                  snackPosition: SnackPosition.BOTTOM,
-                                  backgroundColor: AppColors.primaryHover,
-                                  colorText: AppColors.background,
-                                );
+                                if (count > 0) {
+                                  Get.snackbar(
+                                    'Success',
+                                    '$count trip(s) synced successfully!',
+                                    snackPosition: SnackPosition.BOTTOM,
+                                    backgroundColor: Colors.green,
+                                    colorText: Colors.white,
+                                    duration: const Duration(seconds: 3),
+                                  );
+                                } else {
+                                  Get.snackbar(
+                                    'Info',
+                                    'No trips to sync',
+                                    snackPosition: SnackPosition.BOTTOM,
+                                    backgroundColor: Colors.orange,
+                                    colorText: Colors.white,
+                                    duration: const Duration(seconds: 3),
+                                  );
+                                }
                               } catch (e) {
                                 Get.back(); // Close loading snackbar
                                 Get.snackbar(
@@ -207,10 +219,11 @@ class HomeView extends StatelessWidget {
 
                                       Get.snackbar(
                                         'Success',
-                                        'Service charge synced and dashboard reset',
+                                        'Service charge synced and dashboard reset!',
                                         snackPosition: SnackPosition.BOTTOM,
-                                        backgroundColor: AppColors.primaryHover,
-                                        colorText: AppColors.background,
+                                        backgroundColor: Colors.green,
+                                        colorText: Colors.white,
+                                        duration: const Duration(seconds: 3),
                                       );
                                     } catch (e) {
                                       // Close loading snackbar before showing error
