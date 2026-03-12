@@ -12,6 +12,7 @@ import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/theme/app_theme.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:oro_ticket_app/app/modules/reset_password/controller/reset_password_controller.dart';
+import 'package:oro_ticket_app/data/locals/offline_tracking_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,11 @@ void main() async {
   await HiveBoxes.init();
   await Hive.openBox('appState');
   await dotenv.load(fileName: ".env");
+
+  // Check and update connectivity status on app start
+  await OfflineTrackingService.checkConnectivity();
+  // Start listening for connectivity changes
+  OfflineTrackingService.startConnectivityListener();
 
   Get.put(AuthService());
   Get.put(HomeController());

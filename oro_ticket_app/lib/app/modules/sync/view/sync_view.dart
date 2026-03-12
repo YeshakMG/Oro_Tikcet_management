@@ -5,6 +5,7 @@ import 'package:ethiopian_datetime/ethiopian_datetime.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
+import 'package:oro_ticket_app/data/locals/backup_service.dart';
 
 import '../controller/sync_controller.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
@@ -12,9 +13,93 @@ import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 
-class SyncView extends StatelessWidget {
+class SyncView extends StatefulWidget {
+  const SyncView({super.key});
+
+  @override
+  State<SyncView> createState() => _SyncViewState();
+}
+
+class _SyncViewState extends State<SyncView> {
   final SyncController controller = Get.put(SyncController());
+  Map<String, int> _unsyncedCounts = {'trips': 0, 'serviceCharges': 0, 'total': 0};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnsyncedCounts();
+  }
+
+  Future<void> _loadUnsyncedCounts() async {
+    final counts = await BackupService.getUnsyncedCount();
+    if (mounted) {
+      setState(() {
+        _unsyncedCounts = counts;
+      });
+    }
+  }
+
+  Future<void> _exportBackup() async {
+    await BackupService.exportAndShare();
+    await _loadUnsyncedCounts();
+  }
+
+  Future<void> _importBackup() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        // Show loading
+        Get.dialog(
+          const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text("Importing backup..."),
+              ],
+            ),
+          ),
+          barrierDismissible: false,
+        );
+
+        final file = File(result.files.single.path!);
+        final jsonContent = await file.readAsString();
+
+        final importedCount = await BackupService.importData(jsonContent);
+
+        Get.back(); // Close loading
+
+        await _loadUnsyncedCounts();
+
+        Get.snackbar(
+          "Success",
+          "$importedCount records imported successfully",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      // Close loading if open
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+      Get.snackbar(
+        "Error",
+        "Failed to import backup: $e",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,17 +111,29 @@ class SyncView extends StatelessWidget {
       title: "Sync Tickets",
       userName: '',
       actions: [
-        const Icon(Icons.more_horiz, color: Colors.white),
+        // Backup/Export button
+        IconButton(
+          icon: const Icon(Icons.backup, color: Colors.white),
+          onPressed: _exportBackup,
+          tooltip: 'Export Backup',
+        ),
+        // Import button
+        IconButton(
+          icon: const Icon(Icons.restore, color: Colors.white),
+          onPressed: _importBackup,
+          tooltip: 'Import Backup',
+        ),
         SizedBox(width: paddingHorizontal),
       ],
       body: Column(
         children: [
+          _buildUnsyncedBanner(paddingHorizontal, paddingVertical),
           _buildTopBar(size, paddingHorizontal),
           Expanded(
             child: Obx(() {
               final tickets = controller.filteredTickets;
               if (tickets.isEmpty) {
-                return Center(child: Text("No matching tickets found."));
+                return const Center(child: Text("No matching tickets found."));
               }
               return RefreshIndicator(
                 onRefresh: controller.refreshTickets,
@@ -54,6 +151,57 @@ class SyncView extends StatelessWidget {
     );
   }
 
+  Widget _buildUnsyncedBanner(double paddingHorizontal, double paddingVertical) {
+    final hasUnsynced = _unsyncedCounts['total']! > 0;
+    
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(paddingHorizontal),
+      color: hasUnsynced ? Colors.orange.shade100 : Colors.green.shade100,
+      child: Row(
+        children: [
+          Icon(
+            hasUnsynced ? Icons.warning : Icons.check_circle,
+            color: hasUnsynced ? Colors.orange : Colors.green,
+          ),
+          SizedBox(width: paddingHorizontal),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasUnsynced 
+                      ? "Unsynced Data (Backup Recommended)" 
+                      : "All Data Synced",
+                  style: AppTextStyles.buttonMediumB.copyWith(
+                    color: hasUnsynced ? Colors.orange.shade800 : Colors.green.shade800,
+                  ),
+                ),
+                Text(
+                  "${_unsyncedCounts['trips']} trips, ${_unsyncedCounts['serviceCharges']} service charges",
+                  style: AppTextStyles.caption.copyWith(
+                    color: hasUnsynced ? Colors.orange.shade700 : Colors.green.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (hasUnsynced)
+            ElevatedButton.icon(
+              onPressed: _exportBackup,
+              icon: const Icon(Icons.backup, size: 18),
+              label: const Text("Backup"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTopBar(Size size, double paddingHorizontal) {
     final spacing = size.width * 0.02; // 2% for spacing
 
@@ -66,7 +214,7 @@ class SyncView extends StatelessWidget {
               onChanged: (val) => controller.searchQuery.value = val,
               decoration: InputDecoration(
                 hintText: "Search by Plate No., Terminal, Association...",
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -143,7 +291,7 @@ class SyncView extends StatelessWidget {
                     style: AppTextStyles.buttonMediumB,
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: trip.isSynced
                           ? Colors.green.shade300
@@ -164,7 +312,7 @@ class SyncView extends StatelessWidget {
               // Route information
               Row(
                 children: [
-                  Icon(Icons.place, size: 18, color: Colors.red),
+                  const Icon(Icons.place, size: 18, color: Colors.red),
                   SizedBox(width: size.width * 0.02),
                   Expanded(
                     child: Text(
@@ -179,7 +327,7 @@ class SyncView extends StatelessWidget {
               // Association information
               Row(
                 children: [
-                  Icon(Icons.business, size: 18, color: Colors.blue),
+                  const Icon(Icons.business, size: 18, color: Colors.blue),
                   SizedBox(width: size.width * 0.02),
                   Text(
                     vehicle.associationName,
@@ -190,7 +338,7 @@ class SyncView extends StatelessWidget {
               SizedBox(height: paddingVertical * 1.5),
               Row(
                 children: [
-                  Icon(Icons.event_seat, size: 18, color: Colors.blue),
+                  const Icon(Icons.event_seat, size: 18, color: Colors.blue),
                   SizedBox(width: size.width * 0.02),
                   Text(
                     'Seat Number-${vehicle.seatCapacity.toString()}',
@@ -222,7 +370,7 @@ class SyncView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Icon(Icons.access_time, size: 16, color: Colors.grey),
+                  const Icon(Icons.access_time, size: 16, color: Colors.grey),
                   SizedBox(width: size.width * 0.01),
                   Text(
                     "${ethDate.day}-${ethDate.month}-${ethDate.year} ${ethDate.hour}:${ethDate.minute.toString().padLeft(2, '0')}",
@@ -246,7 +394,7 @@ class SyncView extends StatelessWidget {
           style: AppTextStyles.caption
               .copyWith(color: Colors.grey, fontWeight: FontWeight.bold),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           value,
           style: AppTextStyles.body2.copyWith(

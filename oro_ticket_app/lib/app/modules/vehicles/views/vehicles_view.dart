@@ -49,7 +49,7 @@ class VehiclesView extends StatelessWidget {
             color: AppColors.primary,
             child: Text(
               'Total Vehicles: ${controller.allVehicles.length}',
-              style: AppTextStyles.subtitle1.copyWith(color: Colors.white),
+              style: AppTextStyles.body2.copyWith(color: Colors.white),
               textAlign: TextAlign.center,
             ),
           )),
@@ -116,15 +116,15 @@ class VehiclesView extends StatelessWidget {
                           children: [
                             Expanded(
                                 child: Text("Plate Number",
-                                    style: AppTextStyles.buttonMedium,
+                                    style: AppTextStyles.body2,
                                     textAlign: TextAlign.center)),
                             Expanded(
                                 child: Text("Level",
-                                    style: AppTextStyles.buttonMedium,
+                                    style: AppTextStyles.body2,
                                     textAlign: TextAlign.center)),
                             Expanded(
                                 child: Text("Fleet Type",
-                                    style: AppTextStyles.buttonMedium,
+                                    style: AppTextStyles.body2,
                                     textAlign: TextAlign.left)),
                           ],
                         ),
@@ -150,7 +150,7 @@ class VehiclesView extends StatelessWidget {
                                     EdgeInsets.symmetric(horizontal: paddingHorizontal * 0.625),
                                 child: Text(
                                   "${vehicle.plateRegion}${vehicle.plateNumber}",
-                                  style: AppTextStyles.buttonMediumB,
+                                  style: AppTextStyles.body2,
                                 ),
                               ),
                             ),
@@ -163,6 +163,7 @@ class VehiclesView extends StatelessWidget {
                                     EdgeInsets.symmetric(horizontal: paddingHorizontal * 0.625),
                                 child: Text(
                                   vehicle.vehicleLevel,
+                                  style: AppTextStyles.caption,
                                 ),
                               ),
                             ), // Fleet Type
@@ -173,7 +174,7 @@ class VehiclesView extends StatelessWidget {
                                     EdgeInsets.symmetric(horizontal: paddingHorizontal * 0.9375),
                                 child: Text(
                                   vehicle.fleetType,
-                                  style: AppTextStyles.buttonMedium,
+                                  style: AppTextStyles.caption,
                                 ),
                               ),
                             ),
@@ -186,7 +187,7 @@ class VehiclesView extends StatelessWidget {
                               alignment: Alignment.centerLeft,
                               child: Text(
                                   "Seat Capacity: ${vehicle.seatCapacity}",
-                                  style: AppTextStyles.caption3),
+                                  style: AppTextStyles.caption2),
                             ),
                           ),
                           Padding(
@@ -196,7 +197,7 @@ class VehiclesView extends StatelessWidget {
                               child: Row(
                                 children: [
                                   const Text("Status: ",
-                                      style: AppTextStyles.caption3),
+                                      style: AppTextStyles.caption2),
                                   Container(
                                     padding: EdgeInsets.symmetric(
                                         horizontal: paddingHorizontal * 0.625, vertical: paddingVertical * 0.5),

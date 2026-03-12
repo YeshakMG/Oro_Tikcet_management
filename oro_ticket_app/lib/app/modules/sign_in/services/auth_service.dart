@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
@@ -18,7 +19,14 @@ import '../../../../data/locals/models/user_model.dart';
 import '../controllers/sign_in_controller.dart';
 
 class AuthService {
-  static final _storage = const FlutterSecureStorage();
+  static final _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
   static const _tokenKey = 'auth_token';
   static const _userKey = 'auth_user';
   final SyncRepository syncRepo = Get.put(SyncRepository());
@@ -134,8 +142,8 @@ class AuthService {
   }
 
   /// Helper method to get unsynced trips
-  List<TripModel> _getUnsyncedTrips() {
-    final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
+  Future<List<TripModel>> _getUnsyncedTrips() async {
+    final tripBox = await HiveBoxes.getBox<TripModel>(HiveBoxes.tripBox);
     return tripBox.values.where((trip) => trip.isSynced != true).toList();
   }
 
@@ -147,14 +155,8 @@ class AuthService {
     // Clear user storage service
     UserStorageService.clearUser();
 
-    // Clear all Hive boxes
-    await Hive.box<TripModel>(HiveBoxes.tripBox).clear();
-    await Hive.box(HiveBoxes.vehiclesBox).clear();
-    await Hive.box(HiveBoxes.departureTerminalsBox).clear();
-    await Hive.box(HiveBoxes.arrivalTerminalsBox).clear();
-    await Hive.box(HiveBoxes.commissionRulesBox).clear();
-    await Hive.box(HiveBoxes.serviceChargeBox).clear();
-    await Hive.box(HiveBoxes.userBox).clear();
+    // Clear all Hive boxes using HiveBoxes
+    await HiveBoxes.clearAllData();
   }
 
   Future<String?> getToken() => _storage.read(key: _tokenKey);

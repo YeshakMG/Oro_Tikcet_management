@@ -7,7 +7,8 @@ import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
 import 'package:oro_ticket_app/data/locals/models/user_model.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
-import 'package:oro_ticket_app/widgets/dashboard_card.dart'; // Import DashboardController
+import 'package:oro_ticket_app/widgets/dashboard_card.dart';
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart'; // Import DashboardController
 
 // Fix the import for Ethiopian datetime
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
@@ -58,7 +59,7 @@ class HomeController extends GetxController {
 
   Future<void> loadTodayServiceCharge() async {
     try {
-      final box = Hive.box<ServiceChargeModel>('serviceChargeBox');
+      final box = await HiveBoxes.getBox<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
       // Get the first entry if available
       final entry = box.isNotEmpty ? box.getAt(0) : null;
@@ -87,7 +88,7 @@ class HomeController extends GetxController {
     required String departureTerminal,
   }) async {
     try {
-      final box = Hive.box<ServiceChargeModel>('serviceChargeBox');
+      final box = await HiveBoxes.getBox<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
 

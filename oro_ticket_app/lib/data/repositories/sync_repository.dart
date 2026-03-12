@@ -328,7 +328,7 @@ class SyncRepository {
         if (terminalId.isNotEmpty && !seenTerminalIds.contains(terminalId)) {
           seenTerminalIds.add(terminalId);
           
-          // Handle tariff conversion
+          // Handle tariff conversion (single tariff - default fallback)
           dynamic tariffValue = terminal['tariff'] ?? 0.0;
           double parsedTariff = 0.0;
           
@@ -338,6 +338,14 @@ class SyncRepository {
             parsedTariff = tariffValue.toDouble();
           } else if (tariffValue is double) {
             parsedTariff = tariffValue;
+          }
+          
+          // Handle level-specific tariffs from API array
+          List<Map<String, dynamic>>? levelTariffsJson;
+          if (terminal['level_specific_tariffs'] is List) {
+            levelTariffsJson = (terminal['level_specific_tariffs'] as List)
+                .map((e) => e as Map<String, dynamic>)
+                .toList();
           }
           
           // Handle distance conversion
@@ -358,6 +366,7 @@ class SyncRepository {
               'name': terminalName,
               'tariff': parsedTariff,
               'distance': parsedDistance,
+              'level_specific_tariffs': levelTariffsJson,
             }),
           );
           

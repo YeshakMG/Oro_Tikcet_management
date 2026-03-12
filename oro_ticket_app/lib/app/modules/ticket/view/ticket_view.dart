@@ -28,6 +28,7 @@ import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:intl/intl.dart';
 import 'package:oro_ticket_app/app/modules/utils/ticket_printer.dart';
+import 'package:oro_ticket_app/data/locals/offline_tracking_service.dart';
 
 class TicketView extends StatefulWidget {
   @override
@@ -46,11 +47,34 @@ class _TicketViewState extends State<TicketView> {
   List<VehicleModel> suggestions = [];
   final plateController = TextEditingController();
 
+  bool isPrintingDisabled = false;
+
   @override
   void initState() {
     super.initState();
     _loadDefaultDeparture();
     _loadArrivalTerminals();
+    _checkOfflineStatus();
+  }
+
+  Future<void> _checkOfflineStatus() async {
+    final isOffline = await OfflineTrackingService.isOfflineForMoreThan72Hours();
+    if (mounted) {
+      setState(() {
+        isPrintingDisabled = isOffline;
+      });
+      
+      if (isOffline) {
+        Get.snackbar(
+          "Printing Disabled",
+          "Device has been offline for more than 5 days. Please connect to the internet to enable printing.",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5),
+        );
+      }
+    }
   }
 
   void _loadArrivalTerminals() {
@@ -145,9 +169,14 @@ class _TicketViewState extends State<TicketView> {
                     _ticketController.locationTo.value = val.name;
                     _ticketController.km.value =
                         "${val.distance.toStringAsFixed(1)} km";
+                    
+                    // Get the vehicle level to determine correct tariff
+                    final vehicleLevel = _ticketController.level.value;
+                    final correctTariff = val.getTariffForLevel(vehicleLevel);
+                    
                     _ticketController.tariff.value =
-                        "${val.tariff.toStringAsFixed(2)} ETB";
-                    _ticketController.calculateCharges(val.tariff);
+                        "${correctTariff.toStringAsFixed(2)} ETB";
+                    _ticketController.calculateCharges(correctTariff);
 
                     _ticketController.arrivalTerminalId.value = val.id;
                   }
@@ -213,6 +242,14 @@ class _TicketViewState extends State<TicketView> {
                           //     _ticketController.locationFrom.value;
 
                           _ticketController.fleetType.value = vehicle.fleetType;
+                          
+                          // Recalculate tariff based on vehicle level if arrival is selected
+                          if (selectedArrival != null) {
+                            final correctTariff = selectedArrival!.getTariffForLevel(vehicle.vehicleLevel);
+                            _ticketController.tariff.value = "${correctTariff.toStringAsFixed(2)} ETB";
+                            _ticketController.calculateCharges(correctTariff);
+                            print("DEBUG: Vehicle selected - Level: ${vehicle.vehicleLevel}, Tariff recalculated to: $correctTariff");
+                          }
                           // Set the date and time
                           final now = DateTime.now();
                           final ethDate = now.convertToEthiopian();
@@ -422,7 +459,21 @@ class _TicketViewState extends State<TicketView> {
             height: AppDimensions.horizontalSpacingMedium,
           ),
           ElevatedButton(
-            onPressed: () async {
+            onPressed: isPrintingDisabled
+                ? () {
+                    Get.snackbar(
+                      "Printing Disabled",
+                      "You have been offline for more than 5 days.\n"
+                      "Please connect to the internet and go to Sync screen "
+                      "to upload your trips and service charges before continuing.",
+                      snackPosition: SnackPosition.TOP,
+                      backgroundColor: Colors.orange.shade700,
+                      colorText: Colors.white,
+                      duration: const Duration(seconds: 5),
+                      margin: const EdgeInsets.all(16),
+                    );
+                  }
+                : () async {
               // Show confirmation dialog - prevent dismissing by tapping outside
               final result = await showDialog<bool>(
                 context: context,
@@ -454,25 +505,6 @@ class _TicketViewState extends State<TicketView> {
               if (result != true) {
                 return; // User cancelled or dismissed, do nothing
               }
-
-              // User clicked Proceed - execute save and print logic
-
-              // Show loading dialog
-              Get.dialog(
-                PopScope(
-                  canPop: false,
-                  child: AlertDialog(
-                    content: Row(
-                      children: [
-                        CircularProgressIndicator(color: AppColors.primary),
-                        SizedBox(width: 20),
-                        Text("Processing...", style: TextStyle(fontSize: 16)),
-                      ],
-                    ),
-                  ),
-                ),
-                barrierDismissible: false,
-              );
 
               // User clicked Proceed - execute save and print logic
               try {
@@ -595,7 +627,9 @@ class _TicketViewState extends State<TicketView> {
                     seatCapacity: _ticketController.seatNo.value,
                     association: _ticketController.associations.value,
                     level: _ticketController.level.value,
-                    agent: homeController.user.value!.fullName);
+                    agent: homeController.user.value!.fullName,
+                    tariff: trip.tariff,
+                    serviceCharge: parseSafe(_ticketController.serviceCharge.value));
                 // Get seat count for number of copies to print
                 final copies = int.tryParse(_ticketController.seatNo.value) ?? 1;
                 debugPrint('DEBUG: Printing $copies ticket(s) for seat capacity: ${_ticketController.seatNo.value}');
@@ -606,35 +640,19 @@ class _TicketViewState extends State<TicketView> {
                     copies: copies,
                     exitText: exitTicket);
 
-                // Close loading dialog
+                // Close the confirmation dialog
                 Get.back();
 
                 // Show success message
-                Get.dialog(
-                  AlertDialog(
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green, size: 48),
-                        SizedBox(height: 16),
-                        Text("Successfully ordered tickets!", 
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    actions: [
-                      ElevatedButton(
-                        onPressed: () => Get.back(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                        ),
-                        child: Text("OK"),
-                      ),
-                    ],
-                  ),
+                Get.snackbar(
+                  "Success",
+                  "Ticket printed and saved successfully!",
+                  snackPosition: SnackPosition.TOP,
+                  backgroundColor: Colors.green,
+                  colorText: Colors.white,
+                  duration: const Duration(seconds: 3),
                 );
               } catch (e) {
-                // Close loading dialog on error
-                Get.back();
                 // Show error message
                 Get.snackbar(
                   "Error",
@@ -646,13 +664,13 @@ class _TicketViewState extends State<TicketView> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: isPrintingDisabled ? Colors.grey : AppColors.primary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text(
-              "Print & Save",
+            child: Text(
+              isPrintingDisabled ? "Printing Disabled" : "Print & Save",
               style: AppTextStyles.button,
             ),
           )
@@ -759,6 +777,8 @@ String formatExitTicketText({
   required String association,
   required String level,
   required String agent,
+  required double tariff,
+  required double serviceCharge,
 }) {
   const lineWidth = 30;
   String line(String left, String right) {
@@ -771,6 +791,11 @@ String formatExitTicketText({
   final timeStr =
       "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')}";
 
+  // Calculate aggregated totals based on seat capacity
+  final int seats = int.tryParse(seatCapacity) ?? 1;
+  final double totalCollectedTariff = tariff * seats;
+  final double totalCollectedServiceCharge = serviceCharge * seats;
+
   return '''
 ${line("Company:", companyName)}
 ${line("Tel:", companyPhoneNo)}
@@ -782,6 +807,11 @@ ${line("Plate:", "$region$plateNumber")}
 ${line("Association:", association)}
 ${line("Seat Capacity:", seatCapacity)}
 ${line("Level:", level)}
+${'-' * lineWidth}
+${line("Tariff:", tariff.toStringAsFixed(2))}
+${line("Total Tariff:", totalCollectedTariff.toStringAsFixed(2))}
+${line("Service Charge:", serviceCharge.toStringAsFixed(2))}
+${line("Total S. Charge:", totalCollectedServiceCharge.toStringAsFixed(2))}
 ${'-' * lineWidth}
 ${line("Agent:", agent)}
 ''';

@@ -38,4 +38,15 @@ class ServiceChargeModel extends HiveObject {
         "employee_id": employeeId,
         "company_id": companyId,
       };
+
+  factory ServiceChargeModel.fromJson(Map<String, dynamic> json) {
+    return ServiceChargeModel(
+      departureTerminal: json['departure_terminal_id'] ?? '',
+      dateTime: DateTime.parse(json['date_and_time'] ?? DateTime.now().toIso8601String()),
+      serviceChargeAmount: (json['service_charge_amount'] as num?)?.toDouble() ?? 0.0,
+      employeeName: json['employee_name'] ?? '',
+      employeeId: json['employee_id'] ?? '',
+      companyId: json['company_id'] ?? '',
+    );
+  }
 }
