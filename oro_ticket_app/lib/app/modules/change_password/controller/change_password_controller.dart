@@ -1,6 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ChangePasswordController extends GetxController {
   final currentPasswordController = TextEditingController();
@@ -10,6 +14,18 @@ class ChangePasswordController extends GetxController {
   var isLoading = false.obs;
   var errorMessage = ''.obs;
   var successMessage = ''.obs;
+
+  final _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
+  static const _tokenKey = 'auth_token';
+
+  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'https://company.ota.gov.et/api';
 
   /// Validate and change password
   Future<void> changePassword() async {
@@ -45,37 +61,69 @@ class ChangePasswordController extends GetxController {
     isLoading.value = true;
 
     try {
-      // TODO: Replace this with your actual API call
-      // For now, simulate API call
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Get stored user data to verify current password
-      final userBox = Hive.box('userBox');
-      final storedPassword = userBox.get('password', defaultValue: '');
-
-      // Simple password verification (in production, this should be done server-side)
-      if (storedPassword != currentPasswordController.text) {
-        errorMessage.value = "Current password is incorrect";
+      // Get auth token
+      final token = await _storage.read(key: _tokenKey);
+      if (token == null) {
+        errorMessage.value = "Session expired. Please login again.";
         isLoading.value = false;
         return;
       }
 
-      // Update password in local storage
-      await userBox.put('password', newPasswordController.text);
-
-      // Success
-      successMessage.value = "Password changed successfully!";
+      // Make API call to change password
+      final url = Uri.parse('$baseUrl/users/password/change-password');
       
-      // Clear form
-      currentPasswordController.clear();
-      newPasswordController.clear();
-      confirmPasswordController.clear();
+      print('=== CHANGE PASSWORD REQUEST ===');
+      print('URL: $url');
+      print('Current Password: ${currentPasswordController.text}');
+      print('================================');
 
-      // Navigate back after short delay
-      await Future.delayed(const Duration(seconds: 1));
-      Get.back();
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'current_password': currentPasswordController.text,
+              'new_password': newPasswordController.text,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      print('=== CHANGE PASSWORD RESPONSE ===');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: $data');
+      print('=================================');
+
+      if (response.statusCode == 200 && data['status'] == 'success') {
+        // Success
+        successMessage.value = data['message'] ?? "Password changed successfully!";
+        
+        // Clear form
+        currentPasswordController.clear();
+        newPasswordController.clear();
+        confirmPasswordController.clear();
+
+        // Navigate back after short delay
+        await Future.delayed(const Duration(seconds: 2));
+        Get.back();
+      } else {
+        // Handle error response from server
+        final errorMsg = data['message'] ?? data['error'] ?? 'Failed to change password';
+        errorMessage.value = errorMsg;
+      }
     } catch (e) {
-      errorMessage.value = "Failed to change password. Please try again.";
+      // Handle connection errors
+      String errorMessageText = 'Failed to change password. Please try again.';
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        errorMessageText = 'Unable to connect to server. Please check your internet connection.';
+      } else if (e.toString().contains('timeout')) {
+        errorMessageText = 'Connection timed out. Please try again.';
+      }
+      errorMessage.value = errorMessageText;
     } finally {
       isLoading.value = false;
     }
