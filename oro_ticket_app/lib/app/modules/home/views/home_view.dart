@@ -50,7 +50,7 @@ class HomeView extends StatelessWidget {
                             companyName.isNotEmpty
                                 ? companyName
                                 : 'Unknown Company',
-                            style: AppTextStyles.subtitle1
+                            style: AppTextStyles.heading3
                                 .copyWith(color: Colors.white),
                           ),
                           if (terminalName.isNotEmpty) ...[
@@ -64,8 +64,8 @@ class HomeView extends StatelessWidget {
                           SizedBox(height: paddingVertical * 0.2),
                           Text(
                             user?.fullName ?? 'Employee Name',
-                            style: AppTextStyles.buttonMedium
-                                .copyWith(color: Colors.white),
+                            style: AppTextStyles.body2
+                                .copyWith(color: Colors.white70),
                           ),
                         ],
                       ),
