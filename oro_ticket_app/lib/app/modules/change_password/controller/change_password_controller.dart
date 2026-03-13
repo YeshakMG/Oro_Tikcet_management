@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ChangePasswordController extends GetxController {
   final currentPasswordController = TextEditingController();
@@ -30,7 +29,7 @@ class ChangePasswordController extends GetxController {
   );
   static const _tokenKey = 'auth_token';
 
-  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'https://company.ota.gov.et/api';
+  final String baseUrl = 'https://company.ota.gov.et/api';
 
   /// Validate and change password
   Future<void> changePassword() async {
