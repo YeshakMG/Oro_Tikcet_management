@@ -53,50 +53,83 @@ class ChangePasswordView extends GetView<ChangePasswordController> {
               ),
               SizedBox(height: paddingVertical * 3),
               // Current Password Field
-              TextField(
-                controller: controller.currentPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: "Current Password",
-                  prefixIcon: const Icon(Icons.lock),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                ),
-              ),
+              Obx(() => TextField(
+                    controller: controller.currentPasswordController,
+                    obscureText: controller.isCurrentPasswordVisible.value,
+                    decoration: InputDecoration(
+                      labelText: "Current Password",
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          controller.isCurrentPasswordVisible.value
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          controller.isCurrentPasswordVisible.value =
+                              !controller.isCurrentPasswordVisible.value;
+                        },
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                    ),
+                  )),
               SizedBox(height: paddingVertical * 2),
               // New Password Field
-              TextField(
-                controller: controller.newPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: "New Password",
-                  prefixIcon: const Icon(Icons.lock_open),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  helperText: "Minimum 6 characters",
-                ),
-              ),
+              Obx(() => TextField(
+                    controller: controller.newPasswordController,
+                    obscureText: controller.isNewPasswordVisible.value,
+                    decoration: InputDecoration(
+                      labelText: "New Password",
+                      prefixIcon: const Icon(Icons.lock_open),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          controller.isNewPasswordVisible.value
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          controller.isNewPasswordVisible.value =
+                              !controller.isNewPasswordVisible.value;
+                        },
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      helperText: "Minimum 6 characters",
+                    ),
+                  )),
               SizedBox(height: paddingVertical * 2),
               // Confirm Password Field
-              TextField(
-                controller: controller.confirmPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: "Confirm New Password",
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                ),
-              ),
+              Obx(() => TextField(
+                    controller: controller.confirmPasswordController,
+                    obscureText: controller.isConfirmPasswordVisible.value,
+                    decoration: InputDecoration(
+                      labelText: "Confirm New Password",
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          controller.isConfirmPasswordVisible.value
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          controller.isConfirmPasswordVisible.value =
+                              !controller.isConfirmPasswordVisible.value;
+                        },
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                    ),
+                  )),
               SizedBox(height: paddingVertical * 3),
               // Error Message
               Obx(() {

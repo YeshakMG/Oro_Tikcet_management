@@ -15,6 +15,11 @@ class ChangePasswordController extends GetxController {
   var errorMessage = ''.obs;
   var successMessage = ''.obs;
 
+  // Password visibility toggles
+  var isCurrentPasswordVisible = true.obs;
+  var isNewPasswordVisible = true.obs;
+  var isConfirmPasswordVisible = true.obs;
+
   final _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
