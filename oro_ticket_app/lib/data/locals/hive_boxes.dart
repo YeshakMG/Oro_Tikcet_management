@@ -20,6 +20,7 @@ class HiveBoxes {
   static const String tripBox = 'tripBox';
   static const String serviceChargeBox = 'serviceChargeBox';
   static const String userBox = 'userData';
+  static const String lastUsedVehicleBox = 'lastUsedVehicleBox';
   
   // Encryption key name in secure storage
   static const String encryptionKeyName = 'oro_ticket_encryption_key';
@@ -123,6 +124,8 @@ class HiveBoxes {
         ),
         // User box remains unencrypted for easy access
         Hive.openBox<UserModel>(userBox),
+        // Last used vehicle box for quick re-selection (unencrypted)
+        Hive.openBox<dynamic>(lastUsedVehicleBox),
       ]);
 
       _initialized = true;

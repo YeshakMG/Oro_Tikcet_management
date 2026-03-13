@@ -154,16 +154,25 @@ class HomeController extends GetxController {
       final count = await _syncRepository.syncTripsToServer();
       return count;
     } catch (e) {
-      // Repository already shows error snackbar, but we can add a fallback
+      // Show user-friendly error message based on error type
+      String errorMessage;
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        errorMessage = "Unable to connect to server. Please check your internet connection.";
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = "Connection timed out. Please try again.";
+      } else {
+        errorMessage = "Failed to sync trips. Please try again.";
+      }
+      
       Get.snackbar(
-        "Error",
-        "Failed to sync data: $e",
-        snackPosition: SnackPosition.BOTTOM,
+        "Sync Failed",
+        errorMessage,
+        snackPosition: SnackPosition.TOP,
         backgroundColor: AppColors.error,
         colorText: AppColors.background,
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 5),
       );
-      rethrow;
+      return -1;
     }
   }
 
@@ -173,13 +182,22 @@ class HomeController extends GetxController {
       final count = await _syncRepository.syncServiceChargeToServer();
       return count;
     } catch (e) {
-      // Repository already shows error snackbar, but we can add a fallback
-      Get.snackbar("Error", "Failed to sync service charge: $e",
-          snackPosition: SnackPosition.BOTTOM,
+      // Show user-friendly error message based on error type
+      String errorMessage;
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        errorMessage = "Unable to connect to server. Please check your internet connection.";
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = "Connection timed out. Please try again.";
+      } else {
+        errorMessage = "Failed to sync service charge. Please try again.";
+      }
+      
+      Get.snackbar("Sync Failed", errorMessage,
+          snackPosition: SnackPosition.TOP,
           backgroundColor: AppColors.error,
           colorText: AppColors.background,
-          duration: const Duration(seconds: 4));
-      rethrow;
+          duration: const Duration(seconds: 5));
+      return -1;
     }
   }
 

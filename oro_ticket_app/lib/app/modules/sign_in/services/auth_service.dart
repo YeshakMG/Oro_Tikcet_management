@@ -31,7 +31,7 @@ class AuthService {
   static const _userKey = 'auth_user';
   final SyncRepository syncRepo = Get.put(SyncRepository());
 
-  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://196.189.247.242:4501/api';
+  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'https://admin.ota.gov.et/api';
 
   Future<Map<String, dynamic>> login({
     required String email,
@@ -95,7 +95,14 @@ class AuthService {
           };
         }
       }
-      return {'success': false, 'message': e.toString()};
+      // Show user-friendly error message
+      String errorMessage = 'Connection failed. Please try again.';
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        errorMessage = 'Unable to connect to server. Please check your internet connection.';
+      } else if (e.toString().contains('timeout')) {
+        errorMessage = 'Connection timed out. Please try again.';
+      }
+      return {'success': false, 'message': errorMessage};
     }
   }
 

@@ -25,12 +25,18 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SyncRepository {
-  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://196.189.247.242:4501/api';
+  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'https://admin.ota.gov.et/api';
 
   final storage = FlutterSecureStorage();
   final Connectivity _connectivity = Connectivity();
   final _vehicleChanges = StreamController<void>.broadcast();
   Stream<void> get vehicleChanges => _vehicleChanges.stream;
+
+  // Key for storing last sync timestamp
+  static const String lastVehicleSyncKey = 'last_vehicle_sync_timestamp';
+  static const String lastDepartureSyncKey = 'last_departure_sync_timestamp';
+  static const String lastArrivalSyncKey = 'last_arrival_sync_timestamp';
+  static const String lastCommissionSyncKey = 'last_commission_sync_timestamp';
 
   // Helper method to check network connectivity
   Future<bool> get _isOnline async {
@@ -46,6 +52,20 @@ class SyncRepository {
       print('⚠️ Connectivity check error: $e');
       return false;
     }
+  }
+
+  // Show offline error snackbar
+  void showOfflineSnackbar(String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.snackbar(
+        "Offline",
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+      );
+    });
   }
 
   // ========== VEHICLES ========== //
@@ -72,6 +92,7 @@ class SyncRepository {
       return localVehicles;
     } catch (e) {
       print('⚠️ Error in getVehicles(), falling back to local: $e');
+      showOfflineSnackbar('Unable to connect. Using locally stored vehicles.');
       return getLocalVehicles(); // Always fall back to local
     }
   }
@@ -79,22 +100,14 @@ class SyncRepository {
   Future<void> syncAllCompanyUserVehicles({bool forceSync = false}) async {
     if (!await _isOnline && !forceSync) {
       print('🚫 Offline - Skipping vehicle sync');
+      showOfflineSnackbar('No internet connection. Using local vehicle data.');
       return;
     }
 
     try {
       final authService = Get.find<AuthService>();
       final token = await authService.getToken();
-      final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
-
-      // Get the assigned terminal from local storage
-      final terminal = DepartureTerminalStorageService.getTerminal();
-      final terminalId = terminal?.id;
-      
-      if (terminalId == null) {
-        print('⚠️ No terminal assigned to user, cannot fetch vehicles');
-        return;
-      }
+      final box = await HiveBoxes.getBox<VehicleModel>(HiveBoxes.vehiclesBox);
 
       int currentPage = 1;
       bool hasMorePages = true;
@@ -105,7 +118,7 @@ class SyncRepository {
         print('🔄 Fetching vehicles page $currentPage...');
         final response = await http.get(
           Uri.parse(
-              '$baseUrl/vehicles/company-user/my-vehicles?terminal_id=$terminalId&page=$currentPage'),
+              '$baseUrl/vehicles/company-user/terminals/my-vehicles?page=$currentPage'),
           headers: {
             'Authorization': 'Bearer $token',
             'Accept': 'application/json',
@@ -186,10 +199,17 @@ class SyncRepository {
         final idsToRemove = localIds.difference(apiVehicleIds);
         await box.deleteAll(idsToRemove);
         _vehicleChanges.add(null);
+        await saveLastVehicleSyncTime(); // Save timestamp after successful sync
         print('✅ Synced $totalSynced vehicles across ${currentPage - 1} pages');
       }
     } catch (e) {
       print('⚠️ Sync error (continuing with local data): $e');
+      // Show user-friendly error message
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        showOfflineSnackbar('Unable to connect to server. Please check your internet connection.');
+      } else {
+        showOfflineSnackbar('Sync failed. Using local data.');
+      }
       rethrow; // Let the caller handle the error
     }
   }
@@ -197,7 +217,9 @@ class SyncRepository {
   List<VehicleModel> getLocalVehicles() {
     try {
       final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
-      return box.values.toList();
+      final vehicles = box.values.toList();
+      print('📦 Retrieved ${vehicles.length} vehicles from local storage');
+      return vehicles;
     } catch (e) {
       print('❌ Error getting local vehicles: $e');
       return [];
@@ -206,11 +228,65 @@ class SyncRepository {
 
   Future<void> clearLocalVehicles() async {
     try {
-      final box = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
+      final box = await HiveBoxes.getBox<VehicleModel>(HiveBoxes.vehiclesBox);
       await box.clear();
       print('🗑️ Local vehicles cleared');
     } catch (e) {
       print('❌ Error clearing local vehicles: $e');
+    }
+  }
+
+  // Save last sync timestamp
+  Future<void> saveLastVehicleSyncTime() async {
+    try {
+      await storage.write(
+        key: lastVehicleSyncKey,
+        value: DateTime.now().toIso8601String(),
+      );
+      print('✅ Last vehicle sync time saved');
+    } catch (e) {
+      print('❌ Error saving last sync time: $e');
+    }
+  }
+
+  // Get last sync timestamp
+  Future<DateTime?> getLastVehicleSyncTime() async {
+    try {
+      final timestamp = await storage.read(key: lastVehicleSyncKey);
+      if (timestamp != null) {
+        return DateTime.parse(timestamp);
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error getting last sync time: $e');
+      return null;
+    }
+  }
+
+  // Save last sync timestamp for any data type
+  Future<void> saveLastSyncTime(String key) async {
+    try {
+      await storage.write(
+        key: key,
+        value: DateTime.now().toIso8601String(),
+      );
+      print('✅ Last sync time saved for $key');
+    } catch (e) {
+      print('❌ Error saving last sync time for $key: $e');
+    }
+  }
+
+  // Get last sync timestamp for any data type
+  Future<DateTime?> getLastSyncTime(String key) async {
+    try {
+      final timestamp = await storage.read(key: key);
+      if (timestamp != null) {
+        return DateTime.parse(timestamp);
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error getting last sync time for $key: $e');
+      return null;
     }
   }
 
@@ -270,6 +346,8 @@ class SyncRepository {
   Future<void> syncDepartureTerminal(Map<String, dynamic> terminalJson) async {
     final terminal = DepartureTerminalModel.fromJson(terminalJson);
     await DepartureTerminalStorageService.saveTerminal(terminal);
+    // Save last sync timestamp
+    await saveLastSyncTime(lastDepartureSyncKey);
   }
 
   DepartureTerminalModel? getLocalDepartureTerminal() {
@@ -297,6 +375,13 @@ class SyncRepository {
   }
 
   Future<void> syncCompanyUserArrivalTerminals() async {
+    // Check for internet connection first
+    if (!await _isOnline) {
+      print('🚫 Offline - Skipping arrival terminals sync');
+      showOfflineSnackbar('No internet connection. Using local arrival terminal data.');
+      return;
+    }
+
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
 
@@ -379,14 +464,25 @@ class SyncRepository {
         arrivalTerminals.map((e) => e.toJson()).toList(),
       );
       
+      // Save last sync timestamp
+      await saveLastSyncTime(lastArrivalSyncKey);
+      
       print('Total arrival terminals saved: ${arrivalTerminals.length}');
     } else {
+      showOfflineSnackbar('Failed to sync arrival terminals. Using local data.');
       throw Exception('Failed to sync arrival terminals: ${response.statusCode} - ${response.body}');
     }
   }
 
 // For Commission
   Future<void> syncCommissionRules() async {
+    // Check for internet connection first
+    if (!await _isOnline) {
+      print('🚫 Offline - Skipping commission rules sync');
+      showOfflineSnackbar('No internet connection. Using local commission rules data.');
+      return;
+    }
+
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
 
@@ -411,6 +507,9 @@ class SyncRepository {
 
       await CommissionRuleStorageService.saveCommissionRules(activeRules);
 
+      // Save last sync timestamp
+      await saveLastSyncTime(lastCommissionSyncKey);
+
       print('Commission rules fetched: ${activeRules.length}');
       for (var rule in activeRules) {
         print(
@@ -420,6 +519,7 @@ class SyncRepository {
       final stored = CommissionRuleStorageService.getCommissionRules();
       print('Commission rules stored locally: ${stored.length}');
     } else {
+      showOfflineSnackbar('Failed to sync commission rules. Using local data.');
       print('Failed to fetch commission rules: ${response.body}');
       throw Exception('Failed to sync commission rules');
     }
@@ -436,8 +536,9 @@ class SyncRepository {
         print('No trips to sync');
         // Use post frame callback to ensure snackbar shows after widget build
         WidgetsBinding.instance.addPostFrameCallback((_) {
+          Get.closeCurrentSnackbar();
           Get.snackbar("Info", "No trips to sync",
-              snackPosition: SnackPosition.BOTTOM,
+              snackPosition: SnackPosition.TOP,
               backgroundColor: Colors.orange,
               colorText: Colors.white,
               duration: const Duration(seconds: 3));
@@ -477,16 +578,19 @@ class SyncRepository {
       }
 
       // Show success message after all trips are synced
+      print('DEBUG: Showing snackbar - syncedCount: $syncedCount');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (syncedCount > 0) {
+          Get.closeCurrentSnackbar();
           Get.snackbar("Success", "$syncedCount trip(s) synced successfully",
-              snackPosition: SnackPosition.BOTTOM,
+              snackPosition: SnackPosition.TOP,
               backgroundColor: Colors.green,
               colorText: Colors.white,
-              duration: const Duration(seconds: 3));
+              duration: const Duration(seconds: 4));
         } else {
+          Get.closeCurrentSnackbar();
           Get.snackbar("Warning", "No trips were synced",
-              snackPosition: SnackPosition.BOTTOM,
+              snackPosition: SnackPosition.TOP,
               backgroundColor: Colors.orange,
               colorText: Colors.white,
               duration: const Duration(seconds: 3));
@@ -496,12 +600,24 @@ class SyncRepository {
       return syncedCount;
     } catch (e) {
       print('Error in sync process: $e');
+      
+      // Show user-friendly error message based on error type
+      String errorMessage;
+      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+        errorMessage = "Unable to connect to server. Please check your internet connection.";
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = "Connection timed out. Please try again.";
+      } else {
+        errorMessage = "Failed to sync trips. Please try again.";
+      }
+      
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Get.snackbar("Error", "Failed to sync trips: $e",
-            snackPosition: SnackPosition.BOTTOM,
+        Get.closeCurrentSnackbar();
+        Get.snackbar("Sync Failed", errorMessage,
+            snackPosition: SnackPosition.TOP,
             backgroundColor: Colors.red,
             colorText: Colors.white,
-            duration: const Duration(seconds: 4));
+            duration: const Duration(seconds: 5));
       });
       throw Exception('Error syncing trips: $e');
     }
@@ -514,8 +630,9 @@ Future<int> syncServiceChargeToServer() async {
 
   if (box.isEmpty) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.closeCurrentSnackbar();
       Get.snackbar("Info", "No service charges to sync",
-          snackPosition: SnackPosition.BOTTOM,
+          snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.orange,
           colorText: Colors.white,
           duration: const Duration(seconds: 3));
@@ -558,24 +675,25 @@ Future<int> syncServiceChargeToServer() async {
 
   // Show single success message after all are processed
   WidgetsBinding.instance.addPostFrameCallback((_) {
+    Get.closeCurrentSnackbar();
     if (syncedCount > 0 && failedCount == 0) {
       Get.snackbar("Success", "$syncedCount service charge(s) synced successfully",
-          snackPosition: SnackPosition.BOTTOM,
+          snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.green,
           colorText: Colors.white,
-          duration: const Duration(seconds: 3));
+          duration: const Duration(seconds: 4));
     } else if (syncedCount > 0 && failedCount > 0) {
       Get.snackbar("Warning", "$syncedCount synced, $failedCount failed",
-          snackPosition: SnackPosition.BOTTOM,
+          snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.orange,
           colorText: Colors.white,
-          duration: const Duration(seconds: 3));
+          duration: const Duration(seconds: 4));
     } else if (failedCount > 0) {
       Get.snackbar("Error", "$failedCount service charge(s) failed to sync",
-          snackPosition: SnackPosition.BOTTOM,
+          snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.red,
           colorText: Colors.white,
-          duration: const Duration(seconds: 4));
+          duration: const Duration(seconds: 5));
     }
   });
 

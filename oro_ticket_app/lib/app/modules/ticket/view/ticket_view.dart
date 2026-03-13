@@ -55,6 +55,100 @@ class _TicketViewState extends State<TicketView> {
     _loadDefaultDeparture();
     _loadArrivalTerminals();
     _checkOfflineStatus();
+    _loadLastUsedVehicle();
+  }
+
+  // Save the last used vehicle with timestamp
+  Future<void> _saveLastUsedVehicle(String vehicleId) async {
+    try {
+      final box = Hive.box<dynamic>(HiveBoxes.lastUsedVehicleBox);
+      await box.put('lastVehicleId', vehicleId);
+      await box.put('lastUsedTime', DateTime.now().toIso8601String());
+      print("DEBUG: Saved last used vehicle: $vehicleId");
+    } catch (e) {
+      print("DEBUG: Error saving last used vehicle: $e");
+    }
+  }
+
+  // Load and auto-select the last used vehicle if 2 hours have passed
+  Future<void> _loadLastUsedVehicle() async {
+    try {
+      final box = Hive.box<dynamic>(HiveBoxes.lastUsedVehicleBox);
+      final lastVehicleId = box.get('lastVehicleId') as String?;
+      final lastUsedTimeStr = box.get('lastUsedTime') as String?;
+
+      if (lastVehicleId != null && lastUsedTimeStr != null) {
+        final lastUsedTime = DateTime.parse(lastUsedTimeStr);
+        final now = DateTime.now();
+        final difference = now.difference(lastUsedTime);
+
+        // Check if 2 hours have passed
+        if (difference.inHours >= 2) {
+          // Find the vehicle in the vehicles box
+          final vehicleBox = Hive.box<VehicleModel>('vehiclesBox');
+          final vehicle = vehicleBox.values.firstWhereOrNull(
+            (v) => v.id == lastVehicleId && v.status.toLowerCase() == 'active',
+          );
+
+          if (vehicle != null) {
+            // Auto-select the vehicle
+            plateController.text = vehicle.plateNumber;
+            plateInput = vehicle.plateNumber;
+
+            _ticketController.plateNumber.value = vehicle.plateNumber;
+            _ticketController.level.value = vehicle.vehicleLevel;
+            _ticketController.seatNo.value = vehicle.seatCapacity.toString();
+            _ticketController.associations.value = vehicle.associationName;
+            _ticketController.vehicleId.value = vehicle.id;
+            _ticketController.region.value = vehicle.plateRegion;
+            _ticketController.fleetType.value = vehicle.fleetType;
+
+            // Set the date and time
+            final now = DateTime.now();
+            final ethDate = now.convertToEthiopian();
+            _ticketController.dateTime.value =
+                "${TicketController.oromoWeekdays[now.weekday]} - "
+                "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
+                "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+
+            // Recalculate tariff based on vehicle level if arrival is selected
+            if (selectedArrival != null) {
+              final correctTariff = selectedArrival!.getTariffForLevel(vehicle.vehicleLevel);
+              _ticketController.tariff.value = "${correctTariff.toStringAsFixed(2)} ETB";
+              _ticketController.calculateCharges(correctTariff);
+            }
+
+            setState(() {});
+            print("DEBUG: Auto-selected last used vehicle after 2 hours: ${vehicle.plateNumber}");
+          }
+        }
+      }
+    } catch (e) {
+      print("DEBUG: Error loading last used vehicle: $e");
+    }
+  }
+
+  // Clear vehicle selection after printing
+  void _clearVehicleSelection() {
+    plateController.clear();
+    plateInput = '';
+    suggestions.clear();
+
+    _ticketController.plateNumber.value = '';
+    _ticketController.vehicleId.value = '';
+    _ticketController.level.value = '';
+    _ticketController.seatNo.value = '';
+    _ticketController.associations.value = '';
+    _ticketController.region.value = '';
+    _ticketController.fleetType.value = '';
+    _ticketController.dateTime.value = '';
+    _ticketController.tariff.value = '';
+    _ticketController.km.value = '';
+    _ticketController.serviceCharge.value = '';
+    _ticketController.totalPayment.value = '';
+
+    setState(() {});
+    print("DEBUG: Vehicle selection cleared after printing");
   }
 
   Future<void> _checkOfflineStatus() async {
@@ -474,13 +568,56 @@ class _TicketViewState extends State<TicketView> {
                     );
                   }
                 : () async {
-              // Show confirmation dialog - prevent dismissing by tapping outside
+                        // Validate that arrival (destination) is selected
+                        if (selectedArrival == null) {
+                          Get.snackbar(
+                            "Validation Error",
+                            "Please select a destination terminal",
+                            snackPosition: SnackPosition.TOP,
+                            backgroundColor: Colors.red,
+                            colorText: Colors.white,
+                            duration: const Duration(seconds: 3),
+                          );
+                          return;
+                        }
+
+                        // Validate that plate number is selected (vehicle must be selected from suggestions)
+                        if (_ticketController.vehicleId.value.isEmpty) {
+                          Get.snackbar(
+                            "Validation Error",
+                            "Please select a plate number from the suggestions",
+                            snackPosition: SnackPosition.TOP,
+                            backgroundColor: Colors.red,
+                            colorText: Colors.white,
+                            duration: const Duration(seconds: 3),
+                          );
+                          return;
+                        }
+
+                        // Show confirmation dialog with ticket details - prevent dismissing by tapping outside
               final result = await showDialog<bool>(
                 context: context,
                 barrierDismissible: false,
                 builder: (context) => AlertDialog(
-                  title: Text("Confirm Action", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  content: Text("Do you want to proceed with printing and saving?"),
+                  title: Text("Confirm Ticket", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text("Please verify the ticket details:", style: TextStyle(fontWeight: FontWeight.w500)),
+                        SizedBox(height: 12),
+                        _buildConfirmRow("Plate:", "${_ticketController.region.value}${_ticketController.plateNumber.value}"),
+                        _buildConfirmRow("From:", selectedDeparture ?? ''),
+                        _buildConfirmRow("To:", _ticketController.locationTo.value),
+                        _buildConfirmRow("KM:", _ticketController.km.value),
+                        _buildConfirmRow("Tariff:", _ticketController.tariff.value),
+                        _buildConfirmRow("Service Charge:", _ticketController.serviceCharge.value),
+                        Divider(),
+                        _buildConfirmRow("Total:", _ticketController.totalPayment.value, isBold: true),
+                      ],
+                    ),
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () {
@@ -495,7 +632,7 @@ class _TicketViewState extends State<TicketView> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                       ),
-                      child: Text("Proceed", style: TextStyle(color: Colors.white)),
+                      child: Text("Confirm & Print", style: TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),
@@ -643,6 +780,13 @@ class _TicketViewState extends State<TicketView> {
                 // Close the confirmation dialog
                 Get.back();
 
+                // Clear the vehicle selection after successful print
+                // The vehicle will be auto-selected again after 2 hours if needed
+                _clearVehicleSelection();
+
+                // Save the last used vehicle for future auto-selection
+                await _saveLastUsedVehicle(_ticketController.vehicleId.value);
+
                 // Show success message
                 Get.snackbar(
                   "Success",
@@ -708,6 +852,32 @@ class _TicketViewState extends State<TicketView> {
           Text(label,
               style: AppTextStyles.caption
                   .copyWith(color: Colors.black, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build a row in the confirmation dialog
+  Widget _buildConfirmRow(String label, String value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: Colors.grey[700],
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+              color: isBold ? AppColors.primary : Colors.black,
+            ),
+          ),
         ],
       ),
     );
