@@ -8,7 +8,8 @@ import 'package:oro_ticket_app/data/locals/models/user_model.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 import 'package:oro_ticket_app/widgets/dashboard_card.dart';
-import 'package:oro_ticket_app/data/locals/hive_boxes.dart'; // Import DashboardController
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
+import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
 
 // Fix the import for Ethiopian datetime
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
@@ -22,6 +23,7 @@ class HomeController extends GetxController {
   final RxString ethiopianDate = ''.obs;
   final RxString serviceChargeText = ''.obs;
   final RxString companyPhoneNo = ''.obs;
+  final RxString terminalName = ''.obs; // Add terminal name
   final RxBool isDashboardReset = false.obs;
   final SyncRepository _syncRepository = SyncRepository();
 
@@ -52,6 +54,11 @@ class HomeController extends GetxController {
       companyLogoUrl.value = loadedUser.logoUrl ?? '';
       companyId.value = loadedUser.companyId;
       companyPhoneNo.value = loadedUser.companyPhoneNo ?? '';
+      
+      // Get terminal name from storage
+      final terminal = DepartureTerminalStorageService.getTerminal();
+      terminalName.value = terminal?.name ?? '';
+      print('Terminal name loaded: ${terminalName.value}');
     } else {
       Get.snackbar("Error", "User must have valid company info");
     }

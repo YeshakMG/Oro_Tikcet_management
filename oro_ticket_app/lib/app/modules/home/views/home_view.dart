@@ -24,6 +24,7 @@ class HomeView extends StatelessWidget {
     return Obx(() {
       final user = homeController.user.value;
       final companyName = homeController.companyName.value;
+      final terminalName = homeController.terminalName.value;
 
       return PopScope(
 
@@ -52,6 +53,14 @@ class HomeView extends StatelessWidget {
                             style: AppTextStyles.subtitle1
                                 .copyWith(color: Colors.white),
                           ),
+                          if (terminalName.isNotEmpty) ...[
+                            SizedBox(height: paddingVertical * 0.1),
+                            Text(
+                              terminalName,
+                              style: AppTextStyles.body2
+                                  .copyWith(color: Colors.white70),
+                            ),
+                          ],
                           SizedBox(height: paddingVertical * 0.2),
                           Text(
                             user?.fullName ?? 'Employee Name',
