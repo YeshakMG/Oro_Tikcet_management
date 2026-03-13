@@ -108,6 +108,23 @@ class AuthService {
 
   Future<void> syncUserDataAfterLogin() async {
     try {
+      // Check if we've synced recently (within last hour) to avoid unnecessary syncs
+      final lastSync = await syncRepo.getLastVehicleSyncTime();
+      final now = DateTime.now();
+      
+      if (lastSync != null) {
+        final difference = now.difference(lastSync);
+        if (difference.inMinutes < 60) {
+          print('✅ Skipping vehicle sync - last synced ${difference.inMinutes} minutes ago');
+          // Still sync other data, but skip vehicles
+          await Future.wait([
+            syncRepo.syncCommissionRules(),
+            fetchAndStoreProfileData(),
+          ]);
+          return;
+        }
+      }
+      
       await Future.wait([
         syncRepo.syncCommissionRules(),
         syncRepo.syncAllCompanyUserVehicles(),
