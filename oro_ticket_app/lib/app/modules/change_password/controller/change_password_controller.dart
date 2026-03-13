@@ -82,7 +82,7 @@ class ChangePasswordController extends GetxController {
       print('================================');
 
       final response = await http
-          .post(
+          .put(
             url,
             headers: {
               'Content-Type': 'application/json',
