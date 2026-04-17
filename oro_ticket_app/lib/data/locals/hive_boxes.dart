@@ -21,6 +21,7 @@ class HiveBoxes {
   static const String serviceChargeBox = 'serviceChargeBox';
   static const String userBox = 'userData';
   static const String lastUsedVehicleBox = 'lastUsedVehicleBox';
+  static const String appSettingsBox = 'appSettingsBox';
   
   // Encryption key name in secure storage
   static const String encryptionKeyName = 'oro_ticket_encryption_key';
@@ -126,6 +127,8 @@ class HiveBoxes {
         Hive.openBox<UserModel>(userBox),
         // Last used vehicle box for quick re-selection (unencrypted)
         Hive.openBox<dynamic>(lastUsedVehicleBox),
+        // App settings box for tracking first install permissions
+        Hive.openBox<dynamic>(appSettingsBox),
       ]);
 
       _initialized = true;
@@ -184,6 +187,77 @@ class HiveBoxes {
       debugPrint('✅ All encrypted data cleared');
     } catch (e) {
       debugPrint('Error clearing data: $e');
+    }
+  }
+  
+  /// Method to clear only authentication-related data (for token expiration)
+  /// Preserves trip and service charge data so user can re-login and sync
+  static Future<void> clearAuthData() async {
+    try {
+      await Future.wait([
+        Hive.box<VehicleModel>(vehiclesBox).clear(),
+        Hive.box<DepartureTerminalModel>(departureTerminalsBox).clear(),
+        Hive.box<ArrivalTerminalModel>(arrivalTerminalsBox).clear(),
+        Hive.box<CommissionRuleModel>(commissionRulesBox).clear(),
+        Hive.box<UserModel>(userBox).clear(),
+        Hive.box<dynamic>(lastUsedVehicleBox).clear(),
+      ]);
+      
+      debugPrint('✅ Auth data cleared (trips and service charges preserved)');
+    } catch (e) {
+      debugPrint('Error clearing auth data: $e');
+    }
+  }
+  
+  /// Reset the cached encryption key (used after restoring from backup)
+  static void resetEncryptionKey() {
+    _encryptionKey = null;
+    debugPrint('🔑 Encryption key cache reset');
+  }
+  
+  /// Re-open all encrypted boxes with the restored encryption key
+  /// Call this after restoring the encryption key from backup
+  static Future<void> reOpenBoxesWithRestoredKey() async {
+    try {
+      debugPrint('🔄 Re-opening boxes with restored encryption key...');
+      
+      // Get the restored encryption key
+      final encryptionKey = await _getEncryptionKey();
+      final cipher = HiveAesCipher(encryptionKey);
+      
+      // Close existing boxes if open
+      if (Hive.isBoxOpen(vehiclesBox)) {
+        await Hive.box<VehicleModel>(vehiclesBox).close();
+      }
+      if (Hive.isBoxOpen(departureTerminalsBox)) {
+        await Hive.box<DepartureTerminalModel>(departureTerminalsBox).close();
+      }
+      if (Hive.isBoxOpen(arrivalTerminalsBox)) {
+        await Hive.box<ArrivalTerminalModel>(arrivalTerminalsBox).close();
+      }
+      if (Hive.isBoxOpen(commissionRulesBox)) {
+        await Hive.box<CommissionRuleModel>(commissionRulesBox).close();
+      }
+      if (Hive.isBoxOpen(tripBox)) {
+        await Hive.box<TripModel>(tripBox).close();
+      }
+      if (Hive.isBoxOpen(serviceChargeBox)) {
+        await Hive.box<ServiceChargeModel>(serviceChargeBox).close();
+      }
+      
+      // Re-open boxes with the restored key
+      await Future.wait([
+        Hive.openBox<VehicleModel>(vehiclesBox, encryptionCipher: cipher),
+        Hive.openBox<DepartureTerminalModel>(departureTerminalsBox, encryptionCipher: cipher),
+        Hive.openBox<ArrivalTerminalModel>(arrivalTerminalsBox, encryptionCipher: cipher),
+        Hive.openBox<CommissionRuleModel>(commissionRulesBox, encryptionCipher: cipher),
+        Hive.openBox<TripModel>(tripBox, encryptionCipher: cipher),
+        Hive.openBox<ServiceChargeModel>(serviceChargeBox, encryptionCipher: cipher),
+      ]);
+      
+      debugPrint('✅ Boxes re-opened with restored encryption key');
+    } catch (e) {
+      debugPrint('❌ Error re-opening boxes: $e');
     }
   }
 }

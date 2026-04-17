@@ -72,6 +72,24 @@ class TripModel extends HiveObject {
       'arrival_terminal_id': arrivalTerminalId,
       'company_id': companyId,
       'employee_id': employeeId,
+      'departure_name': departureName,
+      'arrival_name': arrivalName,
+    };
+  }
+
+  /// JSON for server sync - excludes departure_name and arrival_name as they don't exist in the DB
+  Map<String, dynamic> toServerJson() {
+    return {
+      'vehicle_id': vehicleId,
+      'date_and_time': dateAndTime.toIso8601String(),
+      'km': km,
+      'tariff': tariff,
+      'service_charge': serviceCharge,
+      'total_paid': totalPaid,
+      'departure_terminal_id': departureTerminalId,
+      'arrival_terminal_id': arrivalTerminalId,
+      'company_id': companyId,
+      'employee_id': employeeId,
     };
   }
 

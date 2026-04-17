@@ -780,12 +780,12 @@ class _TicketViewState extends State<TicketView> {
                 // Close the confirmation dialog
                 Get.back();
 
+                // Save the last used vehicle for future auto-selection BEFORE clearing
+                await _saveLastUsedVehicle(_ticketController.vehicleId.value);
+
                 // Clear the vehicle selection after successful print
                 // The vehicle will be auto-selected again after 2 hours if needed
                 _clearVehicleSelection();
-
-                // Save the last used vehicle for future auto-selection
-                await _saveLastUsedVehicle(_ticketController.vehicleId.value);
 
                 // Show success message
                 Get.snackbar(

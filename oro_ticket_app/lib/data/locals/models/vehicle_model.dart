@@ -68,13 +68,21 @@ class VehicleModel extends HiveObject {
   });
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
+    // Handle both nested object format and plain string format for backward compatibility
+    String getName(dynamic field) {
+      if (field == null) return '';
+      if (field is String) return field;
+      if (field is Map && field.containsKey('name')) return field['name'].toString();
+      return field.toString();
+    }
+    
     return VehicleModel(
       id: json['id'],
       plateNumber: json['plate_number'],
       plateRegion: json['plate_region'] ?? '',
-      fleetType: json['fleetType']['name'],
-      vehicleLevel: json['vehicleLevel']['name'],
-      associationName: json['association']['name'],
+      fleetType: getName(json['fleetType']),
+      vehicleLevel: getName(json['vehicleLevel']),
+      associationName: getName(json['association']),
       seatCapacity: json['seat_capacity'] ?? 0,
       status: json['status'] ?? 'active',
       assignedTerminalId: json['assigned_terminal_id'],

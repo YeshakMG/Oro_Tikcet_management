@@ -23,21 +23,38 @@ class CustomDrawer extends StatelessWidget {
     return Drawer(
       child: Container(
         color: Colors.white,
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
-            CustomDrawerHeader(
-              userName: userName,
-              companyLogoUrl: companyLogoUrl,
-              companyName: companyName,
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  CustomDrawerHeader(
+                    userName: userName,
+                    companyLogoUrl: companyLogoUrl,
+                    companyName: companyName,
+                  ),
+                  const SizedBox(height: 20),
+                  ...DrawerItems.items.map((item) => DrawerItem(
+                        title: item['title'],
+                        icon: item['icon'],
+                        color: item['color'],
+                        onTap: () => onItemSelected?.call(item['title']),
+                      )),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-            ...DrawerItems.items.map((item) => DrawerItem(
-                  title: item['title'],
-                  icon: item['icon'],
-                  color: item['color'],
-                  onTap: () => onItemSelected?.call(item['title']),
-                )),
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Powered by\nEthiopian Artificial Intelligence Institute',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
           ],
         ),
       ),

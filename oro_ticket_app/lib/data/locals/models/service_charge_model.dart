@@ -35,6 +35,16 @@ class ServiceChargeModel extends HiveObject {
         "departure_terminal_id": departureTerminal,
         "date_and_time": dateTime.toIso8601String(),
         "service_charge_amount": serviceChargeAmount,
+        "employee_name": employeeName,
+        "employee_id": employeeId,
+        "company_id": companyId,
+      };
+
+  /// JSON for server sync - excludes employee_name as it doesn't exist in the DB
+  Map<String, dynamic> toServerJson() => {
+        "departure_terminal_id": departureTerminal,
+        "date_and_time": dateTime.toIso8601String(),
+        "service_charge_amount": serviceChargeAmount,
         "employee_id": employeeId,
         "company_id": companyId,
       };

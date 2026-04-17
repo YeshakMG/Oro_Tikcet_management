@@ -14,7 +14,7 @@ import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/user_storage_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
-import '../../../../data/locals/hive_boxes.dart';
+import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import '../../../../data/locals/models/user_model.dart';
 import '../controllers/sign_in_controller.dart';
 
@@ -29,7 +29,14 @@ class AuthService {
   );
   static const _tokenKey = 'auth_token';
   static const _userKey = 'auth_user';
+  static const _tokenExpiryKey = 'auth_token_expiry';
+  static const _userEmailKey = 'user_email';
+  static const _userPasswordKey = 'user_password';
+  static const _refreshTokenKey = 'refresh_token';
   final SyncRepository syncRepo = Get.put(SyncRepository());
+
+  // Token expires after 20 days (as per API)
+  static const Duration tokenExpiryDuration = Duration(days: 20);
 
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'https://admin.ota.gov.et/api';
 
@@ -64,10 +71,21 @@ class AuthService {
 
       if (response.statusCode == 200 && data['status'] == 'success') {
         final token = data['data']['token'];
+        final refreshToken = data['data']['refreshToken'];
         final user = UserModel.fromLoginJson(data['data']);
 
         // Store in secure storage and Hive
         await _storage.write(key: _tokenKey, value: token);
+        // Store refresh token if provided
+        if (refreshToken != null) {
+          await _storage.write(key: _refreshTokenKey, value: refreshToken);
+        }
+        // Store token expiry time
+        final expiryTime = DateTime.now().add(tokenExpiryDuration);
+        await _storage.write(key: _tokenExpiryKey, value: expiryTime.toIso8601String());
+        // Store user credentials for auto-refresh
+        await _storage.write(key: _userEmailKey, value: email);
+        await _storage.write(key: _userPasswordKey, value: password);
         await UserStorageService.saveUser(user);
 
         // Sync critical data in background
@@ -83,15 +101,24 @@ class AuthService {
       }
     } catch (e) {
       // Check if we have cached user data for offline login
+      // But only if token is not expired
       final lastUser = await UserStorageService.getUser();
       if (lastUser != null && email == lastUser.email) {
         final token = await _storage.read(key: _tokenKey);
-        if (token != null) {
+        // Check if token exists AND is not expired
+        if (token != null && !(await isTokenExpired())) {
           return {
             'success': true,
             'user': lastUser,
             'token': token,
             'offline': true
+          };
+        } else {
+          // Token is expired - user must login again
+          return {
+            'success': false,
+            'message': 'Session expired. Please login again.',
+            'errors': []
           };
         }
       }
@@ -175,6 +202,10 @@ class AuthService {
     // Clear secure storage
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _userKey);
+    await _storage.delete(key: _tokenExpiryKey);
+    await _storage.delete(key: _userEmailKey);
+    await _storage.delete(key: _userPasswordKey);
+    await _storage.delete(key: _refreshTokenKey);
 
     // Clear user storage service
     UserStorageService.clearUser();
@@ -184,6 +215,146 @@ class AuthService {
   }
 
   Future<String?> getToken() => _storage.read(key: _tokenKey);
+
+  Future<String?> getRefreshToken() => _storage.read(key: _refreshTokenKey);
+
+  /// Check if the stored token is expired
+  Future<bool> isTokenExpired() async {
+    try {
+      final expiryString = await _storage.read(key: _tokenExpiryKey);
+      if (expiryString == null) {
+        // If no expiry stored, assume expired for safety
+        return true;
+      }
+      final expiryTime = DateTime.parse(expiryString);
+      return DateTime.now().isAfter(expiryTime);
+    } catch (e) {
+      // If error checking expiry, assume expired for safety
+      print('Error checking token expiry: $e');
+      return true;
+    }
+  }
+
+  /// Check if token is valid (exists and not expired)
+  Future<bool> isTokenValid() async {
+    final token = await getToken();
+    if (token == null || token.isEmpty) {
+      return false;
+    }
+    return !(await isTokenExpired());
+  }
+
+  /// Refresh the access token using the stored refresh token
+  /// Returns true if refresh was successful, false otherwise
+  Future<bool> refreshToken() async {
+    try {
+      final refreshToken = await _storage.read(key: _refreshTokenKey);
+      
+      if (refreshToken == null) {
+        print('⚠️ No stored refresh token for token refresh');
+        return false;
+      }
+
+      final currentToken = await getToken();
+      if (currentToken == null) {
+        return false;
+      }
+
+      print('🔄 Attempting to refresh token using refresh token...');
+      
+      final url = Uri.parse('$baseUrl/auth/refresh-token');
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $currentToken',
+            },
+            body: jsonEncode({'refreshToken': refreshToken}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          final newToken = data['data']['token'];
+          final newRefreshToken = data['data']['refreshToken'];
+          
+          // Store new token and refresh token, update expiry
+          await _storage.write(key: _tokenKey, value: newToken);
+          if (newRefreshToken != null) {
+            await _storage.write(key: _refreshTokenKey, value: newRefreshToken);
+          }
+          final expiryTime = DateTime.now().add(tokenExpiryDuration);
+          await _storage.write(key: _tokenExpiryKey, value: expiryTime.toIso8601String());
+          
+          print('✅ Token refreshed successfully using refresh token');
+          return true;
+        }
+      }
+      
+      print('⚠️ Token refresh failed: ${response.statusCode} - ${response.body}');
+      return false;
+    } catch (e) {
+      print('⚠️ Token refresh error: $e');
+      return false;
+    }
+  }
+
+  /// Try to refresh token, if fails then redirect to login
+  Future<bool> tryRefreshToken() async {
+    final refreshed = await refreshToken();
+    if (!refreshed) {
+      print('⚠️ Token refresh failed - forcing re-login');
+      await handleTokenExpiration();
+    }
+    return refreshed;
+  }
+
+  /// Handle token expiration - clear auth data and redirect to login
+  /// Preserves trip and service charge data so user can re-login and sync
+  Future<void> handleTokenExpiration() async {
+    print('⚠️ Token expired - forcing re-login (preserving trips and service charges)');
+    
+    // Clear only auth-related data, preserve trips and service charges
+    await _clearAuthStorage();
+    
+    Get.offAllNamed('/sign-in');
+    Get.snackbar(
+      'Session Expired',
+      'Your session has expired. Please login again to sync your data.',
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 5),
+    );
+  }
+
+  /// Clear only auth-related storage (for token expiration)
+  /// Preserves trip and service charge data
+  Future<void> _clearAuthStorage() async {
+    try {
+      // Clear secure storage tokens
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _userKey);
+      await _storage.delete(key: _tokenExpiryKey);
+      // Clear refresh token
+      await _storage.delete(key: _refreshTokenKey);
+      // Clear saved credentials (user needs to login again)
+      await _storage.delete(key: _userEmailKey);
+      await _storage.delete(key: _userPasswordKey);
+      
+      // Clear user storage
+      UserStorageService.clearUser();
+      
+      // Clear auth-related Hive boxes but preserve trips and service charges
+      await HiveBoxes.clearAuthData();
+      
+      print('✅ Auth storage cleared (trips and service charges preserved)');
+    } catch (e) {
+      print('Error clearing auth storage: $e');
+    }
+  }
 
   Future<UserModel?> getUser() async {
     try {
@@ -216,12 +387,24 @@ class AuthService {
     final token = await _storage.read(key: _tokenKey);
     if (token == null) return false;
 
+    // Check if token is expired
+    if (await isTokenExpired()) {
+      print('⚠️ Token expired - user not logged in');
+      return false;
+    }
+
     // Check if we have user data
     final user = await UserStorageService.getUser();
     return user != null;
   }
 
   Future<void> fetchAndStoreProfileData() async {
+    // Check if token is valid before making API call
+    if (await isTokenExpired()) {
+      print('⚠️ Token expired - cannot fetch profile data');
+      return;
+    }
+    
     final token = await getToken();
     if (token == null) return;
 

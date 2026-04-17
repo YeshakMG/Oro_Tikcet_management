@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Include all shared preferences -->
+    <include domain="sharedpref" path="." />
+    
+    <!-- Include the app's database files (Hive) -->
+    <include domain="database" path="." />
+    
+    <!-- Include the files directory (contains Hive boxes) -->
+    <include domain="file" path="." />
+    
+    <!-- Exclude sensitive files that shouldn't be backed up -->
+    <exclude domain="sharedpref" path="FlutterSecureStorage" />
+    <exclude domain="file" path="lock" />
+    <exclude domain="file" path="temp" />
+</full-backup-content>

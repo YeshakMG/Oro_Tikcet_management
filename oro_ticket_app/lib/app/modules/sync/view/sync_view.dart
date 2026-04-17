@@ -5,7 +5,7 @@ import 'package:ethiopian_datetime/ethiopian_datetime.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
-import 'package:oro_ticket_app/data/locals/backup_service.dart';
+import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
 
 import '../controller/sync_controller.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
@@ -13,8 +13,6 @@ import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
-import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 
 class SyncView extends StatefulWidget {
   const SyncView({super.key});
@@ -25,110 +23,176 @@ class SyncView extends StatefulWidget {
 
 class _SyncViewState extends State<SyncView> {
   final SyncController controller = Get.put(SyncController());
-  Map<String, int> _unsyncedCounts = {'trips': 0, 'serviceCharges': 0, 'total': 0};
+  final HomeController homeController = Get.find<HomeController>();
+  String _syncMessage = '';
+  String _syncMessageType = ''; // 'success', 'error', 'warning', 'info'
+  double _paddingHorizontal = 16;
+  double _paddingVertical = 16;
 
   @override
   void initState() {
     super.initState();
-    _loadUnsyncedCounts();
   }
 
-  Future<void> _loadUnsyncedCounts() async {
-    final counts = await BackupService.getUnsyncedCount();
-    if (mounted) {
+  Future<void> _syncToServer() async {
+    // Show loading indicator
+    Get.snackbar(
+      'Syncing', 
+      'Uploading data to server...',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.primary,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 2),
+      showProgressIndicator: true,
+      margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+    );
+    
+    // Check network connectivity first
+    final isConnected = await homeController.checkConnectivity();
+    
+    if (!isConnected) {
       setState(() {
-        _unsyncedCounts = counts;
+        _syncMessage = 'No Internet Connection. Please check your network and try again.';
+        _syncMessageType = 'warning';
       });
-    }
-  }
-
-  Future<void> _exportBackup() async {
-    await BackupService.exportAndShare();
-    await _loadUnsyncedCounts();
-  }
-
-  Future<void> _importBackup() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-      );
-
-      if (result != null && result.files.single.path != null) {
-        // Show loading
-        Get.dialog(
-          const AlertDialog(
-            content: Row(
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 20),
-                Text("Importing backup..."),
-              ],
-            ),
-          ),
-          barrierDismissible: false,
-        );
-
-        final file = File(result.files.single.path!);
-        final jsonContent = await file.readAsString();
-
-        final importedCount = await BackupService.importData(jsonContent);
-
-        Get.back(); // Close loading
-
-        await _loadUnsyncedCounts();
-
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         Get.snackbar(
-          "Success",
-          "$importedCount records imported successfully",
+          'No Internet Connection',
+          'Please check your network and try again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+        );
+      });
+      return;
+    }
+    
+    // Sync trips only
+    final tripsResult = await homeController.syncTrips();
+    
+    // Show result
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (tripsResult > 0) {
+        setState(() {
+          _syncMessage = '$tripsResult trip(s) uploaded successfully!';
+          _syncMessageType = 'success';
+        });
+        Get.snackbar(
+          'Sync Success',
+          '$tripsResult trip(s) uploaded successfully!',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green,
           colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+        );
+      } else if (tripsResult == 0) {
+        setState(() {
+          _syncMessage = 'No trips to sync. All trips have already been synced.';
+          _syncMessageType = 'warning';
+        });
+        Get.snackbar(
+          'No Trips to Sync',
+          'All trips have already been synced.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+        );
+      } else {
+        setState(() {
+          _syncMessage = 'Failed to upload trips. Please try again.';
+          _syncMessageType = 'error';
+        });
+        Get.snackbar(
+          'Sync Failed',
+          'Failed to upload trips. Please try again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5),
+          margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
         );
       }
-    } catch (e) {
-      // Close loading if open
-      if (Get.isDialogOpen ?? false) {
-        Get.back();
-      }
-      Get.snackbar(
-        "Error",
-        "Failed to import backup: $e",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+    });
+    
+    // Refresh after sync
+    controller.refreshTickets();
+  }
+
+  Widget _buildSyncMessage() {
+    if (_syncMessage.isEmpty) return const SizedBox.shrink();
+    
+    Color backgroundColor;
+    Color textColor;
+    IconData icon;
+    
+    switch (_syncMessageType) {
+      case 'success':
+        backgroundColor = Colors.green.shade100;
+        textColor = Colors.green.shade800;
+        icon = Icons.check_circle;
+        break;
+      case 'error':
+        backgroundColor = Colors.red.shade100;
+        textColor = Colors.red.shade800;
+        icon = Icons.error;
+        break;
+      case 'warning':
+        backgroundColor = Colors.orange.shade100;
+        textColor = Colors.orange.shade800;
+        icon = Icons.warning;
+        break;
+      case 'info':
+      default:
+        backgroundColor = Colors.blue.shade100;
+        textColor = Colors.blue.shade800;
+        icon = Icons.info;
+        break;
     }
+    
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(_paddingHorizontal),
+      margin: EdgeInsets.symmetric(horizontal: _paddingHorizontal, vertical: _paddingVertical),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: textColor),
+          SizedBox(width: _paddingHorizontal),
+          Expanded(
+            child: Text(
+              _syncMessage,
+              style: AppTextStyles.body2.copyWith(color: textColor),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final paddingHorizontal = size.width * 0.04; // 4% of screen width
-    final paddingVertical = size.height * 0.02; // 2% of screen height
+    _paddingHorizontal = size.width * 0.04;
+    _paddingVertical = size.height * 0.02;
 
     return AppScaffold(
-      title: "Sync Tickets",
+      title: "Trips",
       userName: '',
       actions: [
-        // Backup/Export button
-        IconButton(
-          icon: const Icon(Icons.backup, color: Colors.white),
-          onPressed: _exportBackup,
-          tooltip: 'Export Backup',
-        ),
-        // Import button
-        IconButton(
-          icon: const Icon(Icons.restore, color: Colors.white),
-          onPressed: _importBackup,
-          tooltip: 'Import Backup',
-        ),
-        SizedBox(width: paddingHorizontal),
+        SizedBox(width: _paddingHorizontal),
       ],
       body: Column(
         children: [
-          _buildUnsyncedBanner(paddingHorizontal, paddingVertical),
-          _buildTopBar(size, paddingHorizontal),
+          _buildSyncButton(),
+          _buildSyncMessage(),
           Expanded(
             child: Obx(() {
               final tickets = controller.filteredTickets;
@@ -140,7 +204,7 @@ class _SyncViewState extends State<SyncView> {
                 child: ListView.builder(
                   itemCount: tickets.length,
                   itemBuilder: (context, index) {
-                    return _buildTicketCard(tickets[index], size, paddingHorizontal, paddingVertical);
+                    return _buildTicketCard(tickets[index], size, _paddingHorizontal, _paddingVertical);
                   },
                 ),
               );
@@ -151,55 +215,25 @@ class _SyncViewState extends State<SyncView> {
     );
   }
 
-  Widget _buildUnsyncedBanner(double paddingHorizontal, double paddingVertical) {
-    final hasUnsynced = _unsyncedCounts['total']! > 0;
-    
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(paddingHorizontal),
-      color: hasUnsynced ? Colors.orange.shade100 : Colors.green.shade100,
-      child: Row(
-        children: [
-          Icon(
-            hasUnsynced ? Icons.warning : Icons.check_circle,
-            color: hasUnsynced ? Colors.orange : Colors.green,
-          ),
-          SizedBox(width: paddingHorizontal),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hasUnsynced 
-                      ? "Unsynced Data (Backup Recommended)" 
-                      : "All Data Synced",
-                  style: AppTextStyles.buttonMediumB.copyWith(
-                    color: hasUnsynced ? Colors.orange.shade800 : Colors.green.shade800,
-                  ),
-                ),
-                Text(
-                  "${_unsyncedCounts['trips']} trips, ${_unsyncedCounts['serviceCharges']} service charges",
-                  style: AppTextStyles.caption.copyWith(
-                    color: hasUnsynced ? Colors.orange.shade700 : Colors.green.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (hasUnsynced)
-            ElevatedButton.icon(
-              onPressed: _exportBackup,
-              icon: const Icon(Icons.backup, size: 18),
-              label: const Text("Backup"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-            ),
-        ],
+  Widget _buildSyncButton() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: _paddingHorizontal, vertical: _paddingVertical),
+      child: ElevatedButton.icon(
+        onPressed: _syncToServer,
+        icon: const Icon(Icons.cloud_upload, size: 20),
+        label: const Text('Sync Trips'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          textStyle: AppTextStyles.body2,
+        ),
       ),
     );
+  }
+
+  Widget _buildUnsyncedBanner(double paddingHorizontal, double paddingVertical) {
+    return const SizedBox.shrink();
   }
 
   Widget _buildTopBar(Size size, double paddingHorizontal) {

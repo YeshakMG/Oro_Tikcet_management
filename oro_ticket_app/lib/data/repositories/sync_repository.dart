@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
+import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
@@ -106,6 +107,21 @@ class SyncRepository {
 
     try {
       final authService = Get.find<AuthService>();
+      
+      // Check if token is valid before attempting sync
+      final isValid = await authService.isTokenValid();
+      if (!isValid) {
+        print('⚠️ Token expired - attempting to refresh');
+        
+        // Try to refresh token first
+        final refreshed = await authService.refreshToken();
+        if (!refreshed) {
+          print('⚠️ Token refresh failed - cannot sync vehicles');
+          return;
+        }
+        print('✅ Token refreshed successfully');
+      }
+      
       final token = await authService.getToken();
       final box = await HiveBoxes.getBox<VehicleModel>(HiveBoxes.vehiclesBox);
 
@@ -383,6 +399,21 @@ class SyncRepository {
     }
 
     final authService = Get.find<AuthService>();
+    
+    // Check if token is valid before attempting sync
+    final isValid = await authService.isTokenValid();
+    if (!isValid) {
+      print('⚠️ Token expired - attempting to refresh');
+      
+      // Try to refresh token first
+      final refreshed = await authService.refreshToken();
+      if (!refreshed) {
+        print('⚠️ Token refresh failed - cannot sync arrival terminals');
+        return;
+      }
+      print('✅ Token refreshed successfully');
+    }
+    
     final token = await authService.getToken();
 
     // New API endpoint for terminals with destinations
@@ -484,6 +515,21 @@ class SyncRepository {
     }
 
     final authService = Get.find<AuthService>();
+    
+    // Check if token is valid before attempting sync
+    final isValid = await authService.isTokenValid();
+    if (!isValid) {
+      print('⚠️ Token expired - attempting to refresh');
+      
+      // Try to refresh token first
+      final refreshed = await authService.refreshToken();
+      if (!refreshed) {
+        print('⚠️ Token refresh failed - cannot sync commission rules');
+        return;
+      }
+      print('✅ Token refreshed successfully');
+    }
+    
     final token = await authService.getToken();
 
     final response = await http.get(
@@ -525,24 +571,57 @@ class SyncRepository {
     }
   }
 
-  Future<int> syncTripsToServer() async {
+  Future<int> syncTripsToServer({bool showSnackbar = true}) async {
     try {
       final authService = Get.find<AuthService>();
+      
+      // Check if token is valid before attempting sync
+      final isValid = await authService.isTokenValid();
+      if (!isValid) {
+        print('⚠️ Token expired - attempting to refresh');
+        
+        // Try to refresh token first
+        final refreshed = await authService.refreshToken();
+        if (!refreshed) {
+          // If refresh failed, try to force re-login
+          if (showSnackbar) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Get.snackbar(
+                "Session Expired",
+                "Your session has expired. Please login again.",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.red,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 5),
+              );
+              // Delay redirect to allow snackbar to show
+              Future.delayed(const Duration(seconds: 2), () {
+                authService.handleTokenExpiration();
+              });
+            });
+          }
+          return -1; // Return -1 to indicate token expiration
+        }
+        // Token refreshed successfully, continue with sync
+        print('✅ Token refreshed successfully');
+      }
+      
       final token = await authService.getToken();
       final tripStorageService = TripStorageService();
       final trips = tripStorageService.getAllTrips();
 
       if (trips.isEmpty) {
         print('No trips to sync');
-        // Use post frame callback to ensure snackbar shows after widget build
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Get.closeCurrentSnackbar();
-          Get.snackbar("Info", "No trips to sync",
-              snackPosition: SnackPosition.TOP,
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 3));
-        });
+        // Only show snackbar if enabled
+        if (showSnackbar) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Get.snackbar("Info", "No trips to sync",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.orange,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 3));
+          });
+        }
         return 0;
       }
 
@@ -557,19 +636,60 @@ class SyncRepository {
               'Accept': 'application/json',
               'Authorization': 'Bearer $token',
             },
-            body: jsonEncode(trip.toJson()),
+            body: jsonEncode(trip.toServerJson()),
           );
+
+          // Handle 401 Unauthorized - token expired
+          if (response.statusCode == 401) {
+            print('⚠️ Received 401 Unauthorized - attempting token refresh');
+            final responseBody = jsonDecode(response.body);
+            final message = responseBody['message'] ?? 'Invalid or expired token';
+            
+            if (message.toString().toLowerCase().contains('token') || 
+                message.toString().toLowerCase().contains('expired') ||
+                message.toString().toLowerCase().contains('invalid')) {
+              
+              // Try to refresh the token
+              final refreshed = await authService.tryRefreshToken();
+              if (refreshed) {
+                // Retry the sync with new token
+                print('🔄 Token refreshed, retrying sync...');
+                final newToken = await authService.getToken();
+                final retryResponse = await http.post(
+                  Uri.parse('$baseUrl/trips'),
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': 'Bearer $newToken',
+                  },
+                  body: jsonEncode(trip.toServerJson()),
+                );
+                
+                if (retryResponse.statusCode == 200 || retryResponse.statusCode == 201) {
+                  trip.isSynced = true;
+                  print('Trip synced after token refresh: ${trip.vehicleId}');
+                  await tripStorageService.clearTrips();
+                  syncedCount++;
+                } else {
+                  print('Retry failed: ${retryResponse.body}');
+                }
+                continue;
+              }
+              // If refresh failed, continue to next trip
+              continue;
+            }
+          }
 
           if (response.statusCode == 200 || response.statusCode == 201) {
             trip.isSynced = true;
             print('Trip synced successfully: ${trip.vehicleId}');
             await tripStorageService.clearTrips();
             print('All trips processed');
-            print('Sent payload: ${jsonEncode(trip.toJson())}');
+            print('Sent payload: ${jsonEncode(trip.toServerJson())}');
             syncedCount++;
           } else {
             print('Failed to sync trip: ${response.body}');
-            print('Sent payload: ${jsonEncode(trip.toJson())}');
+            print('Sent payload: ${jsonEncode(trip.toServerJson())}');
           }
         } catch (e) {
           print('Error syncing individual trip: $e');
@@ -577,66 +697,98 @@ class SyncRepository {
         }
       }
 
-      // Show success message after all trips are synced
-      print('DEBUG: Showing snackbar - syncedCount: $syncedCount');
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (syncedCount > 0) {
-          Get.closeCurrentSnackbar();
-          Get.snackbar("Success", "$syncedCount trip(s) synced successfully",
-              snackPosition: SnackPosition.TOP,
-              backgroundColor: Colors.green,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 4));
-        } else {
-          Get.closeCurrentSnackbar();
-          Get.snackbar("Warning", "No trips were synced",
-              snackPosition: SnackPosition.TOP,
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 3));
-        }
-      });
+      // Show success message after all trips are synced only if enabled
+      if (showSnackbar) {
+        print('DEBUG: Showing snackbar - syncedCount: $syncedCount');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (syncedCount > 0) {
+            Get.snackbar("Success", "$syncedCount trip(s) synced successfully",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.green,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 4));
+          } else {
+            Get.snackbar("Warning", "No trips were synced",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.orange,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 3));
+          }
+        });
+      }
 
       return syncedCount;
     } catch (e) {
       print('Error in sync process: $e');
       
-      // Show user-friendly error message based on error type
-      String errorMessage;
-      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
-        errorMessage = "Unable to connect to server. Please check your internet connection.";
-      } else if (e.toString().contains('TimeoutException')) {
-        errorMessage = "Connection timed out. Please try again.";
-      } else {
-        errorMessage = "Failed to sync trips. Please try again.";
+      // Show user-friendly error message based on error type only if enabled
+      if (showSnackbar) {
+        String errorMessage;
+        if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+          errorMessage = "Unable to connect to server. Please check your internet connection.";
+        } else if (e.toString().contains('TimeoutException')) {
+          errorMessage = "Connection timed out. Please try again.";
+        } else {
+          errorMessage = "Failed to sync trips. Please try again.";
+        }
+        
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Get.snackbar("Sync Failed", errorMessage,
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: Colors.red,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 5));
+        });
       }
-      
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Get.closeCurrentSnackbar();
-        Get.snackbar("Sync Failed", errorMessage,
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 5));
-      });
       throw Exception('Error syncing trips: $e');
     }
   }
 
-Future<int> syncServiceChargeToServer() async {
+Future<int> syncServiceChargeToServer({bool showSnackbar = true}) async {
   final authService = Get.find<AuthService>();
+  
+  // Check if token is valid before attempting sync
+  final isValid = await authService.isTokenValid();
+  if (!isValid) {
+    print('⚠️ Token expired - attempting to refresh');
+    
+    // Try to refresh token first
+    final refreshed = await authService.refreshToken();
+    if (!refreshed) {
+      if (showSnackbar) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Get.snackbar(
+            "Session Expired",
+            "Your session has expired. Please login again.",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 5),
+          );
+          // Delay redirect to allow snackbar to show
+          Future.delayed(const Duration(seconds: 2), () {
+            authService.handleTokenExpiration();
+          });
+        });
+      }
+      return -1;
+    }
+    print('✅ Token refreshed successfully');
+  }
+  
   final token = await authService.getToken();
   final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
   if (box.isEmpty) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Get.closeCurrentSnackbar();
-      Get.snackbar("Info", "No service charges to sync",
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3));
-    });
+    if (showSnackbar) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar("Info", "No service charges to sync",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3));
+      });
+    }
     return 0;
   }
 
@@ -656,7 +808,7 @@ Future<int> syncServiceChargeToServer() async {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode(serviceCharge.toJson()),
+        body: jsonEncode(serviceCharge.toServerJson()),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -673,29 +825,16 @@ Future<int> syncServiceChargeToServer() async {
     }
   }
 
-  // Show single success message after all are processed
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    Get.closeCurrentSnackbar();
-    if (syncedCount > 0 && failedCount == 0) {
+  // Show single success message after all are processed only if enabled
+  if (showSnackbar) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       Get.snackbar("Success", "$syncedCount service charge(s) synced successfully",
           snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.green,
           colorText: Colors.white,
           duration: const Duration(seconds: 4));
-    } else if (syncedCount > 0 && failedCount > 0) {
-      Get.snackbar("Warning", "$syncedCount synced, $failedCount failed",
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 4));
-    } else if (failedCount > 0) {
-      Get.snackbar("Error", "$failedCount service charge(s) failed to sync",
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 5));
-    }
-  });
+    });
+  }
 
   return syncedCount;
 }

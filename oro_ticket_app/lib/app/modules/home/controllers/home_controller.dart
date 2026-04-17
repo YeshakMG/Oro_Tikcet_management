@@ -10,6 +10,8 @@ import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 import 'package:oro_ticket_app/widgets/dashboard_card.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
+import 'package:oro_ticket_app/data/locals/data_restoration_service.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 // Fix the import for Ethiopian datetime
 import 'package:ethiopian_datetime/ethiopian_datetime.dart';
@@ -26,6 +28,7 @@ class HomeController extends GetxController {
   final RxString terminalName = ''.obs; // Add terminal name
   final RxBool isDashboardReset = false.obs;
   final SyncRepository _syncRepository = SyncRepository();
+  final Connectivity _connectivity = Connectivity();
 
   // Get the AuthService instance from GetX
   AuthService get _authService => Get.find<AuthService>();
@@ -36,6 +39,8 @@ class HomeController extends GetxController {
     loadUser();
     loadTodayServiceCharge();
     updateEthiopianDate();
+    // Note: Data restoration is now handled in main.dart
+    // No need to call DataRestorationService here
   }
 
   void loadUser() async {
@@ -87,6 +92,17 @@ class HomeController extends GetxController {
     final ethDate = now.convertToEthiopian();
     ethiopianDate.value =
         "${ethDate.day.toString().padLeft(2, '0')}-${ethDate.month.toString().padLeft(2, '0')}-${ethDate.year}";
+  }
+
+  // Check network connectivity
+  Future<bool> checkConnectivity() async {
+    try {
+      final result = await _connectivity.checkConnectivity();
+      return result != ConnectivityResult.none;
+    } catch (e) {
+      print('Connectivity check error: $e');
+      return false;
+    }
   }
 
   void addOrUpdateServiceCharge({
@@ -157,53 +173,24 @@ class HomeController extends GetxController {
   // Sync trips and return count
   Future<int> syncTrips() async {
     try {
-      // Repository will show the snackbar with appropriate message
-      final count = await _syncRepository.syncTripsToServer();
+      // Don't show snackbar in repository, we handle it in the view
+      final count = await _syncRepository.syncTripsToServer(showSnackbar: false);
       return count;
     } catch (e) {
-      // Show user-friendly error message based on error type
-      String errorMessage;
-      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
-        errorMessage = "Unable to connect to server. Please check your internet connection.";
-      } else if (e.toString().contains('TimeoutException')) {
-        errorMessage = "Connection timed out. Please try again.";
-      } else {
-        errorMessage = "Failed to sync trips. Please try again.";
-      }
-      
-      Get.snackbar(
-        "Sync Failed",
-        errorMessage,
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: AppColors.error,
-        colorText: AppColors.background,
-        duration: const Duration(seconds: 5),
-      );
+      // Return -1 to indicate failure, snackbar is handled in view
+      debugPrint('Sync error: $e');
       return -1;
     }
   }
 
   Future<int> syncServiceCharge() async {
     try {
-      // Repository will show the snackbar with appropriate message
-      final count = await _syncRepository.syncServiceChargeToServer();
+      // Don't show snackbar in repository, we handle it in the view
+      final count = await _syncRepository.syncServiceChargeToServer(showSnackbar: false);
       return count;
     } catch (e) {
-      // Show user-friendly error message based on error type
-      String errorMessage;
-      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
-        errorMessage = "Unable to connect to server. Please check your internet connection.";
-      } else if (e.toString().contains('TimeoutException')) {
-        errorMessage = "Connection timed out. Please try again.";
-      } else {
-        errorMessage = "Failed to sync service charge. Please try again.";
-      }
-      
-      Get.snackbar("Sync Failed", errorMessage,
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: AppColors.error,
-          colorText: AppColors.background,
-          duration: const Duration(seconds: 5));
+      // Return -1 to indicate failure, snackbar is handled in view
+      debugPrint('Sync service charge error: $e');
       return -1;
     }
   }

@@ -88,22 +88,6 @@ class HomeView extends StatelessWidget {
                             ),
                             child: const Text('Sync'),
                           ),
-                          IconButton(
-                            onPressed: () async {
-                              // Show loading indicator and call sync
-                              Get.closeCurrentSnackbar();
-                              Get.snackbar(
-                                'Syncing', 
-                                'Uploading trips to server...',
-                                snackPosition: SnackPosition.TOP,
-                                backgroundColor: AppColors.primary,
-                                colorText: Colors.white,
-                                duration: const Duration(seconds: 2),
-                              );
-                              await homeController.syncTrips();
-                            },
-                            icon: const Icon(Icons.sync, color: Colors.white),
-                          ),
                         ],
                       ),
                     ],
@@ -176,7 +160,6 @@ class HomeView extends StatelessWidget {
                                     Navigator.of(context).pop(); // Close dialog
                                     
                                     // Show loading snackbar
-                                    Get.closeCurrentSnackbar();
                                     Get.snackbar(
                                       'Syncing Service Charges', 
                                       'Uploading service charges to server...',
@@ -191,38 +174,39 @@ class HomeView extends StatelessWidget {
                                     final result = await homeController.syncServiceCharge();
                                     
                                     // Show result message
-                                    Get.closeCurrentSnackbar();
-                                    if (result > 0) {
-                                      // Success
-                                      Get.snackbar(
-                                        "Sync Success",
-                                        "$result service charge(s) synced and uploaded successfully!",
-                                        snackPosition: SnackPosition.TOP,
-                                        backgroundColor: Colors.green,
-                                        colorText: Colors.white,
-                                        duration: const Duration(seconds: 4),
-                                      );
-                                    } else if (result == 0) {
-                                      // No charges to sync
-                                      Get.snackbar(
-                                        "No Service Charges",
-                                        "No service charges to sync. Dashboard will be reset.",
-                                        snackPosition: SnackPosition.TOP,
-                                        backgroundColor: Colors.orange,
-                                        colorText: Colors.white,
-                                        duration: const Duration(seconds: 3),
-                                      );
-                                    } else {
-                                      // Failed - show error with reason
-                                      Get.snackbar(
-                                        "Sync Failed",
-                                        "Failed to sync service charges. Please check your internet connection and try again.",
-                                        snackPosition: SnackPosition.TOP,
-                                        backgroundColor: Colors.red,
-                                        colorText: Colors.white,
-                                        duration: const Duration(seconds: 5),
-                                      );
-                                    }
+                                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                                      if (result > 0) {
+                                        // Success
+                                        Get.snackbar(
+                                          "Sync Success",
+                                          "$result service charge(s) synced and uploaded successfully!",
+                                          snackPosition: SnackPosition.TOP,
+                                          backgroundColor: Colors.green,
+                                          colorText: Colors.white,
+                                          duration: const Duration(seconds: 4),
+                                        );
+                                      } else if (result == 0) {
+                                        // No charges to sync
+                                        Get.snackbar(
+                                          "No Service Charges",
+                                          "No service charges to sync. Dashboard will be reset.",
+                                          snackPosition: SnackPosition.TOP,
+                                          backgroundColor: Colors.orange,
+                                          colorText: Colors.white,
+                                          duration: const Duration(seconds: 3),
+                                        );
+                                      } else {
+                                        // Failed - show error with reason
+                                        Get.snackbar(
+                                          "Sync Failed",
+                                          "Failed to sync service charges. Please check your internet connection and try again.",
+                                          snackPosition: SnackPosition.TOP,
+                                          backgroundColor: Colors.red,
+                                          colorText: Colors.white,
+                                          duration: const Duration(seconds: 5),
+                                        );
+                                      }
+                                    });
                                     
                                     // Always reset dashboard after sync attempt
                                     homeController.resetDashboard();
