@@ -34,6 +34,7 @@ class HomeController extends GetxController {
   void loadUser() async {
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
+     print('Token: $token');
 
     if (token == null) {
       debugPrint('No token found — skipping user load');

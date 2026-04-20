@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'package:oro_ticket_app/data/locals/models/vehicle_route.dart';
 
 part 'vehicle_model.g.dart';
 
@@ -49,6 +50,16 @@ class VehicleModel extends HiveObject {
   @HiveField(14)
   final List<String>? tariffs;
 
+  // New fields for pricing
+  @HiveField(15)
+  final String? vehicleLevelId;
+
+  @HiveField(16)
+  final String? fleetTypeId;
+
+  @HiveField(17)
+  final VehicleRoute? currentRoute; // The assigned route
+
   VehicleModel({
     required this.id,
     required this.plateNumber,
@@ -65,16 +76,27 @@ class VehicleModel extends HiveObject {
     this.updatedBy,
     this.createdAt,
     this.updatedAt,
+    this.vehicleLevelId,
+    this.fleetTypeId,
+    this.currentRoute,
   });
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
+    // Parse the current route if vehicle has destinations
+    VehicleRoute? route;
+    if (json['vehicleTerminalDestinations'] != null && 
+        (json['vehicleTerminalDestinations'] as List).isNotEmpty) {
+      final firstDestination = (json['vehicleTerminalDestinations'] as List).first;
+      route = VehicleRoute.fromJson(firstDestination);
+    }
+
     return VehicleModel(
       id: json['id'],
       plateNumber: json['plate_number'],
       plateRegion: json['plate_region'] ?? '',
-      fleetType: json['fleetType']['name'],
-      vehicleLevel: json['vehicleLevel']['name'],
-      associationName: json['association']['name'],
+      fleetType: json['fleetType']?['name'] ?? '',
+      vehicleLevel: json['vehicleLevel']?['name'] ?? '',
+      associationName: json['association']?['name'] ?? '',
       seatCapacity: json['seat_capacity'] ?? 0,
       status: json['status'] ?? 'active',
       assignedTerminalId: json['assigned_terminal_id'],
@@ -82,9 +104,11 @@ class VehicleModel extends HiveObject {
       updatedBy: json['updated_by'],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
-      arrivalTerminals:
-          (json['arrival_terminals'] as List?)?.cast<String>() ?? [],
+      arrivalTerminals: (json['arrival_terminals'] as List?)?.cast<String>() ?? [],
       tariffs: (json['tariffs'] as List?)?.cast<String>() ?? [],
+      vehicleLevelId: json['vehicle_level_id'] ?? json['vehicleLevel']?['id'],
+      fleetTypeId: json['fleet_type_id'] ?? json['fleetType']?['id'],
+      currentRoute: route,
     );
   }
 
@@ -104,5 +128,7 @@ class VehicleModel extends HiveObject {
         'updated_at': updatedAt,
         'arrival_terminals': arrivalTerminals ?? [],
         'tariffs': tariffs ?? [],
-      };
+        'vehicle_level_id': vehicleLevelId,
+        'fleet_type_id': fleetTypeId,
+  };
 }

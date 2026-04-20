@@ -10,10 +10,12 @@ import 'package:oro_ticket_app/core/utils/security_utils.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/models/tariff_model.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/service/arrival_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/commission_rule_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_service.dart';
+import 'package:oro_ticket_app/data/locals/service/tariff_storage_service.dart';
 import 'package:oro_ticket_app/data/locals/service/trip_storage_service.dart';
 
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
@@ -130,6 +132,20 @@ class SyncRepository {
               .map((e) => VehicleModel.fromJson(e))
               .toList();
 
+          // Save vehicles
+          for (final vehicle in validVehicles) {
+            await box.put(vehicle.id, vehicle);
+          }
+
+          print('✅ Saved ${validVehicles.length} vehicles with routes');
+
+          // Debug: Check if routes were saved
+          for (var v in validVehicles) {
+            if (v.currentRoute != null) {
+              print(
+                  'Vehicle ${v.plateNumber} has route to ${v.currentRoute!.terminalDestination?.arrivalTerminalName}');
+            }
+          }
           for (final vehicle in validVehicles) {
             apiVehicleIds.add(vehicle.id);
           }
@@ -440,55 +456,149 @@ class SyncRepository {
     }
   }
 
-Future<void> syncServiceChargeToServer() async {
-  final authService = Get.find<AuthService>();
-  final token = await authService.getToken();
-  final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+  Future<void> syncServiceChargeToServer() async {
+    final authService = Get.find<AuthService>();
+    final token = await authService.getToken();
+    final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
-  if (box.isEmpty) {
-    if (Get.context != null) {
-      Get.snackbar("Info", "No service charges to sync");
+    if (box.isEmpty) {
+      if (Get.context != null) {
+        Get.snackbar("Info", "No service charges to sync");
+      }
+      return;
     }
-    return;
+
+    final entries = box.toMap();
+
+    for (final entry in entries.entries) {
+      final key = entry.key;
+      final serviceCharge = entry.value;
+
+      try {
+        final response = await _secureClient.post(
+          Uri.parse("$baseUrl/service-charges"), // 👈 replace with real URL
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(serviceCharge.toJson()),
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          print('✅ Synced: ${serviceCharge.departureTerminal}');
+          await box.delete(key);
+
+          if (Get.context != null) {
+            Get.snackbar("Success", "Service charge synced successfully");
+          }
+        } else {
+          print('❌ Failed (${response.statusCode}): ${response.body}');
+          if (Get.context != null) {
+            Get.snackbar("Error", "Failed to sync: ${response.statusCode}");
+          }
+        }
+      } catch (e) {
+        print('❗ Sync error: $e');
+        if (Get.context != null) {
+          Get.snackbar("Error", "Sync error: $e");
+        }
+      }
+    }
   }
 
-  final entries = box.toMap();
+  Future<void> syncTariffs() async {
+    if (!_secureClientInitialized) {
+      await _initSecureClient();
+      _secureClientInitialized = true;
+    }
 
-  for (final entry in entries.entries) {
-    final key = entry.key;
-    final serviceCharge = entry.value;
+    if (!await _isOnline) {
+      print('🚫 Offline - Skipping tariff sync');
+      return;
+    }
 
     try {
-      final response = await _secureClient.post(
-        Uri.parse("$baseUrl/service-charges"), // 👈 replace with real URL
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(serviceCharge.toJson()),
-      );
+      final authService = Get.find<AuthService>();
+      final token = await authService.getToken();
+      if (token == null) {
+        print('❌ No token available for tariff sync');
+        return;
+      }
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ Synced: ${serviceCharge.departureTerminal}');
-        await box.delete(key);
+      List<TariffModel> allTariffs = [];
+      int currentPage = 1;
+      bool hasMorePages = true;
 
-        if (Get.context != null) {
-          Get.snackbar("Success", "Service charge synced successfully");
+      while (hasMorePages) {
+        final response = await _secureClient.get(
+          Uri.parse('$baseUrl/tariffs?page=$currentPage'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ).timeout(const Duration(seconds: 10));
+
+        if (response.statusCode == 200) {
+          final json = jsonDecode(response.body);
+
+          if (json['data'] == null) {
+            print('⚠️ No data field in tariff response');
+            break;
+          }
+
+          final tariffsData = json['data']['tariffs'] as List<dynamic>?;
+          if (tariffsData == null || tariffsData.isEmpty) {
+            print('📭 No tariffs on page $currentPage');
+            break;
+          }
+
+          print(
+              '📦 Received ${tariffsData.length} tariffs from page $currentPage');
+
+          final validTariffs = tariffsData
+              .where((e) => e['deleted_at'] == null)
+              .map((e) => TariffModel.fromJson(e))
+              .where((t) => t.isValid())
+              .toList();
+
+          allTariffs.addAll(validTariffs);
+          print(
+              '✅ Added ${validTariffs.length} valid tariffs from page $currentPage');
+
+          final pagination = json['data']['pagination'];
+          if (pagination != null) {
+            final currentPageNum = pagination['current_page'];
+            final lastPageNum = pagination['last_page'];
+
+            if (currentPageNum != null && lastPageNum != null) {
+              hasMorePages = currentPageNum < lastPageNum;
+              currentPage++;
+            } else {
+              hasMorePages = false;
+            }
+          } else {
+            hasMorePages = false;
+          }
+
+          print('📄 Page $currentPage of ${pagination?['last_page'] ?? '?'}');
+        } else {
+          print('⚠️ Tariff API returned ${response.statusCode}');
+          break;
         }
+      }
+
+      if (allTariffs.isNotEmpty) {
+        await TariffStorageService.saveTariffs(allTariffs);
+        print('✅ Total tariffs synced and saved: ${allTariffs.length}');
+
+        TariffStorageService.debugPrintAllTariffs();
       } else {
-        print('❌ Failed (${response.statusCode}): ${response.body}');
-        if (Get.context != null) {
-          Get.snackbar("Error", "Failed to sync: ${response.statusCode}");
-        }
+        print('⚠️ No valid tariffs found to sync');
       }
-    } catch (e) {
-      print('❗ Sync error: $e');
-      if (Get.context != null) {
-        Get.snackbar("Error", "Sync error: $e");
-      }
+    } catch (e, stackTrace) {
+      print('⚠️ Tariff sync error: $e');
+      print('Stack trace: $stackTrace');
     }
   }
-}
-
 }

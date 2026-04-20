@@ -4,8 +4,11 @@ import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
+import 'package:oro_ticket_app/data/locals/models/tariff_model.dart';
+import 'package:oro_ticket_app/data/locals/models/terminal_destination.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/models/user_model.dart';
+import 'package:oro_ticket_app/data/locals/models/vehicle_route.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 
 import 'models/vehicle_model.dart';
@@ -18,6 +21,8 @@ class HiveBoxes {
   static const String tripBox = 'tripBox';
   static const String serviceChargeBox = 'serviceChargeBox';
   static const String userBox = 'userData';
+  static const String tariffsBox = 'tariffsBox';
+
   static bool _initialized = false;
 
   static Future<void> init() async {
@@ -41,6 +46,9 @@ class HiveBoxes {
       Hive.registerAdapter(TripModelAdapter());
       Hive.registerAdapter(ServiceChargeModelAdapter());
       Hive.registerAdapter(UserModelAdapter());
+      Hive.registerAdapter(TariffModelAdapter());
+      Hive.registerAdapter(TerminalDestinationAdapter());
+      Hive.registerAdapter(VehicleRouteAdapter());
 
       // Open boxes
       await Future.wait([
@@ -51,6 +59,7 @@ class HiveBoxes {
         Hive.openBox<TripModel>(tripBox),
         Hive.openBox<ServiceChargeModel>(serviceChargeBox),
         Hive.openBox<UserModel>(userBox),
+        Hive.openBox<TariffModel>(tariffsBox),
       ]);
 
       _initialized = true;

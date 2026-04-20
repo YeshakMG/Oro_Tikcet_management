@@ -32,13 +32,16 @@ class VehicleModelAdapter extends TypeAdapter<VehicleModel> {
       updatedBy: fields[10] as String?,
       createdAt: fields[11] as String?,
       updatedAt: fields[12] as String?,
+      vehicleLevelId: fields[15] as String?,
+      fleetTypeId: fields[16] as String?,
+      currentRoute: fields[17] as VehicleRoute?,
     );
   }
 
   @override
   void write(BinaryWriter writer, VehicleModel obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -68,7 +71,13 @@ class VehicleModelAdapter extends TypeAdapter<VehicleModel> {
       ..writeByte(13)
       ..write(obj.arrivalTerminals)
       ..writeByte(14)
-      ..write(obj.tariffs);
+      ..write(obj.tariffs)
+      ..writeByte(15)
+      ..write(obj.vehicleLevelId)
+      ..writeByte(16)
+      ..write(obj.fleetTypeId)
+      ..writeByte(17)
+      ..write(obj.currentRoute);
   }
 
   @override

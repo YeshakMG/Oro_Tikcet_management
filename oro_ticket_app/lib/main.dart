@@ -22,7 +22,7 @@ void main() async {
   await dotenv.load(fileName: ".env");
 
   // Initialize security utilities
-  await _initializeSecurity();
+  // await _initializeSecurity();
 
   Get.put(AuthService());
   Get.put(HomeController());
