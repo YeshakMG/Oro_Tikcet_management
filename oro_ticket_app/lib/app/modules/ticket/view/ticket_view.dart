@@ -101,10 +101,34 @@ class _TicketViewState extends State<TicketView> {
         .where((v) => v.plateNumber.toLowerCase().contains(input.toLowerCase()))
         .toList();
 
+    if (plateInput != input) {
+      _resetTicketController();
+    }
+
     setState(() {
       plateInput = input;
       suggestions = filtered;
     });
+
+    if (input.isEmpty) {
+      _resetTicketController();
+      _ticketController.selectedVehicle.value = null;
+    }
+  }
+
+  void _resetTicketController() {
+    _ticketController.plateNumber.value = '';
+    _ticketController.level.value = '';
+    _ticketController.seatNo.value = '';
+    _ticketController.associations.value = '';
+    _ticketController.vehicleId.value = '';
+    _ticketController.region.value = '';
+    _ticketController.fleetType.value = '';
+    _ticketController.km.value = '';
+    _ticketController.tariff.value = '';
+    _ticketController.serviceCharge.value = '';
+    _ticketController.totalPayment.value = '';
+    _ticketController.selectedVehicle.value = null;
   }
 
   bool get _canShowTicket =>
@@ -779,6 +803,8 @@ class _TicketViewState extends State<TicketView> {
                 to: trip.arrivalName,
                 dateTime: trip.dateAndTime,
                 seatCapacity: _ticketController.seatNo.value,
+                // tariff: parseSafe(_ticketController.totalPayment.value),
+                tariff: trip.tariff,
                 association: _ticketController.associations.value,
                 level: _ticketController.level.value,
                 agent: homeController.user.value!.fullName,
@@ -792,7 +818,6 @@ class _TicketViewState extends State<TicketView> {
                 notes: 'Route: ${trip.departureName} → ${trip.arrivalName}',
                 timestamp: now,
               );
-
               print('🖨️ Exit Ticket QR Data:');
               print('   Vehicle ID: ${exitQRData.vehicleId}');
               print('   Plate Number: ${exitQRData.plateNumber}');
@@ -1007,6 +1032,7 @@ String formatExitTicketText({
   required String association,
   required String level,
   required String agent,
+  required double tariff,
 }) {
   const lineWidth = 30;
   String line(String left, String right) {
@@ -1029,6 +1055,7 @@ ${line("To:", to)}
 ${line("Plate:", "$region$plateNumber")}
 ${line("Association:", association)}
 ${line("Seat Capacity:", seatCapacity)}
+${line("Tariff:", tariff.toStringAsFixed(2))}
 ${line("Level:", level)}
 ${'-' * lineWidth}
 ${line("Agent:", agent)}
