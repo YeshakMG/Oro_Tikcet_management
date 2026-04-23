@@ -1,4 +1,3 @@
-// data/locals/service/tariff_storage_service.dart
 import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:oro_ticket_app/data/locals/models/tariff_model.dart';
@@ -25,7 +24,7 @@ class TariffStorageService {
     return box.values.where((t) => t.isValid()).toList();
   }
 
-  // In TariffStorageService, improve the query method:
+  // Updated query method with better fleet type matching
   static TariffModel? getTariffByVehicleLevelAndRoadType(
     String vehicleLevelId,
     String roadType, {
@@ -42,75 +41,150 @@ class TariffStorageService {
     print('   Fleet Type: $fleetTypeId');
     print('   Total tariffs in box: ${allTariffs.length}');
 
-    // First, find ALL tariffs matching vehicle level and road type (for debugging)
-    final matchingLevelAndRoad = allTariffs
-        .where((t) =>
-            t.vehicleLevelId == vehicleLevelId &&
-            t.roadType == roadType &&
-            t.deletedAt == null)
-        .toList();
+    // Filter valid tariffs first
+    final validTariffs =
+        allTariffs.where((t) => t.deletedAt == null && t.isValid()).toList();
 
-    print(
-        '📋 Found ${matchingLevelAndRoad.length} tariffs matching level and road type:');
-    for (var t in matchingLevelAndRoad) {
-      print(
-          '   - ID: ${t.id}, Price: ${t.pricePerKm}, Valid: ${t.isValid()}, Terminal: ${t.terminalDestinationId}');
-    }
-
-    // Try specific tariff first
+    // PRIORITY 1: Exact match - terminal destination + fleet type
     if (terminalDestinationId != null && fleetTypeId != null) {
-      try {
-        final specificTariff = allTariffs.firstWhere(
-          (t) =>
-              t.vehicleLevelId == vehicleLevelId &&
-              t.roadType == roadType &&
-              t.terminalDestinationId == terminalDestinationId &&
-              t.fleetTypeId == fleetTypeId &&
-              t.deletedAt == null &&
-              t.isValid(),
-        );
-        print(
-            '✅ Found specific tariff: ${specificTariff.id} with price ${specificTariff.pricePerKm}');
-        return specificTariff;
-      } catch (e) {
-        print('ℹ️ No specific tariff found with terminal and fleet');
-      }
-    }
-
-    // Try general tariff (no terminal destination)
-    try {
-      final generalTariff = allTariffs.firstWhere(
+      final matches = validTariffs.where(
         (t) =>
             t.vehicleLevelId == vehicleLevelId &&
             t.roadType == roadType &&
-            t.terminalDestinationId == null &&
-            t.deletedAt == null &&
-            t.isValid(),
+            t.terminalDestinationId == terminalDestinationId &&
+            t.fleetTypeId == fleetTypeId,
       );
-      print(
-          '✅ Found general tariff: ${generalTariff.id} with price ${generalTariff.pricePerKm}');
-      return generalTariff;
-    } catch (e) {
-      print('ℹ️ No general tariff found');
+      if (matches.isNotEmpty) {
+        final exactMatch = matches.first;
+        print(
+            '✅ PRIORITY 1: Found exact match tariff: ${exactMatch.id} with price ${exactMatch.pricePerKm}');
+        return exactMatch;
+      }
+      print('ℹ️ No exact match found (terminal + fleet)');
     }
 
-    // Last resort: any tariff matching level and road type
-    if (matchingLevelAndRoad.isNotEmpty) {
-      final anyTariff = matchingLevelAndRoad.firstWhere(
-        (t) => t.isValid(),
-        orElse: () => matchingLevelAndRoad.first,
+    // PRIORITY 2: Match by fleet type only (ignore terminal destination)
+    if (fleetTypeId != null) {
+      final fleetMatches = validTariffs.where(
+        (t) =>
+            t.vehicleLevelId == vehicleLevelId &&
+            t.roadType == roadType &&
+            t.fleetTypeId == fleetTypeId &&
+            t.terminalDestinationId == null, // General fleet tariff
       );
+      if (fleetMatches.isNotEmpty) {
+        final fleetMatch = fleetMatches.first;
+        print(
+            '✅ PRIORITY 2: Found fleet-specific tariff: ${fleetMatch.id} with price ${fleetMatch.pricePerKm}');
+        return fleetMatch;
+      }
+
+      // Try any tariff with this fleet type (even if has terminal destination)
+      final anyFleetMatches = validTariffs.where(
+        (t) =>
+            t.vehicleLevelId == vehicleLevelId &&
+            t.roadType == roadType &&
+            t.fleetTypeId == fleetTypeId,
+      );
+      if (anyFleetMatches.isNotEmpty) {
+        final anyFleetMatch = anyFleetMatches.first;
+        print(
+            '⚠️ PRIORITY 2b: Found fleet tariff (with terminal): ${anyFleetMatch.id} with price ${anyFleetMatch.pricePerKm}');
+        return anyFleetMatch;
+      }
+
+      print('ℹ️ No fleet-specific tariff found for fleet: $fleetTypeId');
+    }
+
+    // PRIORITY 3: Match by terminal destination only (ignore fleet type)
+    if (terminalDestinationId != null) {
+      final terminalMatches = validTariffs.where(
+        (t) =>
+            t.vehicleLevelId == vehicleLevelId &&
+            t.roadType == roadType &&
+            t.terminalDestinationId == terminalDestinationId &&
+            t.fleetTypeId == null,
+      );
+      if (terminalMatches.isNotEmpty) {
+        final terminalMatch = terminalMatches.first;
+        print(
+            '✅ PRIORITY 3: Found terminal-specific tariff: ${terminalMatch.id} with price ${terminalMatch.pricePerKm}');
+        return terminalMatch;
+      }
+      print('ℹ️ No terminal-specific tariff found');
+    }
+
+    // PRIORITY 4: General tariff (no terminal, no fleet type)
+    final generalMatches = validTariffs.where(
+      (t) =>
+          t.vehicleLevelId == vehicleLevelId &&
+          t.roadType == roadType &&
+          t.terminalDestinationId == null &&
+          t.fleetTypeId == null,
+    );
+    if (generalMatches.isNotEmpty) {
+      final generalMatch = generalMatches.first;
       print(
-          '⚠️ Using fallback tariff: ${anyTariff.id} with price ${anyTariff.pricePerKm}');
-      return anyTariff;
+          '✅ PRIORITY 4: Found general tariff: ${generalMatch.id} with price ${generalMatch.pricePerKm}');
+      return generalMatch;
+    }
+
+    // PRIORITY 5: Any matching tariff for this vehicle level and road type
+    final anyMatches = validTariffs.where(
+      (t) => t.vehicleLevelId == vehicleLevelId && t.roadType == roadType,
+    );
+    if (anyMatches.isNotEmpty) {
+      final anyMatch = anyMatches.first;
+      print(
+          '⚠️ PRIORITY 5: Using fallback tariff: ${anyMatch.id} with price ${anyMatch.pricePerKm}');
+      return anyMatch;
     }
 
     print(
         '❌ No tariff found for vehicle level: $vehicleLevelId, road type: $roadType');
+
+    // Debug: Show what tariffs ARE available for this vehicle level
+    final levelTariffs =
+        validTariffs.where((t) => t.vehicleLevelId == vehicleLevelId).toList();
+
+    if (levelTariffs.isNotEmpty) {
+      print('📋 Available tariffs for this vehicle level:');
+      for (var t in levelTariffs) {
+        print('   - ID: ${t.id}');
+        print('     Road: ${t.roadType}');
+        print('     Price: ${t.pricePerKm}');
+        print('     Fleet: ${t.fleetTypeId ?? "null"}');
+        print('     Terminal: ${t.terminalDestinationId ?? "null"}');
+      }
+    }
+
     return null;
   }
 
-  // In TariffStorageService, add this debug method:
+  // Debug method to find tariffs by fleet type
+  static void debugFindTariffsByFleet(String fleetTypeId) {
+    final box = Hive.box<TariffModel>(HiveBoxes.tariffsBox);
+    final tariffs = box.values.toList();
+
+    final fleetTariffs = tariffs
+        .where((t) => t.fleetTypeId == fleetTypeId && t.deletedAt == null)
+        .toList();
+
+    print(
+        '🔍 Tariffs for fleet type: $fleetTypeId (${fleetTariffs.length} found)');
+    for (var t in fleetTariffs) {
+      print('''
+  ID: ${t.id}
+  Level: ${t.vehicleLevelId} (${t.vehicleLevelName})
+  Road: ${t.roadType}
+  Price: ${t.pricePerKm}
+  Terminal: ${t.terminalDestinationId ?? "null"}
+  Valid: ${t.isValid()}
+  --------------------------------
+''');
+    }
+  }
+
   static void debugPrintAllTariffs() {
     final box = Hive.box<TariffModel>(HiveBoxes.tariffsBox);
     final tariffs = box.values.toList();
@@ -118,32 +192,27 @@ class TariffStorageService {
     print('📊 ALL TARIFFS IN STORAGE (${tariffs.length}):');
     print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+    // Group by fleet type for better visibility
+    final Map<String?, List<TariffModel>> byFleet = {};
     for (var t in tariffs) {
-      print('''
-ID: ${t.id}
-  Vehicle Level ID: ${t.vehicleLevelId}
-  Vehicle Level Name: ${t.vehicleLevelName}
-  Road Type: ${t.roadType}
-  Price per KM: ${t.pricePerKm}
-  Terminal Dest ID: ${t.terminalDestinationId}
-  Fleet Type ID: ${t.fleetTypeId}
+      byFleet.putIfAbsent(t.fleetTypeId, () => []).add(t);
+    }
+
+    byFleet.forEach((fleetId, fleetTariffs) {
+      print('\n🚌 Fleet Type: ${fleetId ?? "GENERAL (No Fleet)"}');
+      print('────────────────────────────────────────');
+      for (var t in fleetTariffs) {
+        print('''
+  ID: ${t.id}
+  Level: ${t.vehicleLevelId?.substring(0, 8) ?? "null"}... (${t.vehicleLevelName})
+  Road: ${t.roadType}
+  Price: ${t.pricePerKm} ETB/km
+  Terminal: ${t.terminalDestinationId?.substring(0, 8) ?? "null"}...
   Valid: ${t.isValid()}
   Deleted: ${t.deletedAt != null}
-  ────────────────────────────────────
 ''');
-    }
-
-    // Also show tariffs for your specific vehicle level
-    final levelTariffs = tariffs
-        .where(
-            (t) => t.vehicleLevelId == '9ceffd5b-a75c-46a6-82d6-8e057e6086c9')
-        .toList();
-
-    print('🎯 Tariffs for Level 1 (9ceffd5b...): ${levelTariffs.length}');
-    for (var t in levelTariffs) {
-      print(
-          '  - Road: ${t.roadType}, Price: ${t.pricePerKm}, Valid: ${t.isValid()}');
-    }
+      }
+    });
   }
 
   static Map<String, List<TariffModel>> getTariffsGroupedByVehicleLevel() {
@@ -152,6 +221,17 @@ ID: ${t.id}
 
     for (var tariff in tariffs) {
       grouped.putIfAbsent(tariff.vehicleLevelId, () => []).add(tariff);
+    }
+
+    return grouped;
+  }
+
+  static Map<String?, List<TariffModel>> getTariffsGroupedByFleetType() {
+    final tariffs = getValidTariffs();
+    final Map<String?, List<TariffModel>> grouped = {};
+
+    for (var tariff in tariffs) {
+      grouped.putIfAbsent(tariff.fleetTypeId, () => []).add(tariff);
     }
 
     return grouped;

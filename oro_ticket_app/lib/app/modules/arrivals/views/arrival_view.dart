@@ -80,7 +80,7 @@ class ArrivalLocationView extends StatelessWidget {
                           ),
                           Expanded(
                             child: Text(
-                              'Tariff (ETB)',
+                              'Road Type',
                               style: AppTextStyles.buttonMediumB,
                               textAlign: TextAlign.right,
                             ),
@@ -123,7 +123,7 @@ class ArrivalLocationView extends StatelessWidget {
                             ),
                             Expanded(
                               child: Text(
-                                terminal.tariff.toStringAsFixed(2),
+                                terminal.roadType ?? '',
                                 style: AppTextStyles.buttonMedium,
                                 textAlign: TextAlign.right,
                               ),

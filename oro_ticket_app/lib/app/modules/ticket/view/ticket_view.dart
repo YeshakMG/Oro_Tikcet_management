@@ -94,13 +94,35 @@ class _TicketViewState extends State<TicketView> {
     }
   }
 
+  // In _TicketViewState, replace the _onPlateInputChanged method:
+
   void _onPlateInputChanged(String input) {
     final vehicleBox = Hive.box<VehicleModel>('vehiclesBox');
 
-    final filtered = vehicleBox.values
+    // Get all vehicles first
+    var filtered = vehicleBox.values
         .where((v) => v.plateNumber.toLowerCase().contains(input.toLowerCase()))
         .toList();
 
+    if (selectedDeparture != null && selectedArrival != null) {
+      filtered = filtered.where((vehicle) {
+        if (vehicle.currentRoute?.terminalDestination != null) {
+          final route = vehicle.currentRoute!.terminalDestination!;
+
+          final departureTerminalId =
+              _ticketController.departureTerminalId.value;
+          final arrivalTerminalId = _ticketController.arrivalTerminalId.value;
+
+          // Check if vehicle's route matches selected terminals
+          final matchesDeparture =
+              route.departureTerminalId == departureTerminalId;
+          final matchesArrival = route.arrivalTerminalId == arrivalTerminalId;
+
+          return matchesDeparture && matchesArrival;
+        }
+        return false;
+      }).toList();
+    }
     if (plateInput != input) {
       _resetTicketController();
     }
@@ -790,10 +812,25 @@ class _TicketViewState extends State<TicketView> {
                 totalPayment: trip.totalPaid,
                 agent: homeController.user.value!.fullName,
               );
+              final ethDate = trip.dateAndTime.convertToEthiopian();
+              final period = ethDate.hour >= 12 ? 'PM' : 'AM';
+              final dateStr = "${ethDate.day}-${ethDate.month}-${ethDate.year}";
+              final timeStr =
+                  "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')} $period";
 
-              final passengerQRData =
-                  '${trip.departureName}\n${trip.arrivalName}\n${trip.dateAndTime}\n${_ticketController.region}${_ticketController.plateNumber.value}';
+              final passengerQRData = '''
+TRIP INFORMATION
+---------------------------
+FROM: ${trip.departureName}
+TO:   ${trip.arrivalName}
+WHEN: ${"$dateStr $timeStr"}
+PLATE NUMBER:  ${_ticketController.region} ${_ticketController.plateNumber.value}
 
+---------------------------
+FEEDBACK & SUPPORT
+Call: 8556
+---------------------------
+''';
               final exitTicket = formatExitTicketText(
                 companyName: homeController.companyName.value,
                 companyPhoneNo: homeController.companyPhoneNo.value,
@@ -826,10 +863,11 @@ class _TicketViewState extends State<TicketView> {
               print('   QR String: ${exitQRData.toQRString()}');
 
               final printer = TicketPrinter();
+              final copies = int.tryParse(_ticketController.seatNo.value) ?? 1;
               await printer.connectAndPrint(
                 text: ticketText,
                 qrCodeData: passengerQRData,
-                copies: 1,
+                copies: copies,
                 exitText: exitTicket,
                 exitQRData: exitQRData,
               );
@@ -993,9 +1031,10 @@ String formatTicketText({
   }
 
   final ethDate = dateTime.convertToEthiopian();
+  final period = ethDate.hour >= 12 ? 'PM' : 'AM';
   final dateStr = "${ethDate.day}-${ethDate.month}-${ethDate.year}";
   final timeStr =
-      "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')}";
+      "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')} $period ";
   return '''
 Oromia Transport Agency
 ${'=' * lineWidth}
@@ -1016,8 +1055,7 @@ ${line("Service Charge:", serviceCharge.toStringAsFixed(2))}
 ${line("TOTAL:", totalPayment.toStringAsFixed(2))}
 ${'-' * lineWidth}
 ${line("Agent:", agent)}
-${line("Free-call:", "8556")}
-${line("Terminal Tel:", "011-123-4567")}''';
+${line("Free-call:", "8556")}''';
 }
 
 String formatExitTicketText({
@@ -1041,9 +1079,10 @@ String formatExitTicketText({
   }
 
   final ethDate = dateTime.convertToEthiopian();
+  final period = ethDate.hour >= 12 ? 'PM' : 'AM';
   final dateStr = "${ethDate.day}-${ethDate.month}-${ethDate.year}";
   final timeStr =
-      "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')}";
+      "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')} $period";
 
   return '''
 ${line("Company:", companyName)}

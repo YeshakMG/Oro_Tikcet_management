@@ -59,6 +59,7 @@ dependencies:
   pull_to_refresh: ^2.0.0
   chapa_unofficial: ^0.0.5
   device_info_plus: ^10.1.0
+  vs_scrollbar: ^1.0.0
 
 dev_dependencies:
   flutter_test:

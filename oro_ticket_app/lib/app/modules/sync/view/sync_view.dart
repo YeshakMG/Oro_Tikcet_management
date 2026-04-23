@@ -115,7 +115,7 @@ class SyncView extends StatelessWidget {
     final arrival = arrivalBox.values.firstWhere(
       (a) => a.id == trip.arrivalTerminalId,
       orElse: () => ArrivalTerminalModel(
-          id: "unknown", name: "Unknown", tariff: 0.0, distance: 0.0),
+          id: "unknown", name: "Unknown", tariff: 0.0, distance: 0.0, roadType: "unknown"),
     );
 
     final ethDate = trip.dateAndTime.convertToEthiopian();

@@ -50,10 +50,12 @@ class _DashboardCardState extends State<DashboardCard> {
                 children: [
                   Text("Daily Revenue", style: AppTextStyles.subtitle2),
                   SizedBox(height: 8),
-                  Text("${revenue.toStringAsFixed(1)} ETB",
+                  Text(
+                      "${revenue.toStringAsFixed(1).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} ETB",
                       style: AppTextStyles.displayMedium),
                   SizedBox(height: 4),
-                  Text("You have sold $tickets tickets today",
+                  Text(
+                      "You have sold ${tickets.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} tickets today",
                       style: AppTextStyles.caption),
                 ],
               ),
@@ -123,12 +125,14 @@ class DashboardController extends GetxController {
     }).toList();
 
     int totalSeatsSold = 0;
+    double totalRevenue = 0.0;
     for (var trip in todayTrips) {
       final vehicle = vehicleStorageService.getVehicleSeatCount(trip.vehicleId);
       if (vehicle != null) {
         print("Info: $vehicle."); // This is always null
         totalSeatsSold += vehicle;
         ticketsSoldToday.value = totalSeatsSold;
+        totalRevenue += trip.tariff * vehicle;
       }
     }
     // ticketsSoldToday.value = todayTrips.length;
@@ -137,9 +141,10 @@ class DashboardController extends GetxController {
       (sum, trips) => sum + trips.serviceCharge,
     );
 
-    revenueToday.value = todayTrips.fold(
-      0.0,
-      (sum, trip) => sum + trip.totalPaid,
-    );
+    revenueToday.value = totalRevenue;
+    // todayTrips.fold(
+    //   0.0,
+    //   (sum, trip) => sum + trip.totalPaid,
+    // );
   }
 }

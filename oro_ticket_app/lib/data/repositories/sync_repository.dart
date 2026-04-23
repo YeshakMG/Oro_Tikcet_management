@@ -113,6 +113,8 @@ class SyncRepository {
       final Set<String> apiVehicleIds = {};
 
       while (hasMorePages) {
+        print('🔄 Fetching vehicles page $currentPage...');
+
         final response = await _secureClient.get(
           Uri.parse(
               '$baseUrl/vehicles/company-user/my-vehicles?page=$currentPage'),
@@ -120,12 +122,18 @@ class SyncRepository {
             'Authorization': 'Bearer $token',
             'Accept': 'application/json',
           },
-        ).timeout(const Duration(seconds: 10));
+        ).timeout(const Duration(seconds: 30));
 
         if (response.statusCode == 200) {
           final json = jsonDecode(response.body);
+
+          // ✅ CORRECTED: vehicles are in data.vehicles
           final vehicles = json['data']['vehicles'] as List<dynamic>;
-          final pagination = json['data']['pagination'];
+
+          // ✅ CORRECTED: pagination is at root level, not inside data
+          final pagination = json['pagination'];
+
+          print('📊 Pagination info: $pagination');
 
           final validVehicles = vehicles
               .where((e) => e['deleted_at'] == null)
@@ -135,46 +143,80 @@ class SyncRepository {
           // Save vehicles
           for (final vehicle in validVehicles) {
             await box.put(vehicle.id, vehicle);
-          }
-
-          print('✅ Saved ${validVehicles.length} vehicles with routes');
-
-          // Debug: Check if routes were saved
-          for (var v in validVehicles) {
-            if (v.currentRoute != null) {
-              print(
-                  'Vehicle ${v.plateNumber} has route to ${v.currentRoute!.terminalDestination?.arrivalTerminalName}');
-            }
-          }
-          for (final vehicle in validVehicles) {
             apiVehicleIds.add(vehicle.id);
           }
 
-          await box.putAll(
-              {for (final vehicle in validVehicles) vehicle.id: vehicle});
-
           totalSynced += validVehicles.length;
           print(
-              '📦 Synced ${validVehicles.length} vehicles from page $currentPage');
+              '📦 Synced ${validVehicles.length} vehicles from page $currentPage (Total so far: $totalSynced)');
 
-          hasMorePages = pagination['current_page'] < pagination['last_page'];
-          currentPage++;
+          // ✅ CORRECTED: Use pagination from root level with correct field names
+          if (pagination != null) {
+            // Your API uses: page, totalPages, pageSize, total
+            final currentPageNum = pagination['page'] as int?;
+            final totalPages = pagination['totalPages'] as int?;
+
+            if (currentPageNum != null && totalPages != null) {
+              print('📄 Page $currentPageNum of $totalPages');
+              hasMorePages = currentPageNum < totalPages;
+
+              if (hasMorePages) {
+                currentPage++;
+              } else {
+                print('✅ Reached last page ($totalPages)');
+              }
+            } else {
+              // Fallback: check if we received a full page
+              final pageSize = pagination['pageSize'] as int? ?? 10;
+              hasMorePages = vehicles.length >= pageSize;
+              if (hasMorePages) {
+                currentPage++;
+                print(
+                    '⚠️ Using fallback pagination - received ${vehicles.length} vehicles, continuing...');
+              } else {
+                print('✅ No more pages (received ${vehicles.length} vehicles)');
+              }
+            }
+          } else {
+            // No pagination info - fallback to checking page size
+            const defaultPageSize = 10;
+            hasMorePages = vehicles.length >= defaultPageSize;
+
+            if (hasMorePages) {
+              print(
+                  '⚠️ No pagination info - received ${vehicles.length} vehicles, trying next page...');
+              currentPage++;
+            } else {
+              print(
+                  '⚠️ No pagination info - received ${vehicles.length} vehicles, stopping');
+            }
+          }
         } else {
-          print('⚠️ API returned ${response.statusCode}, stopping sync');
+          print('❌ API returned ${response.statusCode}, stopping sync');
+          print('Response body: ${response.body}');
           break;
         }
       }
 
+      print('🎯 Sync completed. Total vehicles synced: $totalSynced');
+
       if (totalSynced > 0) {
         final localIds = box.keys.cast<String>().toSet();
         final idsToRemove = localIds.difference(apiVehicleIds);
-        await box.deleteAll(idsToRemove);
+
+        if (idsToRemove.isNotEmpty) {
+          await box.deleteAll(idsToRemove);
+          print(
+              '🧹 Removed ${idsToRemove.length} deleted vehicles from local storage');
+        }
+
         _vehicleChanges.add(null);
-        print('✅ Synced $totalSynced vehicles across ${currentPage - 1} pages');
+        print(
+            '✅ Successfully synced $totalSynced vehicles across ${currentPage} pages');
       }
-    } catch (e) {
-      print('⚠️ Sync error (continuing with local data): $e');
-      rethrow; // Let the caller handle the error
+    } catch (e, stackTrace) {
+      print('❌ Sync error: $e');
+      print('Stack trace: $stackTrace');
     }
   }
 
@@ -274,6 +316,11 @@ class SyncRepository {
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
 
+    if (token == null) {
+      print('❌ No token available for sync');
+      return;
+    }
+
     final response = await _secureClient.get(
       Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
       headers: {
@@ -286,7 +333,15 @@ class SyncRepository {
       final Map<String, dynamic> json = jsonDecode(response.body);
       final vehicles = json['data']['vehicles'] as List<dynamic>;
 
-      final arrivalTerminals = <ArrivalTerminalModel>[];
+      final Map<String, ArrivalTerminalModel> uniqueArrivals = {};
+
+      final currentDepartureTerminal =
+          DepartureTerminalStorageService.getTerminal();
+      final String? currentDepartureId = currentDepartureTerminal?.id;
+
+      print('📍 Current company departure terminal ID: $currentDepartureId');
+      print(
+          '📍 Current company departure terminal: ${currentDepartureTerminal?.name}');
 
       for (final vehicle in vehicles) {
         final destinations =
@@ -297,69 +352,152 @@ class SyncRepository {
             final terminalDestination = dest['terminalDestination'];
 
             if (terminalDestination != null) {
-              print('Full terminalDestination JSON: $terminalDestination');
-              final arrivalTerminal =
-                  terminalDestination['arrivalTerminal'] ?? {};
+              final arrivalTerminal = terminalDestination['arrivalTerminal'];
 
-              // Debug print raw arrivalTerminal JSON to inspect actual content
-              print('Raw arrivalTerminal JSON: $arrivalTerminal');
+              if (arrivalTerminal != null && arrivalTerminal is Map) {
+                final arrivalId = arrivalTerminal['id']?.toString() ?? '';
+                final arrivalName = arrivalTerminal['name']?.toString() ?? '';
 
-              // Try to extract id and name directly or check nested keys if needed
-              // Example if nested deeper, you can add logic here after seeing the debug output
+                // 👇 Determine road type - Check for hybrid first
+                String roadType;
 
-              final terminalId = arrivalTerminal['id'] ??
-                  arrivalTerminal['arrival_terminal_id'] ??
-                  '';
+                // Check if road_distances exists and has multiple road types
+                final roadDistances = terminalDestination['road_distances'];
 
-              final terminalName = arrivalTerminal['name'] ??
-                  arrivalTerminal['terminal_name'] ??
-                  '';
+                if (roadDistances != null &&
+                    roadDistances is Map &&
+                    roadDistances.isNotEmpty) {
+                  // Has road_distances with multiple types - it's hybrid
+                  final roadTypes = roadDistances.keys.toList();
 
-              print("Parsed terminal: id=$terminalId, name=$terminalName");
+                  if (roadTypes.length > 1) {
+                    // Multiple road types = Hybrid
+                    roadType = 'Hybrid';
+                    print('🛤️ Hybrid road detected: $roadTypes');
+                  } else {
+                    // Single road type in road_distances - use that type
+                    roadType = _formatRoadType(roadTypes.first);
+                  }
+                } else {
+                  // No road_distances - use single road_type
+                  final apiRoadType =
+                      terminalDestination['road_type']?.toString() ?? '';
+                  roadType = _formatRoadType(apiRoadType);
+                }
 
-              // Handle tariff conversion
-              dynamic tariffValue = vehicle['tariff']?['tariff'] ?? 0.0;
-              double parsedTariff = 0.0;
+                // Skip if same as departure terminal
+                if (currentDepartureId != null &&
+                    arrivalId == currentDepartureId) {
+                  print(
+                      '⛔ Skipping arrival terminal: $arrivalName (ID: $arrivalId) - Same as company departure terminal');
+                  continue;
+                }
 
-              if (tariffValue is String) {
-                parsedTariff = double.tryParse(tariffValue) ?? 0.0;
-              } else if (tariffValue is int) {
-                parsedTariff = tariffValue.toDouble();
-              } else if (tariffValue is double) {
-                parsedTariff = tariffValue;
+                // Skip if no valid ID or name
+                if (arrivalId.isEmpty || arrivalName.isEmpty) {
+                  print('⚠️ Skipping arrival terminal with missing id/name');
+                  continue;
+                }
+
+                // Parse distance
+                double parsedDistance = 0.0;
+                dynamic distanceValue = terminalDestination['distance'] ?? 0.0;
+                if (distanceValue is String) {
+                  parsedDistance = double.tryParse(distanceValue) ?? 0.0;
+                } else if (distanceValue is num) {
+                  parsedDistance = distanceValue.toDouble();
+                }
+
+                // Parse road distances if hybrid
+                Map<String, double>? parsedRoadDistances;
+                if (roadDistances != null && roadDistances is Map) {
+                  parsedRoadDistances = {};
+                  roadDistances.forEach((key, value) {
+                    parsedRoadDistances![key.toString()] = (value is num)
+                        ? value.toDouble()
+                        : double.tryParse(value.toString()) ?? 0.0;
+                  });
+                }
+
+                // Only add if not already added (by ID)
+                if (!uniqueArrivals.containsKey(arrivalId)) {
+                  uniqueArrivals[arrivalId] = ArrivalTerminalModel.fromJson({
+                    'id': arrivalId,
+                    'name': arrivalName,
+                    'distance': parsedDistance,
+                    'tariff': 0.0,
+                    'road_type': roadType,
+                    'road_distances': parsedRoadDistances,
+                  });
+
+                  print(
+                      '✅ Added arrival terminal: $arrivalName (ID: $arrivalId) - Road: $roadType');
+
+                  if (parsedRoadDistances != null &&
+                      parsedRoadDistances.isNotEmpty) {
+                    print('   🛤️ Road breakdown: $parsedRoadDistances');
+                  }
+                } else {
+                  // Update existing if this one has hybrid info
+                  final existing = uniqueArrivals[arrivalId];
+                  if (roadType == 'Hybrid' && existing?.roadType != 'Hybrid') {
+                    uniqueArrivals[arrivalId] = ArrivalTerminalModel.fromJson({
+                      'id': arrivalId,
+                      'name': arrivalName,
+                      'distance': parsedDistance,
+                      'tariff': 0.0,
+                      'road_type': roadType,
+                      'road_distances': parsedRoadDistances,
+                    });
+                    print('🔄 Updated to Hybrid: $arrivalName');
+                  }
+                }
               }
-
-              // Handle distance conversion
-              dynamic distanceValue = terminalDestination['distance'] ?? 0.0;
-              double parsedDistance = 0.0;
-
-              if (distanceValue is String) {
-                parsedDistance = double.tryParse(distanceValue) ?? 0.0;
-              } else if (distanceValue is int) {
-                parsedDistance = distanceValue.toDouble();
-              } else if (distanceValue is double) {
-                parsedDistance = distanceValue;
-              }
-
-              arrivalTerminals.add(
-                ArrivalTerminalModel.fromJson({
-                  'id': terminalId,
-                  'name': terminalName,
-                  'tariff': parsedTariff,
-                  'distance': parsedDistance,
-                }),
-              );
             }
           }
         }
       }
 
-      // Save to Hive after transformation
+      final arrivalTerminalsList = uniqueArrivals.values.toList();
+      print(
+          '📦 Total unique arrival terminals: ${arrivalTerminalsList.length}');
+
+      // Debug: Print final list with road types
+      for (var t in arrivalTerminalsList) {
+        final hybridInfo =
+            t.roadDistances != null && t.roadDistances!.isNotEmpty
+                ? ' [Hybrid: ${t.roadDistances}]'
+                : '';
+        print('   ➡️ ${t.name} (ID: ${t.id}) - Road: ${t.roadType}$hybridInfo');
+      }
+
+      // Save to Hive
       await syncArrivalTerminals(
-        arrivalTerminals.map((e) => e.toJson()).toList(),
+        arrivalTerminalsList.map((e) => e.toJson()).toList(),
       );
     } else {
+      print('❌ Failed to fetch arrival terminals: ${response.statusCode}');
       throw Exception('Failed to sync arrival terminals: ${response.body}');
+    }
+  }
+
+// 👇 Helper method to format road type
+  String _formatRoadType(String roadType) {
+    if (roadType.isEmpty) return 'Unknown';
+
+    switch (roadType.toLowerCase()) {
+      case 'asphalt':
+        return 'Asphalt';
+      case 'mud_road':
+      case 'mud':
+        return 'Mud Road';
+      case 'gravel':
+        return 'Gravel';
+      case 'hybrid':
+        return 'Hybrid';
+      default:
+        // Capitalize first letter
+        return roadType[0].toUpperCase() + roadType.substring(1);
     }
   }
 

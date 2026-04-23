@@ -13,6 +13,7 @@ class LocalReportView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ScrollController _scrollController = ScrollController();
     return AppScaffold(
       title: 'Local Report',
       userName: 'Employee Name',
@@ -55,132 +56,140 @@ class LocalReportView extends StatelessWidget {
                   return const Center(child: Text("No trips available"));
                 }
 
-                return ListView.builder(
-                  itemCount: controller.filteredTrips.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      // Header row
+                return Scrollbar(
+                  interactive: true,
+                  trackVisibility: true,
+                  controller: _scrollController,
+                  thickness: 6.0,
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    itemCount: controller.filteredTrips.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        // Header row
+                        return Container(
+                          color: AppColors.cardAlt,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 16),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("Plate",
+                                  style: AppTextStyles.buttonMedium,
+                                  textAlign: TextAlign.center),
+                              Text(
+                                "Route",
+                                style: AppTextStyles.buttonMedium,
+                                textAlign: TextAlign.center,
+                              ),
+                              Text("Total Price",
+                                  style: AppTextStyles.buttonMedium,
+                                  textAlign: TextAlign.center),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final trip = controller.filteredTrips[index - 1];
+                      final plate = "${trip.plateRegion}${trip.plateNumber}";
+
+                      // alternate row color
+                      final rowColor =
+                          (index % 2 == 0) ? Colors.grey[100] : Colors.white;
+
                       return Container(
-                        color: AppColors.cardAlt,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 16),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        color: rowColor,
+                        child: ExpansionTile(
+                          tilePadding:
+                              const EdgeInsets.symmetric(horizontal: 16),
+                          title: Row(
+                            children: [
+                              // Plate
+                              Expanded(
+                                  child: Text(
+                                plate,
+                                style: AppTextStyles.caption3,
+                              )),
+
+                              // Route styled with down arrow
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      textAlign: TextAlign.center,
+                                      trip.departureName,
+                                      style: AppTextStyles.caption3,
+                                    ),
+                                    const Icon(
+                                      Icons.arrow_downward,
+                                      size: 16,
+                                      color: AppColors.primary,
+                                    ),
+                                    Text(
+                                      textAlign: TextAlign.center,
+                                      trip.arrivalName,
+                                      style: AppTextStyles.caption3,
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Total Price
+                              Expanded(
+                                child: Text(
+                                  trip.totalPrice.toStringAsFixed(2),
+                                  textAlign: TextAlign.right,
+                                  style: AppTextStyles.buttonMedium,
+                                ),
+                              ),
+                            ],
+                          ),
                           children: [
-                            Text("Plate",
-                                style: AppTextStyles.buttonMedium,
-                                textAlign: TextAlign.center),
-                            Text(
-                              "Route",
-                              style: AppTextStyles.buttonMedium,
-                              textAlign: TextAlign.center,
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 3),
+                                child: Text(
+                                    "Association: ${trip.associationName}",
+                                    style: AppTextStyles.caption3),
+                              ),
                             ),
-                            Text("Total Price",
-                                style: AppTextStyles.buttonMedium,
-                                textAlign: TextAlign.center),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 3),
+                                child: Text("Level: ${trip.vehicleLevel}",
+                                    style: AppTextStyles.caption3),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 3),
+                                child: Text(
+                                    "Price: ${trip.price.toStringAsFixed(2)}",
+                                    style: AppTextStyles.caption3),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 3),
+                                child: Text(
+                                    "Service Charge: ${trip.serviceCharge.toStringAsFixed(2)}",
+                                    style: AppTextStyles.caption3),
+                              ),
+                            ),
                           ],
                         ),
                       );
-                    }
-
-                    final trip = controller.filteredTrips[index - 1];
-                    final plate = "${trip.plateRegion}${trip.plateNumber}";
-
-                    // alternate row color
-                    final rowColor =
-                        (index % 2 == 0) ? Colors.grey[100] : Colors.white;
-
-                    return Container(
-                      color: rowColor,
-                      child: ExpansionTile(
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-                        title: Row(
-                          children: [
-                            // Plate
-                            Expanded(
-                                child: Text(
-                              plate,
-                              style: AppTextStyles.caption3,
-                            )),
-
-                            // Route styled with down arrow
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    textAlign: TextAlign.center,
-                                    trip.departureName,
-                                    style: AppTextStyles.caption3,
-                                  ),
-                                  const Icon(
-                                    Icons.arrow_downward,
-                                    size: 16,
-                                    color: AppColors.primary,
-                                  ),
-                                  Text(
-                                    textAlign: TextAlign.center,
-                                    trip.arrivalName,
-                                    style: AppTextStyles.caption3,
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Total Price
-                            Expanded(
-                              child: Text(
-                                trip.totalPrice.toStringAsFixed(2),
-                                textAlign: TextAlign.right,
-                                style: AppTextStyles.buttonMedium,
-                              ),
-                            ),
-                          ],
-                        ),
-                        children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 3),
-                              child: Text(
-                                  "Association: ${trip.associationName}",
-                                  style: AppTextStyles.caption3),
-                            ),
-                          ),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 3),
-                              child: Text("Level: ${trip.vehicleLevel}",
-                                  style: AppTextStyles.caption3),
-                            ),
-                          ),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 3),
-                              child: Text(
-                                  "Price: ${trip.price.toStringAsFixed(2)}",
-                                  style: AppTextStyles.caption3),
-                            ),
-                          ),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 3),
-                              child: Text(
-                                  "Service Charge: ${trip.serviceCharge.toStringAsFixed(2)}",
-                                  style: AppTextStyles.caption3),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                    },
+                  ),
                 );
               }),
             ),

@@ -25,7 +25,6 @@ class HomeView extends StatelessWidget {
       final companyName = homeController.companyName.value;
 
       return PopScope(
-        
         child: AppScaffold(
           title: 'Oromia Transport Agency',
           userName: user?.fullName ?? 'Employee',
@@ -40,24 +39,30 @@ class HomeView extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // User & Company Info
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            companyName.isNotEmpty
-                                ? companyName
-                                : 'Unknown Company',
-                            style: AppTextStyles.subtitle1
-                                .copyWith(color: Colors.white),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            user?.fullName ?? 'Employee Name',
-                            style: AppTextStyles.buttonMedium
-                                .copyWith(color: Colors.white),
-                          ),
-                        ],
+                      // 👇 THIS IS THE FIX
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              companyName.isNotEmpty
+                                  ? companyName
+                                  : 'Unknown Company',
+                              style: AppTextStyles.subtitle1
+                                  .copyWith(color: Colors.white),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              user?.fullName ?? 'Employee Name',
+                              style: AppTextStyles.buttonMedium
+                                  .copyWith(color: Colors.white),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
                       // Sync Button
                       Row(
@@ -89,7 +94,7 @@ class HomeView extends StatelessWidget {
                                 showProgressIndicator: true,
                                 isDismissible: false,
                               );
-        
+
                               try {
                                 await homeController.syncTrips();
                                 Get.closeCurrentSnackbar(); // Close loading snackbar
@@ -118,11 +123,11 @@ class HomeView extends StatelessWidget {
                     ],
                   ),
                 ),
-        
+
                 // Dashboard Metrics
                 DashboardCard(),
                 const SizedBox(height: 16),
-        
+
                 // Daily Info Section
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -157,135 +162,150 @@ class HomeView extends StatelessWidget {
                     ],
                   ),
                 ),
-        
+
                 const SizedBox(height: 20),
-        
+
                 // Reset Dashboard Button
                 Padding(
-                                  padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final isSyncing = false.obs;
-                      final showMessage = false.obs;
-                      String message = '';
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final isSyncing = false.obs;
+                        final showMessage = false.obs;
+                        String message = '';
 
-                      Get.dialog(
-                        Obx(() => AlertDialog(
-                          title: const Text("Reset Dashboard"),
-                          content: isSyncing.value
-                              ? const Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    CircularProgressIndicator(),
-                                    SizedBox(height: 16),
-                                    Text('Syncing service charges...'),
-                                  ],
-                                )
-                              : showMessage.value
-                                  ? Text(message)
-                                  : const Text("Do you want to sync service charges before resetting?"),
-                          actions: isSyncing.value
-                              ? null // No actions during sync
-                              : showMessage.value
-                                  ? [
-                                      TextButton(
-                                        onPressed: () {
-                                          print('Message acknowledged');
-                                          Get.back();
-                                        },
-                                        child: const Text('OK'),
-                                      ),
-                                    ]
-                                  : [
-                                      TextButton(
-                                        onPressed: () {
-                                          print('Cancel clicked');
-                                          Get.back();
-                                        },
-                                        child: const Text('No'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () async {
-                                          print('Confirm clicked');
-
-                                          // Check if there are service charges to sync
-                                          final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
-                                          if (box.isEmpty) {
-                                            print('No service charges found');
-                                            // Show message in dialog for 3 seconds
-                                            message = 'No service charges to sync';
-                                            showMessage.value = true;
-
-                                            // Auto-close after 3 seconds
-                                            Future.delayed(const Duration(seconds: 3), () {
-                                              if (Get.isDialogOpen ?? false) {
+                        Get.dialog(
+                          Obx(() => AlertDialog(
+                                title: const Text("Reset Dashboard"),
+                                content: isSyncing.value
+                                    ? const Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircularProgressIndicator(),
+                                          SizedBox(height: 16),
+                                          Text('Syncing service charges...'),
+                                        ],
+                                      )
+                                    : showMessage.value
+                                        ? Text(message)
+                                        : const Text(
+                                            "Do you want to sync service charges before resetting?"),
+                                actions: isSyncing.value
+                                    ? null // No actions during sync
+                                    : showMessage.value
+                                        ? [
+                                            TextButton(
+                                              onPressed: () {
+                                                print('Message acknowledged');
                                                 Get.back();
-                                              }
-                                            });
-                                            return;
-                                          }
-
-                                          print('Starting sync...');
-                                          isSyncing.value = true;
-
-                                          try {
-                                            await homeController.syncServiceCharge();
-
-                                            // If sync successful → reset dashboard
-                                            homeController.resetDashboard();
-
-                                            // Show success message in dialog for 3 seconds
-                                            message = 'Service charge synced and dashboard reset successfully';
-                                            showMessage.value = true;
-                                            isSyncing.value = false;
-
-                                            // Auto-close after 3 seconds
-                                            Future.delayed(const Duration(seconds: 3), () {
-                                              if (Get.isDialogOpen ?? false) {
+                                              },
+                                              child: const Text('OK'),
+                                            ),
+                                          ]
+                                        : [
+                                            TextButton(
+                                              onPressed: () {
+                                                print('Cancel clicked');
                                                 Get.back();
-                                              }
-                                            });
-                                          } catch (e) {
-                                            print('Sync failed: $e');
-                                            isSyncing.value = false; // Reset loading state
+                                              },
+                                              child: const Text('No'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () async {
+                                                print('Confirm clicked');
 
-                                            // Show error but keep dialog open for retry
-                                            Get.snackbar(
-                                              'Error',
-                                              'Failed to sync: $e',
-                                              snackPosition: SnackPosition.BOTTOM,
-                                              backgroundColor: Colors.red,
-                                              colorText: Colors.white,
-                                            );
-                                          }
-                                        },
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.white,
-                                        ),
-                                        child: const Text('Yes'),
-                                      ),
-                                    ],
-                        )),
-                        barrierDismissible: !isSyncing.value && !showMessage.value,
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                                                // Check if there are service charges to sync
+                                                final box = Hive.box<
+                                                        ServiceChargeModel>(
+                                                    HiveBoxes.serviceChargeBox);
+                                                if (box.isEmpty) {
+                                                  print(
+                                                      'No service charges found');
+                                                  // Show message in dialog for 3 seconds
+                                                  message =
+                                                      'No service charges to sync';
+                                                  showMessage.value = true;
+
+                                                  // Auto-close after 3 seconds
+                                                  Future.delayed(
+                                                      const Duration(
+                                                          seconds: 3), () {
+                                                    if (Get.isDialogOpen ??
+                                                        false) {
+                                                      Get.back();
+                                                    }
+                                                  });
+                                                  return;
+                                                }
+
+                                                print('Starting sync...');
+                                                isSyncing.value = true;
+
+                                                try {
+                                                  await homeController
+                                                      .syncServiceCharge();
+
+                                                  // If sync successful → reset dashboard
+                                                  homeController
+                                                      .resetDashboard();
+
+                                                  // Show success message in dialog for 3 seconds
+                                                  message =
+                                                      'Service charge synced and dashboard reset successfully';
+                                                  showMessage.value = true;
+                                                  isSyncing.value = false;
+
+                                                  // Auto-close after 3 seconds
+                                                  Future.delayed(
+                                                      const Duration(
+                                                          seconds: 3), () {
+                                                    if (Get.isDialogOpen ??
+                                                        false) {
+                                                      Get.back();
+                                                    }
+                                                  });
+                                                } catch (e) {
+                                                  print('Sync failed: $e');
+                                                  isSyncing.value =
+                                                      false; // Reset loading state
+
+                                                  // Show error but keep dialog open for retry
+                                                  Get.snackbar(
+                                                    'Error',
+                                                    'Failed to sync: $e',
+                                                    snackPosition:
+                                                        SnackPosition.BOTTOM,
+                                                    backgroundColor: Colors.red,
+                                                    colorText: Colors.white,
+                                                  );
+                                                }
+                                              },
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: Colors.white,
+                                              ),
+                                              child: const Text('Yes'),
+                                            ),
+                                          ],
+                              )),
+                          barrierDismissible:
+                              !isSyncing.value && !showMessage.value,
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text(
-                      "Reset Dashboard",
-                      style: AppTextStyles.button,
+                      child: const Text(
+                        "Reset Dashboard",
+                        style: AppTextStyles.button,
+                      ),
                     ),
                   ),
-                
-
-                ),
                 ),
               ],
             ),

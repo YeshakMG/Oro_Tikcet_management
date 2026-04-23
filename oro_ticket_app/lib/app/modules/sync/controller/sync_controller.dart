@@ -61,6 +61,7 @@ class SyncController extends GetxController {
           name: "Unknown",
           tariff: 0.0,
           distance: 0.0,
+          roadType: "unknown",
         ),
       );
 

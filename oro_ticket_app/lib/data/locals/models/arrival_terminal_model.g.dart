@@ -21,13 +21,15 @@ class ArrivalTerminalModelAdapter extends TypeAdapter<ArrivalTerminalModel> {
       name: fields[1] as String,
       tariff: fields[2] as double,
       distance: fields[3] as double,
+      roadType: fields[4] as String?,
+      roadDistances: (fields[6] as Map?)?.cast<String, double>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, ArrivalTerminalModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -35,7 +37,11 @@ class ArrivalTerminalModelAdapter extends TypeAdapter<ArrivalTerminalModel> {
       ..writeByte(2)
       ..write(obj.tariff)
       ..writeByte(3)
-      ..write(obj.distance);
+      ..write(obj.distance)
+      ..writeByte(4)
+      ..write(obj.roadType)
+      ..writeByte(6)
+      ..write(obj.roadDistances);
   }
 
   @override
