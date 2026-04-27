@@ -321,163 +321,280 @@ class SyncRepository {
       return;
     }
 
-    final response = await _secureClient.get(
-      Uri.parse('$baseUrl/vehicles/company-user/my-vehicles'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      },
-    );
+    final Map<String, ArrivalTerminalModel> uniqueArrivals = {};
+    final currentDepartureTerminal =
+        DepartureTerminalStorageService.getTerminal();
+    final String? currentDepartureId = currentDepartureTerminal?.id;
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> json = jsonDecode(response.body);
-      final vehicles = json['data']['vehicles'] as List<dynamic>;
+    print(
+        '📍 Current company departure terminal: ${currentDepartureTerminal?.name}');
+    print('📍 Departure terminal ID: $currentDepartureId');
 
-      final Map<String, ArrivalTerminalModel> uniqueArrivals = {};
+    int currentPage = 1;
+    int totalVehiclesProcessed = 0;
+    int totalDestinationsProcessed = 0;
+    bool hasMorePages = true;
+    int consecutiveEmptyPages = 0;
+    const int maxEmptyPages = 2; // Safety: stop after 2 empty pages
 
-      final currentDepartureTerminal =
-          DepartureTerminalStorageService.getTerminal();
-      final String? currentDepartureId = currentDepartureTerminal?.id;
+    while (hasMorePages && consecutiveEmptyPages < maxEmptyPages) {
+      print('\n📄 Fetching page $currentPage...');
 
-      print('📍 Current company departure terminal ID: $currentDepartureId');
-      print(
-          '📍 Current company departure terminal: ${currentDepartureTerminal?.name}');
+      try {
+        final response = await _secureClient.get(
+          Uri.parse(
+              '$baseUrl/vehicles/company-user/my-vehicles?page=$currentPage'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ).timeout(Duration(seconds: 15));
 
-      for (final vehicle in vehicles) {
-        final destinations =
-            vehicle['vehicleTerminalDestinations'] as List<dynamic>?;
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> json = jsonDecode(response.body);
+          final data = json['data'];
 
-        if (destinations != null) {
-          for (final dest in destinations) {
-            final terminalDestination = dest['terminalDestination'];
+          if (data == null) {
+            print('⚠️ No data field in response');
+            break;
+          }
 
-            if (terminalDestination != null) {
-              final arrivalTerminal = terminalDestination['arrivalTerminal'];
+          final vehicles = data['vehicles'] as List<dynamic>?;
 
-              if (arrivalTerminal != null && arrivalTerminal is Map) {
-                final arrivalId = arrivalTerminal['id']?.toString() ?? '';
-                final arrivalName = arrivalTerminal['name']?.toString() ?? '';
+          if (vehicles == null || vehicles.isEmpty) {
+            consecutiveEmptyPages++;
+            print(
+                '📭 No vehicles on page $currentPage (empty page ${consecutiveEmptyPages}/$maxEmptyPages)');
 
-                // 👇 Determine road type - Check for hybrid first
-                String roadType;
+            if (consecutiveEmptyPages >= maxEmptyPages) {
+              print('⏹️ Stopping after $consecutiveEmptyPages empty pages');
+              break;
+            }
 
-                // Check if road_distances exists and has multiple road types
-                final roadDistances = terminalDestination['road_distances'];
+            // Still try next page in case of gap
+            currentPage++;
+            continue;
+          }
 
-                if (roadDistances != null &&
-                    roadDistances is Map &&
-                    roadDistances.isNotEmpty) {
-                  // Has road_distances with multiple types - it's hybrid
-                  final roadTypes = roadDistances.keys.toList();
+          // Reset empty page counter when we find vehicles
+          consecutiveEmptyPages = 0;
 
-                  if (roadTypes.length > 1) {
-                    // Multiple road types = Hybrid
-                    roadType = 'Hybrid';
-                    print('🛤️ Hybrid road detected: $roadTypes');
-                  } else {
-                    // Single road type in road_distances - use that type
-                    roadType = _formatRoadType(roadTypes.first);
-                  }
-                } else {
-                  // No road_distances - use single road_type
-                  final apiRoadType =
-                      terminalDestination['road_type']?.toString() ?? '';
-                  roadType = _formatRoadType(apiRoadType);
-                }
+          print('📦 Page $currentPage: Processing ${vehicles.length} vehicles');
 
-                // Skip if same as departure terminal
-                if (currentDepartureId != null &&
-                    arrivalId == currentDepartureId) {
-                  print(
-                      '⛔ Skipping arrival terminal: $arrivalName (ID: $arrivalId) - Same as company departure terminal');
-                  continue;
-                }
+          // Process vehicles on this page
+          for (final vehicle in vehicles) {
+            totalVehiclesProcessed++;
+            final destinations =
+                vehicle['vehicleTerminalDestinations'] as List<dynamic>?;
 
-                // Skip if no valid ID or name
-                if (arrivalId.isEmpty || arrivalName.isEmpty) {
-                  print('⚠️ Skipping arrival terminal with missing id/name');
-                  continue;
-                }
+            if (destinations != null && destinations.isNotEmpty) {
+              for (final dest in destinations) {
+                totalDestinationsProcessed++;
+                final terminalDestination = dest['terminalDestination'];
 
-                // Parse distance
-                double parsedDistance = 0.0;
-                dynamic distanceValue = terminalDestination['distance'] ?? 0.0;
-                if (distanceValue is String) {
-                  parsedDistance = double.tryParse(distanceValue) ?? 0.0;
-                } else if (distanceValue is num) {
-                  parsedDistance = distanceValue.toDouble();
-                }
+                if (terminalDestination != null) {
+                  final arrivalTerminal =
+                      terminalDestination['arrivalTerminal'];
 
-                // Parse road distances if hybrid
-                Map<String, double>? parsedRoadDistances;
-                if (roadDistances != null && roadDistances is Map) {
-                  parsedRoadDistances = {};
-                  roadDistances.forEach((key, value) {
-                    parsedRoadDistances![key.toString()] = (value is num)
-                        ? value.toDouble()
-                        : double.tryParse(value.toString()) ?? 0.0;
-                  });
-                }
+                  if (arrivalTerminal != null && arrivalTerminal is Map) {
+                    final arrivalId = arrivalTerminal['id']?.toString() ?? '';
+                    final arrivalName =
+                        arrivalTerminal['name']?.toString() ?? '';
 
-                // Only add if not already added (by ID)
-                if (!uniqueArrivals.containsKey(arrivalId)) {
-                  uniqueArrivals[arrivalId] = ArrivalTerminalModel.fromJson({
-                    'id': arrivalId,
-                    'name': arrivalName,
-                    'distance': parsedDistance,
-                    'tariff': 0.0,
-                    'road_type': roadType,
-                    'road_distances': parsedRoadDistances,
-                  });
+                    if (arrivalId.isEmpty || arrivalName.isEmpty) continue;
+                    if (currentDepartureId != null &&
+                        arrivalId == currentDepartureId) continue;
 
-                  print(
-                      '✅ Added arrival terminal: $arrivalName (ID: $arrivalId) - Road: $roadType');
+                    // Determine road type
+                    String roadType;
+                    final roadDistances = terminalDestination['road_distances'];
 
-                  if (parsedRoadDistances != null &&
-                      parsedRoadDistances.isNotEmpty) {
-                    print('   🛤️ Road breakdown: $parsedRoadDistances');
-                  }
-                } else {
-                  // Update existing if this one has hybrid info
-                  final existing = uniqueArrivals[arrivalId];
-                  if (roadType == 'Hybrid' && existing?.roadType != 'Hybrid') {
-                    uniqueArrivals[arrivalId] = ArrivalTerminalModel.fromJson({
-                      'id': arrivalId,
-                      'name': arrivalName,
-                      'distance': parsedDistance,
-                      'tariff': 0.0,
-                      'road_type': roadType,
-                      'road_distances': parsedRoadDistances,
-                    });
-                    print('🔄 Updated to Hybrid: $arrivalName');
+                    if (roadDistances != null &&
+                        roadDistances is Map &&
+                        roadDistances.isNotEmpty) {
+                      final roadTypes = roadDistances.keys.toList();
+                      roadType = roadTypes.length > 1
+                          ? 'Hybrid'
+                          : _formatRoadType(roadTypes.first);
+                    } else {
+                      roadType = _formatRoadType(
+                          terminalDestination['road_type']?.toString() ?? '');
+                    }
+
+                    // Parse distance
+                    double parsedDistance = 0.0;
+                    dynamic distanceValue =
+                        terminalDestination['distance'] ?? 0.0;
+                    if (distanceValue is String) {
+                      parsedDistance = double.tryParse(distanceValue) ?? 0.0;
+                    } else if (distanceValue is num) {
+                      parsedDistance = distanceValue.toDouble();
+                    }
+
+                    // Parse road distances
+                    Map<String, double>? parsedRoadDistances;
+                    if (roadDistances != null && roadDistances is Map) {
+                      parsedRoadDistances = {};
+                      roadDistances.forEach((key, value) {
+                        parsedRoadDistances![key.toString()] = (value is num)
+                            ? value.toDouble()
+                            : double.tryParse(value.toString()) ?? 0.0;
+                      });
+                    }
+
+                    // Add or update
+                    if (!uniqueArrivals.containsKey(arrivalId)) {
+                      uniqueArrivals[arrivalId] =
+                          ArrivalTerminalModel.fromJson({
+                        'id': arrivalId,
+                        'name': arrivalName,
+                        'distance': parsedDistance,
+                        'tariff': 0.0,
+                        'road_type': roadType,
+                        'road_distances': parsedRoadDistances,
+                      });
+                    } else {
+                      final existing = uniqueArrivals[arrivalId];
+                      bool shouldUpdate = false;
+
+                      if (roadType == 'Hybrid' &&
+                          existing!.roadType != 'Hybrid') {
+                        shouldUpdate = true;
+                      } else if (parsedDistance > (existing?.distance ?? 0)) {
+                        shouldUpdate = true;
+                      }
+
+                      if (shouldUpdate) {
+                        uniqueArrivals[arrivalId] =
+                            ArrivalTerminalModel.fromJson({
+                          'id': arrivalId,
+                          'name': arrivalName,
+                          'distance': parsedDistance,
+                          'tariff': 0.0,
+                          'road_type': roadType,
+                          'road_distances': parsedRoadDistances,
+                        });
+                      }
+                    }
                   }
                 }
               }
             }
           }
+
+          // 👇 ROBUST PAGINATION CHECK
+          final pagination = data['pagination'];
+          bool foundPaginationInfo = false;
+
+          if (pagination != null && pagination is Map) {
+            // Try multiple possible field names
+            final currentPageNum =
+                pagination['current_page'] ?? pagination['page'];
+            final lastPageNum = pagination['last_page'] ??
+                pagination['pages'] ??
+                pagination['total_pages'];
+            final totalItems = pagination['total'] ??
+                pagination['total_items'] ??
+                pagination['count'];
+            final perPage = pagination['per_page'] ??
+                pagination['limit'] ??
+                vehicles.length;
+
+            if (currentPageNum != null && lastPageNum != null) {
+              foundPaginationInfo = true;
+              final current =
+                  int.tryParse(currentPageNum.toString()) ?? currentPage;
+              final last = int.tryParse(lastPageNum.toString()) ?? currentPage;
+
+              print(
+                  '📊 Pagination: Page $current of $last (Total: ${totalItems ?? "?"}, Per page: $perPage)');
+
+              if (current < last) {
+                hasMorePages = true;
+                currentPage++;
+              } else {
+                hasMorePages = false;
+                print('✅ Reached last page');
+              }
+            }
+          }
+
+          // Fallback: If no pagination info, use vehicle count to guess
+          if (!foundPaginationInfo) {
+            if (vehicles.length == 0) {
+              hasMorePages = false;
+            } else if (vehicles.length < 10) {
+              // If less than typical page size, probably last page
+              hasMorePages = false;
+              print(
+                  '⚠️ No pagination info - assuming last page (${vehicles.length} vehicles)');
+            } else {
+              // Continue to next page
+              hasMorePages = true;
+              currentPage++;
+              print(
+                  '⚠️ No pagination info - trying next page (got ${vehicles.length} vehicles)');
+            }
+          }
+        } else if (response.statusCode == 401) {
+          print('❌ Unauthorized - Token may be expired');
+          break;
+        } else if (response.statusCode == 404) {
+          print('❌ Page not found (404) - stopping');
+          break;
+        } else {
+          print('❌ API returned ${response.statusCode}');
+          // If we've processed some pages, keep what we have
+          if (totalVehiclesProcessed > 0) {
+            print(
+                '⚠️ Error after processing $totalVehiclesProcessed vehicles - keeping collected data');
+            break;
+          }
+          break;
         }
+      } catch (e) {
+        print('❌ Network error on page $currentPage: $e');
+        // If we've already processed some pages, keep what we have
+        if (totalVehiclesProcessed > 0) {
+          print(
+              '⚠️ Error after processing $totalVehiclesProcessed vehicles - keeping collected data');
+          break;
+        }
+        break;
       }
 
-      final arrivalTerminalsList = uniqueArrivals.values.toList();
-      print(
-          '📦 Total unique arrival terminals: ${arrivalTerminalsList.length}');
+      // Safety: Don't loop forever
+      if (currentPage > 100) {
+        print('⚠️ Safety limit reached (100 pages) - stopping');
+        break;
+      }
+    }
 
-      // Debug: Print final list with road types
+    print('\n📊 FINAL SYNC SUMMARY:');
+    print('   Pages processed: $currentPage');
+    print('   Total vehicles: $totalVehiclesProcessed');
+    print('   Total destinations: $totalDestinationsProcessed');
+    print('   Unique arrivals: ${uniqueArrivals.length}');
+
+    final arrivalTerminalsList = uniqueArrivals.values.toList();
+
+    if (arrivalTerminalsList.isNotEmpty) {
+      // Print all found terminals
+      print('\n📋 ARRIVAL TERMINALS:');
       for (var t in arrivalTerminalsList) {
         final hybridInfo =
             t.roadDistances != null && t.roadDistances!.isNotEmpty
                 ? ' [Hybrid: ${t.roadDistances}]'
                 : '';
-        print('   ➡️ ${t.name} (ID: ${t.id}) - Road: ${t.roadType}$hybridInfo');
+        print('   ➡️ ${t.name} (${t.distance}km - ${t.roadType}$hybridInfo)');
       }
 
-      // Save to Hive
       await syncArrivalTerminals(
         arrivalTerminalsList.map((e) => e.toJson()).toList(),
       );
+      print('\n✅ Saved ${arrivalTerminalsList.length} arrival terminals');
     } else {
-      print('❌ Failed to fetch arrival terminals: ${response.statusCode}');
-      throw Exception('Failed to sync arrival terminals: ${response.body}');
+      print('\n⚠️ No arrival terminals found');
     }
   }
 

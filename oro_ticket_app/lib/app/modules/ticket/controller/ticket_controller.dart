@@ -102,7 +102,38 @@ class TicketController extends GetxController {
   //   totalPayment.value = "${total.toStringAsFixed(2)} ETB";
   // }
 
-// In TicketController, update methods:
+  final currentSeatNumber = 1.obs; // Next seat to be sold
+  final totalSeatsSold = 0.obs;
+  final isVehicleFull = false.obs;
+
+  // Method to get next available seat
+  int getNextSeatNumber() {
+    // You could also check against a list of sold seats if needed
+    return currentSeatNumber.value;
+  }
+
+  // Method to mark a seat as sold
+  void markSeatAsSold() {
+    totalSeatsSold.value++;
+    currentSeatNumber.value++;
+
+    // Check if vehicle is full
+    final seatCapacity = int.tryParse(this.seatNo.value) ?? 0;
+    isVehicleFull.value = totalSeatsSold.value >= seatCapacity;
+  }
+
+  // Reset for new vehicle
+  void resetSeatTracking() {
+    currentSeatNumber.value = 1;
+    totalSeatsSold.value = 0;
+    isVehicleFull.value = false;
+  }
+
+  // Check remaining seats
+  int getRemainingSeats() {
+    final capacity = int.tryParse(seatNo.value) ?? 0;
+    return capacity - totalSeatsSold.value;
+  }
 
   void populateFromModels(
     VehicleModel vehicle,

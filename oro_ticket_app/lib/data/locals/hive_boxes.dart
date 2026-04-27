@@ -8,6 +8,7 @@ import 'package:oro_ticket_app/data/locals/models/tariff_model.dart';
 import 'package:oro_ticket_app/data/locals/models/terminal_destination.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/models/user_model.dart';
+import 'package:oro_ticket_app/data/locals/models/vehicle_print_lock_model.dart';
 import 'package:oro_ticket_app/data/locals/models/vehicle_route.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 
@@ -22,7 +23,7 @@ class HiveBoxes {
   static const String serviceChargeBox = 'serviceChargeBox';
   static const String userBox = 'userData';
   static const String tariffsBox = 'tariffsBox';
-
+  static const String vehiclePrintLockBox = 'vehiclePrintLocksBox';
   static bool _initialized = false;
 
   static Future<void> init() async {
@@ -49,6 +50,7 @@ class HiveBoxes {
       Hive.registerAdapter(TariffModelAdapter());
       Hive.registerAdapter(TerminalDestinationAdapter());
       Hive.registerAdapter(VehicleRouteAdapter());
+      Hive.registerAdapter(VehiclePrintLockAdapter());
 
       // Open boxes
       await Future.wait([
@@ -60,6 +62,7 @@ class HiveBoxes {
         Hive.openBox<ServiceChargeModel>(serviceChargeBox),
         Hive.openBox<UserModel>(userBox),
         Hive.openBox<TariffModel>(tariffsBox),
+        Hive.openBox<VehiclePrintLock>('vehiclePrintLocksBox'),
       ]);
 
       _initialized = true;

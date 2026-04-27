@@ -28,7 +28,7 @@ class ResetDashboardDialog extends StatelessWidget {
           children: [
             Text(
               'Reset Dashboard',
-              style: AppTextStyles.heading2,
+              style: AppTextStyles.subtitle4,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),

@@ -178,7 +178,15 @@ class HomeView extends StatelessWidget {
 
                         Get.dialog(
                           Obx(() => AlertDialog(
-                                title: const Text("Reset Dashboard"),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                title: Text(
+                                  "Reset Dashboard",
+                                  style: AppTextStyles.subtitle1
+                                      .copyWith(color: AppColors.body),
+                                  textAlign: TextAlign.center,
+                                ),
                                 content: isSyncing.value
                                     ? const Column(
                                         mainAxisSize: MainAxisSize.min,
@@ -189,9 +197,16 @@ class HomeView extends StatelessWidget {
                                         ],
                                       )
                                     : showMessage.value
-                                        ? Text(message)
-                                        : const Text(
-                                            "Do you want to sync service charges before resetting?"),
+                                        ? Text(
+                                            message,
+                                            style: AppTextStyles.caption2
+                                                .copyWith(fontSize: 12),
+                                          )
+                                        : Text(
+                                            "Do you want to sync service charges before resetting?",
+                                            style: AppTextStyles.caption2
+                                                .copyWith(fontSize: 12),
+                                          ),
                                 actions: isSyncing.value
                                     ? null // No actions during sync
                                     : showMessage.value
@@ -201,7 +216,12 @@ class HomeView extends StatelessWidget {
                                                 print('Message acknowledged');
                                                 Get.back();
                                               },
-                                              child: const Text('OK'),
+                                              child: Text(
+                                                'OK',
+                                                style: AppTextStyles
+                                                    .buttonMediumB
+                                                    .copyWith(fontSize: 12),
+                                              ),
                                             ),
                                           ]
                                         : [
@@ -210,7 +230,12 @@ class HomeView extends StatelessWidget {
                                                 print('Cancel clicked');
                                                 Get.back();
                                               },
-                                              child: const Text('No'),
+                                              child: Text(
+                                                'No',
+                                                style: AppTextStyles
+                                                    .buttonMediumB
+                                                    .copyWith(fontSize: 12),
+                                              ),
                                             ),
                                             TextButton(
                                               onPressed: () async {
@@ -285,7 +310,15 @@ class HomeView extends StatelessWidget {
                                               style: TextButton.styleFrom(
                                                 foregroundColor: Colors.white,
                                               ),
-                                              child: const Text('Yes'),
+                                              child: Text(
+                                                'Yes',
+                                                style: AppTextStyles
+                                                    .buttonMediumB
+                                                    .copyWith(
+                                                        fontSize: 12,
+                                                        color: AppColors
+                                                            .primaryHover),
+                                              ),
                                             ),
                                           ],
                               )),

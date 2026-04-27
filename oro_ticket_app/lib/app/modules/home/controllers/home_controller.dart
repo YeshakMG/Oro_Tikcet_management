@@ -34,7 +34,7 @@ class HomeController extends GetxController {
   void loadUser() async {
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
-     print('Token: $token');
+    print('Token: $token');
 
     if (token == null) {
       debugPrint('No token found — skipping user load');
@@ -115,7 +115,7 @@ class HomeController extends GetxController {
           serviceChargeAmount:
               existingEntry.serviceChargeAmount + newChargeAmount,
           employeeId: existingEntry.employeeId,
-          companyId: existingEntry.companyId, 
+          companyId: existingEntry.companyId,
           employeeName: user.value?.fullName ?? '',
         );
 
@@ -129,7 +129,7 @@ class HomeController extends GetxController {
           dateTime: now,
           serviceChargeAmount: newChargeAmount,
           employeeId: currentUserId,
-          companyId: user.value?.companyId ?? "Unknown", 
+          companyId: user.value?.companyId ?? "Unknown",
           employeeName: user.value?.fullName ?? '',
         );
 

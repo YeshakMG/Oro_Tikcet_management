@@ -132,7 +132,7 @@ class DashboardController extends GetxController {
         print("Info: $vehicle."); // This is always null
         totalSeatsSold += vehicle;
         ticketsSoldToday.value = totalSeatsSold;
-        totalRevenue += trip.tariff * vehicle;
+        totalRevenue += trip.totalPaid * vehicle;
       }
     }
     // ticketsSoldToday.value = todayTrips.length;

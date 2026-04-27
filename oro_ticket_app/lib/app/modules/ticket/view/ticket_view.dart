@@ -12,6 +12,7 @@ import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
 import 'package:oro_ticket_app/data/locals/models/departure_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
+import 'package:oro_ticket_app/data/locals/models/vehicle_print_lock_model.dart';
 import 'package:oro_ticket_app/data/locals/service/tariff_calculator_service.dart';
 import 'package:oro_ticket_app/data/locals/service/tariff_storage_service.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
@@ -40,6 +41,7 @@ class TicketView extends StatefulWidget {
 class _TicketViewState extends State<TicketView> {
   final _ticketController = Get.put(TicketController());
   final homeController = Get.put(HomeController());
+  static const Duration vehicleLockDuration = Duration(hours: 1, minutes: 30);
 
   List<ArrivalTerminalModel> arrivalTerminals = [];
   ArrivalTerminalModel? selectedArrival;
@@ -55,6 +57,47 @@ class _TicketViewState extends State<TicketView> {
     _loadDefaultDeparture();
     _loadArrivalTerminals();
     _syncTariffsIfNeeded();
+    _cleanupExpiredLocks();
+  }
+
+  Future<void> _lockVehicleForPrinting(String vehicleId) async {
+    final lockBox = Hive.box<VehiclePrintLock>('vehiclePrintLocksBox');
+    final now = DateTime.now();
+
+    final lockUntil = now.add(vehicleLockDuration);
+
+    final existingLock = lockBox.values.firstWhereOrNull(
+      (lock) => lock.vehicleId == vehicleId,
+    );
+
+    if (existingLock != null) {
+      existingLock.lockUntil = lockUntil;
+      await existingLock.save();
+      print('🔄 Extended lock for vehicle $vehicleId until $lockUntil');
+    } else {
+      final newLock = VehiclePrintLock(
+        vehicleId: vehicleId,
+        lockUntil: lockUntil,
+      );
+      await lockBox.add(newLock);
+      print('🔒 Vehicle $vehicleId locked until $lockUntil');
+    }
+  }
+
+  void _cleanupExpiredLocks() {
+    final lockBox = Hive.box<VehiclePrintLock>('vehiclePrintLocksBox');
+    final now = DateTime.now();
+
+    final expiredLocks =
+        lockBox.values.where((lock) => lock.lockUntil.isBefore(now)).toList();
+
+    for (var lock in expiredLocks) {
+      lock.delete();
+    }
+
+    if (expiredLocks.isNotEmpty) {
+      print('🧹 Cleaned up ${expiredLocks.length} expired vehicle locks');
+    }
   }
 
   void _loadArrivalTerminals() {
@@ -94,26 +137,32 @@ class _TicketViewState extends State<TicketView> {
     }
   }
 
-  // In _TicketViewState, replace the _onPlateInputChanged method:
-
   void _onPlateInputChanged(String input) {
     final vehicleBox = Hive.box<VehicleModel>('vehiclesBox');
+    final lockBox = Hive.box<VehiclePrintLock>('vehiclePrintLocksBox');
 
-    // Get all vehicles first
+    final now = DateTime.now();
+
+    _cleanupExpiredLocks();
+
     var filtered = vehicleBox.values
         .where((v) => v.plateNumber.toLowerCase().contains(input.toLowerCase()))
         .toList();
 
     if (selectedDeparture != null && selectedArrival != null) {
       filtered = filtered.where((vehicle) {
+        // NEW: Check if vehicle is currently locked
+        final isLocked = lockBox.values.any((lock) =>
+            lock.vehicleId == vehicle.id && lock.lockUntil.isAfter(now));
+
+        if (isLocked) return false;
+
         if (vehicle.currentRoute?.terminalDestination != null) {
           final route = vehicle.currentRoute!.terminalDestination!;
-
           final departureTerminalId =
               _ticketController.departureTerminalId.value;
           final arrivalTerminalId = _ticketController.arrivalTerminalId.value;
 
-          // Check if vehicle's route matches selected terminals
           final matchesDeparture =
               route.departureTerminalId == departureTerminalId;
           final matchesArrival = route.arrivalTerminalId == arrivalTerminalId;
@@ -123,6 +172,7 @@ class _TicketViewState extends State<TicketView> {
         return false;
       }).toList();
     }
+
     if (plateInput != input) {
       _resetTicketController();
     }
@@ -139,6 +189,7 @@ class _TicketViewState extends State<TicketView> {
   }
 
   void _resetTicketController() {
+    plateController.clear();
     _ticketController.plateNumber.value = '';
     _ticketController.level.value = '';
     _ticketController.seatNo.value = '';
@@ -713,7 +764,7 @@ class _TicketViewState extends State<TicketView> {
           // )
           // In TicketView, update the print button onPressed:
 
-          ElevatedButton(
+          /*ElevatedButton(
             onPressed: () async {
               // Validate vehicle has a route
               if (_ticketController.selectedVehicle.value?.currentRoute ==
@@ -887,9 +938,329 @@ Call: 8556
                   borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text("Print & Save", style: AppTextStyles.button),
+          )*/
+          ElevatedButton(
+            onPressed: () async {
+              // Validate vehicle has a route
+              if (_ticketController.selectedVehicle.value?.currentRoute ==
+                  null) {
+                Get.snackbar(
+                  "Error",
+                  "Selected vehicle is not assigned to any route",
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red.withValues(alpha: 0.8),
+                  colorText: Colors.white,
+                );
+                return;
+              }
+
+              // Show status without blocking
+              Get.snackbar(
+                "Printing",
+                "Connecting to printer...",
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.blue.withValues(alpha: 0.8),
+                colorText: Colors.white,
+                duration: Duration(seconds: 2),
+              );
+
+              try {
+                // Prepare all data first (but don't save yet)
+                final tripData = _prepareTripData();
+                final ticketText = _prepareTicketText(tripData);
+                final exitTicketText = _prepareExitTicketText(tripData);
+                final passengerQRData = _preparePassengerQRData(tripData);
+                final exitQRData = _prepareExitQRData(tripData);
+
+                // Print first - errors will show immediately
+                final printer = TicketPrinter();
+                final copies =
+                    int.tryParse(_ticketController.seatNo.value) ?? 1;
+
+                print('🖨️ Attempting to print $copies copies...');
+
+                final printResult = await printer.connectAndPrintVerified(
+                  text: ticketText,
+                  qrCodeData: passengerQRData,
+                  copies: copies,
+                  exitText: exitTicketText,
+                  exitQRData: exitQRData,
+                );
+
+                if (printResult.success) {
+                  // Only save data after successful print
+                  await _saveTripData(tripData);
+                  await _lockVehicleForPrinting(
+                      _ticketController.selectedVehicle.value!.id);
+                  _resetTicketController();
+                  Get.snackbar(
+                    "Success ✅",
+                    "Ticket printed and saved successfully",
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.green.withValues(alpha: 0.8),
+                    colorText: Colors.white,
+                    duration: Duration(seconds: 3),
+                  );
+                } else {
+                  // Print failed - don't save anything, show error immediately
+                  print('❌ Print failed: ${printResult.error}');
+
+                  Get.snackbar(
+                    "Print Failed ❌",
+                    printResult.error ??
+                        "Failed to print ticket. Data not saved.",
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.red.withValues(alpha: 0.9),
+                    colorText: Colors.white,
+                    duration: Duration(seconds: 5),
+                    mainButton: TextButton(
+                      onPressed: () {
+                        // Allow user to see full error
+                        Get.defaultDialog(
+                          title: "Print Error Details",
+                          content: Text(
+                            printResult.error ?? "Unknown error",
+                            style: AppTextStyles.caption
+                                .copyWith(color: AppColors.body, fontSize: 10),
+                          ),
+                          titleStyle: AppTextStyles.caption
+                              .copyWith(color: AppColors.body, fontSize: 14),
+                          confirm: TextButton(
+                            onPressed: () => Get.back(),
+                            child: Text("OK"),
+                          ),
+                        );
+                      },
+                      child: Text("Details",
+                          style: TextStyle(color: Colors.white)),
+                    ),
+                  );
+                }
+              } catch (e, stackTrace) {
+                print('❌ Unexpected error during printing:');
+                print('Error: $e');
+                print('Stack trace: $stackTrace');
+
+                Get.snackbar(
+                  "Error ❌",
+                  "An unexpected error occurred. Check logs for details.",
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red.withValues(alpha: 0.9),
+                  colorText: Colors.white,
+                  duration: Duration(seconds: 5),
+                  mainButton: TextButton(
+                    onPressed: () {
+                      Get.defaultDialog(
+                        title: "Error Details",
+                        content: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Error: ${e.toString()}",
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                "Check debug console for full stack trace",
+                                style:
+                                    TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        confirm: TextButton(
+                          onPressed: () => Get.back(),
+                          child: Text("OK"),
+                        ),
+                      );
+                    },
+                    child:
+                        Text("Details", style: TextStyle(color: Colors.white)),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text("Print & Save", style: AppTextStyles.button),
           )
         ],
       ),
+    );
+  }
+
+// Prepare trip data without saving
+  TripModel _prepareTripData() {
+    final now = DateTime.now();
+
+    double parseSafe(String value) =>
+        double.tryParse(value.split(' ').first) ?? 0.0;
+
+    final baseTariff = parseSafe(_ticketController.tariff.value);
+    final serviceChargePerTicket =
+        parseSafe(_ticketController.serviceCharge.value);
+    final totalPaid = parseSafe(_ticketController.totalPayment.value);
+
+    return TripModel(
+      vehicleId: _ticketController.vehicleId.value,
+      departureTerminalId: _ticketController.departureTerminalId.value,
+      arrivalTerminalId: _ticketController.arrivalTerminalId.value,
+      dateAndTime: now,
+      km: parseSafe(_ticketController.km.value),
+      tariff: baseTariff,
+      serviceCharge: serviceChargePerTicket,
+      totalPaid: totalPaid,
+      employeeId: homeController.user.value!.id,
+      companyId: homeController.companyId.value,
+      departureName: _ticketController.locationFrom.value,
+      arrivalName: _ticketController.locationTo.value,
+    );
+  }
+
+  Future<void> _saveTripData(TripModel trip) async {
+    final tripBox = Hive.box<TripModel>(HiveBoxes.tripBox);
+    final serviceChargeBox =
+        Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    double parseSafe(String value) =>
+        double.tryParse(value.split(' ').first) ?? 0.0;
+
+    final int seatCount = int.tryParse(_ticketController.seatNo.value) ?? 1;
+    final double totalServiceCharge =
+        parseSafe(_ticketController.serviceCharge.value) * seatCount;
+
+    // Save trip
+    await tripBox.add(trip);
+
+    // Save service charge
+    final existingEntry = serviceChargeBox.values.firstWhereOrNull((entry) {
+      final entryDate = DateTime(
+          entry.dateTime.year, entry.dateTime.month, entry.dateTime.day);
+      return entry.departureTerminal == trip.departureTerminalId &&
+          entry.employeeId == trip.employeeId &&
+          entryDate == today;
+    });
+
+    if (existingEntry != null) {
+      existingEntry.serviceChargeAmount += totalServiceCharge;
+      await existingEntry.save();
+    } else {
+      final newCharge = ServiceChargeModel(
+        departureTerminal: trip.departureTerminalId,
+        dateTime: now,
+        serviceChargeAmount: totalServiceCharge,
+        employeeName: homeController.user.value!.fullName,
+        companyId: trip.companyId,
+        employeeId: trip.employeeId,
+      );
+      await serviceChargeBox.add(newCharge);
+    }
+  }
+
+  String _prepareTicketTextForSeat(TripModel trip, int seatNumber) {
+    double parseSafe(String value) =>
+        double.tryParse(value.split(' ').first) ?? 0.0;
+
+    return formatTicketText(
+      companyName: homeController.companyName.value,
+      companyPhoneNo: homeController.companyPhoneNo.value,
+      region: _ticketController.region.value,
+      plateNumber: _ticketController.plateNumber.value,
+      from: trip.departureName,
+      to: trip.arrivalName,
+      dateTime: trip.dateAndTime,
+      seatNo: seatNumber.toString(), // Use seat number 1, 2, 3, etc.
+      association: _ticketController.associations.value,
+      level: _ticketController.level.value,
+      km: trip.km,
+      tariff: trip.tariff,
+      serviceCharge: parseSafe(_ticketController.serviceCharge.value),
+      totalPayment: trip.totalPaid,
+      agent: homeController.user.value!.fullName,
+    );
+  }
+
+  String _prepareTicketText(TripModel trip) {
+    double parseSafe(String value) =>
+        double.tryParse(value.split(' ').first) ?? 0.0;
+
+    return formatTicketText(
+      companyName: homeController.companyName.value,
+      companyPhoneNo: homeController.companyPhoneNo.value,
+      region: _ticketController.region.value,
+      plateNumber: _ticketController.plateNumber.value,
+      from: trip.departureName,
+      to: trip.arrivalName,
+      dateTime: trip.dateAndTime,
+      seatNo: _ticketController.seatNo.value,
+      association: _ticketController.associations.value,
+      level: _ticketController.level.value,
+      km: trip.km,
+      tariff: trip.tariff,
+      serviceCharge: parseSafe(_ticketController.serviceCharge.value),
+      totalPayment: trip.totalPaid,
+      agent: homeController.user.value!.fullName,
+    );
+  }
+
+  String _prepareExitTicketText(TripModel trip) {
+    return formatExitTicketText(
+      companyName: homeController.companyName.value,
+      companyPhoneNo: homeController.companyPhoneNo.value,
+      region: _ticketController.region.value,
+      plateNumber: _ticketController.plateNumber.value,
+      from: trip.departureName,
+      to: trip.arrivalName,
+      dateTime: trip.dateAndTime,
+      seatCapacity: _ticketController.seatNo.value,
+      tariff: trip.tariff,
+      association: _ticketController.associations.value,
+      level: _ticketController.level.value,
+      totalPayment: trip.totalPaid,
+      agent: homeController.user.value!.fullName,
+    );
+  }
+
+  String _preparePassengerQRData(TripModel trip) {
+    final ethDate = trip.dateAndTime.convertToEthiopian();
+    final period = ethDate.hour >= 12 ? 'PM' : 'AM';
+    final dateStr = "${ethDate.day}-${ethDate.month}-${ethDate.year}";
+    final timeStr =
+        "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')} $period";
+
+    return '''
+TRIP INFORMATION
+---------------------------
+FROM: ${trip.departureName}
+TO:   ${trip.arrivalName}
+WHEN: ${"$dateStr $timeStr"}
+PLATE NUMBER:  ${_ticketController.region} ${_ticketController.plateNumber.value}
+---------------------------
+FEEDBACK & SUPPORT
+Call: 8556
+---------------------------
+''';
+  }
+
+  ExitTicketQRData _prepareExitQRData(TripModel trip) {
+    final vehicle = _ticketController.selectedVehicle.value!;
+
+    return ExitTicketQRData(
+      vehicleId: vehicle.id,
+      plateNumber: vehicle.plateNumber,
+      originTerminalId: _ticketController.departureTerminalId.value,
+      checkinDate: DateFormat('yyyy-MM-dd').format(trip.dateAndTime),
+      notes: 'Route: ${trip.departureName} → ${trip.arrivalName}',
+      timestamp: trip.dateAndTime,
     );
   }
 
@@ -1035,6 +1406,10 @@ String formatTicketText({
   final dateStr = "${ethDate.day}-${ethDate.month}-${ethDate.year}";
   final timeStr =
       "${ethDate.hour.toString().padLeft(2, '0')}:${ethDate.minute.toString().padLeft(2, '0')} $period ";
+
+  // Calculate individual seat prices
+  final pricePerSeat = totalPayment / int.parse(seatNo);
+
   return '''
 Oromia Transport Agency
 ${'=' * lineWidth}
@@ -1046,12 +1421,12 @@ ${line("From:", from)}
 ${line("To:", to)}
 ${line("Plate:", "$region$plateNumber")}
 ${line("Association:", association)}
-${line("Seat Capacity:", seatNo)}
+${line("Seat No:", seatNo)}
 ${line("Level:", level)}
 ${line("KM:", km.toStringAsFixed(2))}
 ${'-' * lineWidth}
-${line("Tariff:", tariff.toStringAsFixed(2))}
-${line("Service Charge:", serviceCharge.toStringAsFixed(2))}
+${line("Tariff", tariff.toStringAsFixed(2))}
+${line("Service Charge", serviceCharge.toStringAsFixed(2))}
 ${line("TOTAL:", totalPayment.toStringAsFixed(2))}
 ${'-' * lineWidth}
 ${line("Agent:", agent)}
@@ -1071,6 +1446,7 @@ String formatExitTicketText({
   required String level,
   required String agent,
   required double tariff,
+  required double totalPayment,
 }) {
   const lineWidth = 30;
   String line(String left, String right) {
@@ -1095,6 +1471,7 @@ ${line("Plate:", "$region$plateNumber")}
 ${line("Association:", association)}
 ${line("Seat Capacity:", seatCapacity)}
 ${line("Tariff:", tariff.toStringAsFixed(2))}
+${line("TOTAL:", (tariff * int.parse(seatCapacity)).toStringAsFixed(2))}
 ${line("Level:", level)}
 ${'-' * lineWidth}
 ${line("Agent:", agent)}

@@ -25,8 +25,10 @@ class SyncController extends GetxController {
     if (searchQuery.value.isEmpty) return tickets;
 
     final vehicleBox = Hive.box<VehicleModel>(HiveBoxes.vehiclesBox);
-    final departureBox = Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
-    final arrivalBox = Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
+    final departureBox =
+        Hive.box<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
+    final arrivalBox =
+        Hive.box<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
 
     return tickets.where((trip) {
       final vehicle = vehicleBox.values.firstWhere(
@@ -61,7 +63,6 @@ class SyncController extends GetxController {
           name: "Unknown",
           tariff: 0.0,
           distance: 0.0,
-          roadType: "unknown",
         ),
       );
 

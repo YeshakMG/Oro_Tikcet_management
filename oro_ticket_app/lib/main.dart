@@ -72,8 +72,8 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       theme: AppTheme.lightTheme,
       // Always start with Sign In page
-      home: SignInView(),
-      getPages: AppPages.routes,
+      initialRoute: AppPages.INITIAL,
+      getPages: AppPages.routes,  
       title: 'Oro Ticket App',
       debugShowCheckedModeBanner: false,
       routingCallback: (routing) {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class ExitTicketQRData {
   final String vehicleId;
   final String plateNumber;
@@ -25,7 +27,10 @@ class ExitTicketQRData {
       };
 
   String toQRString() {
-    return '$vehicleId|$plateNumber|$originTerminalId|${checkinDate ?? ''}|${notes ?? ''}|${timestamp.toIso8601String()}';
+    final jsonString = jsonEncode(toJson());
+
+    final bytes = utf8.encode(jsonString);
+    return base64Encode(bytes);
   }
 
   static ExitTicketQRData fromQRString(String qrString) {
