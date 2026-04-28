@@ -151,7 +151,6 @@ class _TicketViewState extends State<TicketView> {
 
     if (selectedDeparture != null && selectedArrival != null) {
       filtered = filtered.where((vehicle) {
-        // NEW: Check if vehicle is currently locked
         final isLocked = lockBox.values.any((lock) =>
             lock.vehicleId == vehicle.id && lock.lockUntil.isAfter(now));
 
@@ -172,14 +171,16 @@ class _TicketViewState extends State<TicketView> {
         return false;
       }).toList();
     }
-
-    if (plateInput != input) {
-      _resetTicketController();
-    }
-
     setState(() {
       plateInput = input;
       suggestions = filtered;
+
+      if (plateController.text != input) {
+        plateController.text = input;
+        plateController.selection = TextSelection.fromPosition(
+          TextPosition(offset: input.length),
+        );
+      }
     });
 
     if (input.isEmpty) {

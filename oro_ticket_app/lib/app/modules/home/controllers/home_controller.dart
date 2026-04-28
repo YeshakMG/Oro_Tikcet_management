@@ -58,11 +58,14 @@ class HomeController extends GetxController {
     try {
       final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
 
-      // Get the first entry if available
-      final entry = box.isNotEmpty ? box.getAt(0) : null;
+      // Get the latest entry (if you want the most recent, not first)
+      final entry = box.isNotEmpty ? box.getAt(box.length - 1) : null;
 
       if (entry != null) {
+        // Force a UI update by reassigning
         serviceChargeToday.value = entry.serviceChargeAmount;
+        // Optional: Add a refresh trigger
+        serviceChargeToday.refresh();
       } else {
         serviceChargeToday.value = 0.0;
       }
