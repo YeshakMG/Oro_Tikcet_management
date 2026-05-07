@@ -164,15 +164,20 @@ class _TicketViewState extends State<TicketView> {
               _ticketController.departureTerminalId.value;
           final arrivalTerminalId = _ticketController.arrivalTerminalId.value;
 
-          final matchesDeparture =
-              route.departureTerminalId == departureTerminalId;
-          final matchesArrival = route.arrivalTerminalId == arrivalTerminalId;
+          final matchesForward =
+              route.departureTerminalId == departureTerminalId &&
+                  route.arrivalTerminalId == arrivalTerminalId;
 
-          return matchesDeparture && matchesArrival;
+          final matchesBackward =
+              route.departureTerminalId == arrivalTerminalId &&
+                  route.arrivalTerminalId == departureTerminalId;
+
+          return matchesForward || matchesBackward;
         }
         return false;
       }).toList();
     }
+
     setState(() {
       plateInput = input;
       suggestions = filtered;
