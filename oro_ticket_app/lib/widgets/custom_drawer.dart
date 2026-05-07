@@ -65,7 +65,7 @@ class CustomDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Version 1.0.1',
+                    'Version 1.0.2',
                     style: AppTextStyles.caption.copyWith(
                       fontSize: 10,
                       color: Colors.grey[400],
