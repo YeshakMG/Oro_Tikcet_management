@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
+import 'package:vs_scrollbar/vs_scrollbar.dart';
 
 import '../controller/local_report_controller.dart';
 
@@ -56,11 +57,18 @@ class LocalReportView extends StatelessWidget {
                   return const Center(child: Text("No trips available"));
                 }
 
-                return Scrollbar(
-                  interactive: true,
-                  trackVisibility: true,
+                return VsScrollbar(
                   controller: _scrollController,
-                  thickness: 6.0,
+                  showTrackOnHover: true,
+                  isAlwaysShown: true,
+                  scrollbarFadeDuration: Duration(milliseconds: 500),
+                  scrollbarTimeToFade: Duration(milliseconds: 800),
+                  style: VsScrollbarStyle(
+                    hoverThickness: 2.0,
+                    radius: Radius.circular(8),
+                    thickness: 4.0,
+                    color: AppColors.primary.withValues(alpha: 0.05),
+                  ),
                   child: ListView.builder(
                     controller: _scrollController,
                     itemCount: controller.filteredTrips.length + 1,

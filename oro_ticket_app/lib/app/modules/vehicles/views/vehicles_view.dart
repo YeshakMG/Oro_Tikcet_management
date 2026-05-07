@@ -5,6 +5,7 @@ import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
+import 'package:vs_scrollbar/vs_scrollbar.dart';
 
 class VehiclesView extends StatelessWidget {
   final VehiclesController controller = Get.put(VehiclesController());
@@ -101,12 +102,18 @@ class VehiclesView extends StatelessWidget {
                   await controller.refreshVehicles();
                   _refreshController.refreshCompleted();
                 },
-                child: Scrollbar(
-                  interactive: true,
-                  trackVisibility: true,
+                child: VsScrollbar(
                   controller: _scrollController,
-                  thickness: 6.0,
-                  radius: Radius.circular(8),
+                  showTrackOnHover: true,
+                  isAlwaysShown: true,
+                  scrollbarFadeDuration: Duration(milliseconds: 500),
+                  scrollbarTimeToFade: Duration(milliseconds: 800),
+                  style: VsScrollbarStyle(
+                    hoverThickness: 2.0,
+                    radius: Radius.circular(8),
+                    thickness: 4.0,
+                    color: AppColors.primary.withValues(alpha: 0.05),
+                  ),
                   child: ListView.builder(
                     controller: _scrollController,
                     itemCount: controller.paginatedVehicles.length + 1,

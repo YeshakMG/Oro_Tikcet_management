@@ -614,6 +614,10 @@ class SyncRepository {
   }
 
   Future<void> syncServiceChargeToServer() async {
+     if (!_secureClientInitialized) {
+      await _initSecureClient();
+      _secureClientInitialized = true;
+    }
     final authService = Get.find<AuthService>();
     final token = await authService.getToken();
     final box = Hive.box<ServiceChargeModel>(HiveBoxes.serviceChargeBox);

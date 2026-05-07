@@ -23,8 +23,7 @@ class CustomDrawer extends StatelessWidget {
     return Drawer(
       child: Container(
         color: Colors.white,
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
             CustomDrawerHeader(
               userName: userName,
@@ -32,12 +31,49 @@ class CustomDrawer extends StatelessWidget {
               companyName: companyName,
             ),
             const SizedBox(height: 20),
-            ...DrawerItems.items.map((item) => DrawerItem(
-                  title: item['title'],
-                  icon: item['icon'],
-                  color: item['color'],
-                  onTap: () => onItemSelected?.call(item['title']),
-                )),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: DrawerItems.items
+                    .map((item) => DrawerItem(
+                          title: item['title'],
+                          icon: item['icon'],
+                          color: item['color'],
+                          onTap: () => onItemSelected?.call(item['title']),
+                        ))
+                    .toList(),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Powered by',
+                    style: AppTextStyles.caption3
+                        .copyWith(color: Colors.grey[400], fontSize: 10),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Ethiopian Artificial Intelligence Institute',
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 10,
+                      color: Colors.grey[400],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Version 1.0.1',
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 10,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

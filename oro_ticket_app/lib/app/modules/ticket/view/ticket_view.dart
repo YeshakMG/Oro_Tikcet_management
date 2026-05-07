@@ -32,6 +32,7 @@ import 'package:oro_ticket_app/data/locals/models/commission_rule_model.dart';
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:intl/intl.dart';
 import 'package:oro_ticket_app/app/modules/utils/ticket_printer.dart';
+import 'package:vs_scrollbar/vs_scrollbar.dart';
 
 class TicketView extends StatefulWidget {
   @override
@@ -42,6 +43,7 @@ class _TicketViewState extends State<TicketView> {
   final _ticketController = Get.put(TicketController());
   final homeController = Get.put(HomeController());
   static const Duration vehicleLockDuration = Duration(hours: 1, minutes: 30);
+  final ScrollController _scrollController = ScrollController();
 
   List<ArrivalTerminalModel> arrivalTerminals = [];
   ArrivalTerminalModel? selectedArrival;
@@ -290,122 +292,140 @@ class _TicketViewState extends State<TicketView> {
               if (suggestions.isNotEmpty)
                 Container(
                   margin: EdgeInsets.only(top: 8),
+                  height: 250,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     border: Border.all(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: suggestions.length,
-                    itemBuilder: (context, index) {
-                      final vehicle = suggestions[index];
-                      return ListTile(
-                        title: Text(vehicle.plateNumber),
-                        subtitle: Text(
-                            '${vehicle.plateRegion} • ${vehicle.fleetType}'),
-                        // onTap: () {
-                        //   plateController.text = vehicle.plateNumber;
-                        //   plateInput = vehicle.plateNumber;
-                        //   suggestions.clear();
+                  child: VsScrollbar(
+                    controller: _scrollController,
+                    showTrackOnHover: true,
+                    isAlwaysShown: true,
+                    scrollbarFadeDuration: Duration(milliseconds: 500),
+                    scrollbarTimeToFade: Duration(milliseconds: 800),
+                    style: VsScrollbarStyle(
+                      hoverThickness: 2.0,
+                      radius: Radius.circular(8),
+                      thickness: 6.0,
+                      color: AppColors.primary.withValues(alpha: 0.05),
+                    ),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      // shrinkWrap: true,
+                      itemCount: suggestions.length,
+                      itemBuilder: (context, index) {
+                        final vehicle = suggestions[index];
+                        return ListTile(
+                          title: Text(vehicle.plateNumber),
+                          subtitle: Text(
+                              '${vehicle.plateRegion} • ${vehicle.fleetType}'),
+                          // onTap: () {
+                          //   plateController.text = vehicle.plateNumber;
+                          //   plateInput = vehicle.plateNumber;
+                          //   suggestions.clear();
 
-                        //   _ticketController.plateNumber.value =
-                        //       vehicle.plateNumber;
-                        //   _ticketController.level.value = vehicle.vehicleLevel;
-                        //   _ticketController.seatNo.value =
-                        //       vehicle.seatCapacity.toString();
-                        //   _ticketController.level.value = vehicle.vehicleLevel;
-                        //   _ticketController.associations.value =
-                        //       vehicle.associationName;
-                        //   _ticketController.vehicleId.value = vehicle.id;
+                          //   _ticketController.plateNumber.value =
+                          //       vehicle.plateNumber;
+                          //   _ticketController.level.value = vehicle.vehicleLevel;
+                          //   _ticketController.seatNo.value =
+                          //       vehicle.seatCapacity.toString();
+                          //   _ticketController.level.value = vehicle.vehicleLevel;
+                          //   _ticketController.associations.value =
+                          //       vehicle.associationName;
+                          //   _ticketController.vehicleId.value = vehicle.id;
 
-                        //   _ticketController.region.value = vehicle.plateRegion;
-                        //   // _ticketController.departureTerminalId.value =
-                        //   //     _ticketController.locationFrom.value;
+                          //   _ticketController.region.value = vehicle.plateRegion;
+                          //   // _ticketController.departureTerminalId.value =
+                          //   //     _ticketController.locationFrom.value;
 
-                        //   _ticketController.fleetType.value = vehicle.fleetType;
-                        //   // Set the date and time
-                        //   final now = DateTime.now();
-                        //   final ethDate = now.convertToEthiopian();
+                          //   _ticketController.fleetType.value = vehicle.fleetType;
+                          //   // Set the date and time
+                          //   final now = DateTime.now();
+                          //   final ethDate = now.convertToEthiopian();
 
-                        //   _ticketController.dateTime.value =
-                        //       "${TicketController.oromoWeekdays[now.weekday]} - "
-                        //       "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
-                        //       "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+                          //   _ticketController.dateTime.value =
+                          //       "${TicketController.oromoWeekdays[now.weekday]} - "
+                          //       "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
+                          //       "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
 
-                        //   setState(() {}); // Refresh suggestion UI
-                        // },
-                        // In _TicketViewState, modify the onTap of vehicle selection:
-                        onTap: () {
-                          plateController.text = vehicle.plateNumber;
-                          plateInput = vehicle.plateNumber;
-                          suggestions.clear();
+                          //   setState(() {}); // Refresh suggestion UI
+                          // },
+                          // In _TicketViewState, modify the onTap of vehicle selection:
+                          onTap: () {
+                            plateController.text = vehicle.plateNumber;
+                            plateInput = vehicle.plateNumber;
+                            suggestions.clear();
 
-                          // Store the selected vehicle in controller
-                          _ticketController.selectedVehicle.value = vehicle;
+                            // Store the selected vehicle in controller
+                            _ticketController.selectedVehicle.value = vehicle;
 
-                          // Populate vehicle info
-                          _ticketController.plateNumber.value =
-                              vehicle.plateNumber;
-                          _ticketController.level.value = vehicle.vehicleLevel;
-                          _ticketController.seatNo.value =
-                              vehicle.seatCapacity.toString();
-                          _ticketController.associations.value =
-                              vehicle.associationName;
-                          _ticketController.vehicleId.value = vehicle.id;
-                          _ticketController.region.value = vehicle.plateRegion;
-                          _ticketController.fleetType.value = vehicle.fleetType;
+                            // Populate vehicle info
+                            _ticketController.plateNumber.value =
+                                vehicle.plateNumber;
+                            _ticketController.level.value =
+                                vehicle.vehicleLevel;
+                            _ticketController.seatNo.value =
+                                vehicle.seatCapacity.toString();
+                            _ticketController.associations.value =
+                                vehicle.associationName;
+                            _ticketController.vehicleId.value = vehicle.id;
+                            _ticketController.region.value =
+                                vehicle.plateRegion;
+                            _ticketController.fleetType.value =
+                                vehicle.fleetType;
 
-                          // 👇 NEW: Populate route information from vehicle's current route
-                          if (vehicle.currentRoute?.terminalDestination !=
-                              null) {
-                            final route =
-                                vehicle.currentRoute!.terminalDestination!;
+                            // 👇 NEW: Populate route information from vehicle's current route
+                            if (vehicle.currentRoute?.terminalDestination !=
+                                null) {
+                              final route =
+                                  vehicle.currentRoute!.terminalDestination!;
 
-                            // Update distance from vehicle route
-                            _ticketController.km.value =
-                                "${route.distance.toStringAsFixed(1)} km";
+                              // Update distance from vehicle route
+                              _ticketController.km.value =
+                                  "${route.distance.toStringAsFixed(1)} km";
 
-                            // Update arrival terminal info if not already selected
-                            if (route.arrivalTerminalName != null) {
-                              _ticketController.locationTo.value =
-                                  route.arrivalTerminalName!;
+                              // Update arrival terminal info if not already selected
+                              // if (route.arrivalTerminalName != null) {
+                              //   _ticketController.locationTo.value =
+                              //       route.arrivalTerminalName!;
 
-                              // Find and set the matching arrival terminal from the list
-                              final matchingArrival =
-                                  arrivalTerminals.firstWhereOrNull((a) =>
-                                      a.name == route.arrivalTerminalName);
-                              if (matchingArrival != null) {
-                                setState(() {
-                                  selectedArrival = matchingArrival;
-                                });
-                                _ticketController.arrivalTerminalId.value =
-                                    matchingArrival.id;
-                              }
+                              //   // Find and set the matching arrival terminal from the list
+                              //   final matchingArrival =
+                              //       arrivalTerminals.firstWhereOrNull((a) =>
+                              //           a.name == route.arrivalTerminalName);
+                              //   if (matchingArrival != null) {
+                              //     setState(() {
+                              //       selectedArrival = matchingArrival;
+                              //     });
+                              //     _ticketController.arrivalTerminalId.value =
+                              //         matchingArrival.id;
+                              //   }
+                              // }
+
+                              // // Update departure terminal info
+                              // if (route.departureTerminalName != null) {
+                              //   _ticketController.locationFrom.value =
+                              //       route.departureTerminalName!;
+                              // }
                             }
 
-                            // Update departure terminal info
-                            if (route.departureTerminalName != null) {
-                              _ticketController.locationFrom.value =
-                                  route.departureTerminalName!;
-                            }
-                          }
+                            // Calculate tariff using the new system
+                            _ticketController.calculateCharges(0.0);
 
-                          // Calculate tariff using the new system
-                          _ticketController.calculateCharges(0.0);
+                            // Set date/time
+                            final now = DateTime.now();
+                            final ethDate = now.convertToEthiopian();
+                            _ticketController.dateTime.value =
+                                "${TicketController.oromoWeekdays[now.weekday]} - "
+                                "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
+                                "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
 
-                          // Set date/time
-                          final now = DateTime.now();
-                          final ethDate = now.convertToEthiopian();
-                          _ticketController.dateTime.value =
-                              "${TicketController.oromoWeekdays[now.weekday]} - "
-                              "${ethDate.year}/${ethDate.month.toString().padLeft(2, '0')}/${ethDate.day.toString().padLeft(2, '0')} "
-                              "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-
-                          setState(() {});
-                        },
-                      );
-                    },
+                            setState(() {});
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
               SizedBox(height: 20),
@@ -973,7 +993,6 @@ Call: 8556
                 final passengerQRData = _preparePassengerQRData(tripData);
                 final exitQRData = _prepareExitQRData(tripData);
 
-                // Print first - errors will show immediately
                 final printer = TicketPrinter();
                 final copies =
                     int.tryParse(_ticketController.seatNo.value) ?? 1;
@@ -1005,7 +1024,9 @@ Call: 8556
                 } else {
                   // Print failed - don't save anything, show error immediately
                   print('❌ Print failed: ${printResult.error}');
-
+                  print('🖨️ Prepared Ticket Data:');
+                  print(
+                      ticketText); // Print first - errors will show immediately
                   Get.snackbar(
                     "Print Failed ❌",
                     printResult.error ??
