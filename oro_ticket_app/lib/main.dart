@@ -14,6 +14,8 @@ import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 import 'package:oro_ticket_app/app/modules/reset_password/controller/reset_password_controller.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
+import 'package:oro_ticket_app/data/locals/service/connectivity_service.dart';
+import 'package:oro_ticket_app/data/repositories/enhanced_sync_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +29,15 @@ void main() async {
   Get.put(AuthService());
   Get.put(HomeController());
   Get.put(ResetPasswordController());
+  Get.put(ConnectivityService());
+
+  // Initialize enhanced sync repository
+  final enhancedSyncRepo = EnhancedSyncRepository();
+
+  // Start periodic sync
+  enhancedSyncRepo.startPeriodicSync(
+    interval: Duration(minutes: 5), // Check every 5 minutes
+  );
 
   runApp(const MyApp());
 }
@@ -38,7 +49,9 @@ Future<void> _initializeSecurity() async {
     if (isEmulator) {
       print('🚫 SECURITY ALERT: App cannot run on emulator/simulator');
       // Show error and exit
-      runApp(const SecurityErrorApp(message: 'This application cannot run on emulators or simulators for security reasons.\n\nPlease use a physical device.'));
+      runApp(const SecurityErrorApp(
+          message:
+              'This application cannot run on emulators or simulators for security reasons.\n\nPlease use a physical device.'));
       return;
     }
 
@@ -47,7 +60,9 @@ Future<void> _initializeSecurity() async {
     if (isRooted) {
       print('🚫 SECURITY ALERT: Device appears to be rooted/jailbroken');
       // Show error and exit
-      runApp(const SecurityErrorApp(message: 'This application cannot run on rooted or jailbroken devices for security reasons.\n\nPlease use a standard device.'));
+      runApp(const SecurityErrorApp(
+          message:
+              'This application cannot run on rooted or jailbroken devices for security reasons.\n\nPlease use a standard device.'));
       return;
     }
 
@@ -73,7 +88,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       // Always start with Sign In page
       initialRoute: AppPages.INITIAL,
-      getPages: AppPages.routes,  
+      getPages: AppPages.routes,
       title: 'Oro Ticket App',
       debugShowCheckedModeBanner: false,
       routingCallback: (routing) {
@@ -123,7 +138,8 @@ class _SecurityErrorAppState extends State<SecurityErrorApp> {
                 const SizedBox(height: 24),
                 Text(
                   'Security Error',
-                  style: AppTextStyles.heading1.copyWith(color: AppColors.error),
+                  style:
+                      AppTextStyles.heading1.copyWith(color: AppColors.error),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),

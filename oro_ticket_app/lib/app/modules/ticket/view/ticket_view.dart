@@ -15,6 +15,7 @@ import 'package:oro_ticket_app/data/locals/models/arrival_terminal_model.dart';
 import 'package:oro_ticket_app/data/locals/models/vehicle_print_lock_model.dart';
 import 'package:oro_ticket_app/data/locals/service/tariff_calculator_service.dart';
 import 'package:oro_ticket_app/data/locals/service/tariff_storage_service.dart';
+import 'package:oro_ticket_app/data/repositories/enhanced_sync_repository.dart';
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
 import 'package:oro_ticket_app/widgets/ticket_widget.dart';
@@ -249,38 +250,36 @@ class _TicketViewState extends State<TicketView> {
               SizedBox(height: 10),
 
               // Destination
-              DropdownButtonFormField<ArrivalTerminalModel>(
-                value: selectedArrival,
-                isExpanded: true,
-                hint: Text('Select destination'),
-                onChanged: (val) {
-                  setState(() {
-                    selectedArrival = val;
-                  });
-                  if (val != null) {
-                    _ticketController.locationTo.value = val.name;
-                    // _ticketController.km.value =
-                    //     "${val.distance.toStringAsFixed(1)} km";
-                    // _ticketController.tariff.value =
-                    //     "${val.tariff.toStringAsFixed(2)} ETB";
-                    // _ticketController.calculateCharges(val.tariff);
-                    _ticketController.arrivalTerminalId.value = val.id;
-                    if (_ticketController.selectedVehicle.value != null) {
-                      _ticketController.calculateCharges(0.0);
+              IgnorePointer(
+                ignoring: _ticketController.selectedVehicle.value != null,
+                child: DropdownButtonFormField<ArrivalTerminalModel>(
+                  value: selectedArrival,
+                  isExpanded: true,
+                  hint: Text('Select destination'),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedArrival = val;
+                    });
+                    if (val != null) {
+                      _ticketController.locationTo.value = val.name;
+                      _ticketController.arrivalTerminalId.value = val.id;
+                      if (_ticketController.selectedVehicle.value != null) {
+                        _ticketController.calculateCharges(0.0);
+                      }
                     }
-                  }
-                },
-                decoration: InputDecoration(
-                  labelText: 'Destination Terminal',
-                  prefixIcon: Icon(Icons.location_on),
-                  border: OutlineInputBorder(),
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Destination Terminal',
+                    prefixIcon: Icon(Icons.location_on),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: arrivalTerminals
+                      .map((loc) => DropdownMenuItem(
+                            value: loc,
+                            child: Text(loc.name),
+                          ))
+                      .toList(),
                 ),
-                items: arrivalTerminals
-                    .map((loc) => DropdownMenuItem(
-                          value: loc,
-                          child: Text(loc.name),
-                        ))
-                    .toList(),
               ),
               SizedBox(height: 10),
 
@@ -965,6 +964,160 @@ Call: 8556
             ),
             child: const Text("Print & Save", style: AppTextStyles.button),
           )*/
+          // ElevatedButton(
+          //   onPressed: () async {
+          //     // Validate vehicle has a route
+          //     if (_ticketController.selectedVehicle.value?.currentRoute ==
+          //         null) {
+          //       Get.snackbar(
+          //         "Error",
+          //         "Selected vehicle is not assigned to any route",
+          //         snackPosition: SnackPosition.BOTTOM,
+          //         backgroundColor: Colors.red.withValues(alpha: 0.8),
+          //         colorText: Colors.white,
+          //       );
+          //       return;
+          //     }
+
+          //     // Show status without blocking
+          //     Get.snackbar(
+          //       "Printing",
+          //       "Connecting to printer...",
+          //       snackPosition: SnackPosition.BOTTOM,
+          //       backgroundColor: Colors.blue.withValues(alpha: 0.8),
+          //       colorText: Colors.white,
+          //       duration: Duration(seconds: 2),
+          //     );
+
+          //     try {
+          //       // Prepare all data first (but don't save yet)
+          //       final tripData = _prepareTripData();
+          //       final ticketText = _prepareTicketText(tripData);
+          //       final exitTicketText = _prepareExitTicketText(tripData);
+          //       final passengerQRData = _preparePassengerQRData(tripData);
+          //       final exitQRData = _prepareExitQRData(tripData);
+
+          //       final printer = TicketPrinter();
+          //       final copies =
+          //           int.tryParse(_ticketController.seatNo.value) ?? 1;
+
+          //       print('🖨️ Attempting to print $copies copies...');
+
+          //       final printResult = await printer.connectAndPrintVerified(
+          //         text: ticketText,
+          //         qrCodeData: passengerQRData,
+          //         copies: copies,
+          //         exitText: exitTicketText,
+          //         exitQRData: exitQRData,
+          //       );
+
+          //       if (printResult.success) {
+          //         // Only save data after successful print
+          //         await _saveTripData(tripData);
+          //         await _lockVehicleForPrinting(
+          //             _ticketController.selectedVehicle.value!.id);
+          //         _resetTicketController();
+          //         Get.snackbar(
+          //           "Success ✅",
+          //           "Ticket printed and saved successfully",
+          //           snackPosition: SnackPosition.BOTTOM,
+          //           backgroundColor: Colors.green.withValues(alpha: 0.8),
+          //           colorText: Colors.white,
+          //           duration: Duration(seconds: 3),
+          //         );
+          //       } else {
+          //         // Print failed - don't save anything, show error immediately
+          //         print('❌ Print failed: ${printResult.error}');
+          //         print('🖨️ Prepared Ticket Data:');
+          //         print(
+          //             ticketText); // Print first - errors will show immediately
+          //         Get.snackbar(
+          //           "Print Failed ❌",
+          //           printResult.error ??
+          //               "Failed to print ticket. Data not saved.",
+          //           snackPosition: SnackPosition.BOTTOM,
+          //           backgroundColor: Colors.red.withValues(alpha: 0.9),
+          //           colorText: Colors.white,
+          //           duration: Duration(seconds: 5),
+          //           mainButton: TextButton(
+          //             onPressed: () {
+          //               // Allow user to see full error
+          //               Get.defaultDialog(
+          //                 title: "Print Error Details",
+          //                 content: Text(
+          //                   printResult.error ?? "Unknown error",
+          //                   style: AppTextStyles.caption
+          //                       .copyWith(color: AppColors.body, fontSize: 10),
+          //                 ),
+          //                 titleStyle: AppTextStyles.caption
+          //                     .copyWith(color: AppColors.body, fontSize: 14),
+          //                 confirm: TextButton(
+          //                   onPressed: () => Get.back(),
+          //                   child: Text("OK"),
+          //                 ),
+          //               );
+          //             },
+          //             child: Text("Details",
+          //                 style: TextStyle(color: Colors.white)),
+          //           ),
+          //         );
+          //       }
+          //     } catch (e, stackTrace) {
+          //       print('❌ Unexpected error during printing:');
+          //       print('Error: $e');
+          //       print('Stack trace: $stackTrace');
+
+          //       Get.snackbar(
+          //         "Error ❌",
+          //         "An unexpected error occurred. Check logs for details.",
+          //         snackPosition: SnackPosition.BOTTOM,
+          //         backgroundColor: Colors.red.withValues(alpha: 0.9),
+          //         colorText: Colors.white,
+          //         duration: Duration(seconds: 5),
+          //         mainButton: TextButton(
+          //           onPressed: () {
+          //             Get.defaultDialog(
+          //               title: "Error Details",
+          //               content: SingleChildScrollView(
+          //                 child: Column(
+          //                   crossAxisAlignment: CrossAxisAlignment.start,
+          //                   mainAxisSize: MainAxisSize.min,
+          //                   children: [
+          //                     Text(
+          //                       "Error: ${e.toString()}",
+          //                       style: TextStyle(fontSize: 14),
+          //                     ),
+          //                     SizedBox(height: 10),
+          //                     Text(
+          //                       "Check debug console for full stack trace",
+          //                       style:
+          //                           TextStyle(fontSize: 12, color: Colors.grey),
+          //                     ),
+          //                   ],
+          //                 ),
+          //               ),
+          //               confirm: TextButton(
+          //                 onPressed: () => Get.back(),
+          //                 child: Text("OK"),
+          //               ),
+          //             );
+          //           },
+          //           child:
+          //               Text("Details", style: TextStyle(color: Colors.white)),
+          //         ),
+          //       );
+          //     }
+          //   },
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: AppColors.primary,
+          //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          //     shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(12)),
+          //   ),
+          //   child: const Text("Print & Save", style: AppTextStyles.button),
+          // )
+          // In your TicketView, modify the print button's onPressed:
+
           ElevatedButton(
             onPressed: () async {
               // Validate vehicle has a route
@@ -980,7 +1133,7 @@ Call: 8556
                 return;
               }
 
-              // Show status without blocking
+              // Show printing status
               Get.snackbar(
                 "Printing",
                 "Connecting to printer...",
@@ -991,7 +1144,7 @@ Call: 8556
               );
 
               try {
-                // Prepare all data first (but don't save yet)
+                // Prepare all data first
                 final tripData = _prepareTripData();
                 final ticketText = _prepareTicketText(tripData);
                 final exitTicketText = _prepareExitTicketText(tripData);
@@ -1013,54 +1166,56 @@ Call: 8556
                 );
 
                 if (printResult.success) {
-                  // Only save data after successful print
-                  await _saveTripData(tripData);
+                  // Calculate service charge
+                  final now = DateTime.now();
+                  double parseSafe(String value) =>
+                      double.tryParse(value.split(' ').first) ?? 0.0;
+
+                  final int seatCount =
+                      int.tryParse(_ticketController.seatNo.value) ?? 1;
+                  final double totalServiceCharge =
+                      parseSafe(_ticketController.serviceCharge.value) *
+                          seatCount;
+
+                  final serviceCharge = ServiceChargeModel(
+                    departureTerminal: tripData.departureTerminalId,
+                    dateTime: now,
+                    serviceChargeAmount: totalServiceCharge,
+                    employeeName: homeController.user.value!.fullName,
+                    companyId: tripData.companyId,
+                    employeeId: tripData.employeeId,
+                  );
+
+                  final enhancedSyncRepo = EnhancedSyncRepository();
+                  await enhancedSyncRepo.saveDataWithSync(
+                    trip: tripData,
+                    serviceCharge: serviceCharge,
+                  );
+
                   await _lockVehicleForPrinting(
                       _ticketController.selectedVehicle.value!.id);
                   _resetTicketController();
-                  Get.snackbar(
-                    "Success ✅",
-                    "Ticket printed and saved successfully",
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: Colors.green.withValues(alpha: 0.8),
-                    colorText: Colors.white,
-                    duration: Duration(seconds: 3),
-                  );
+                  final pendingCount = await enhancedSyncRepo.pendingSyncCount;
+                  if (pendingCount > 0) {
+                    Get.snackbar(
+                      "Offline Mode",
+                      "$pendingCount items pending sync. Will sync when online.",
+                      snackPosition: SnackPosition.BOTTOM,
+                      backgroundColor: Colors.orange.withValues(alpha: 0.8),
+                      colorText: Colors.white,
+                      duration: Duration(seconds: 5),
+                    );
+                  }
                 } else {
-                  // Print failed - don't save anything, show error immediately
+                  // Print failed
                   print('❌ Print failed: ${printResult.error}');
-                  print('🖨️ Prepared Ticket Data:');
-                  print(
-                      ticketText); // Print first - errors will show immediately
                   Get.snackbar(
                     "Print Failed ❌",
-                    printResult.error ??
-                        "Failed to print ticket. Data not saved.",
+                    printResult.error ?? "Failed to print ticket.",
                     snackPosition: SnackPosition.BOTTOM,
                     backgroundColor: Colors.red.withValues(alpha: 0.9),
                     colorText: Colors.white,
                     duration: Duration(seconds: 5),
-                    mainButton: TextButton(
-                      onPressed: () {
-                        // Allow user to see full error
-                        Get.defaultDialog(
-                          title: "Print Error Details",
-                          content: Text(
-                            printResult.error ?? "Unknown error",
-                            style: AppTextStyles.caption
-                                .copyWith(color: AppColors.body, fontSize: 10),
-                          ),
-                          titleStyle: AppTextStyles.caption
-                              .copyWith(color: AppColors.body, fontSize: 14),
-                          confirm: TextButton(
-                            onPressed: () => Get.back(),
-                            child: Text("OK"),
-                          ),
-                        );
-                      },
-                      child: Text("Details",
-                          style: TextStyle(color: Colors.white)),
-                    ),
                   );
                 }
               } catch (e, stackTrace) {
@@ -1075,37 +1230,6 @@ Call: 8556
                   backgroundColor: Colors.red.withValues(alpha: 0.9),
                   colorText: Colors.white,
                   duration: Duration(seconds: 5),
-                  mainButton: TextButton(
-                    onPressed: () {
-                      Get.defaultDialog(
-                        title: "Error Details",
-                        content: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "Error: ${e.toString()}",
-                                style: TextStyle(fontSize: 14),
-                              ),
-                              SizedBox(height: 10),
-                              Text(
-                                "Check debug console for full stack trace",
-                                style:
-                                    TextStyle(fontSize: 12, color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        ),
-                        confirm: TextButton(
-                          onPressed: () => Get.back(),
-                          child: Text("OK"),
-                        ),
-                      );
-                    },
-                    child:
-                        Text("Details", style: TextStyle(color: Colors.white)),
-                  ),
                 );
               }
             },
@@ -1116,7 +1240,7 @@ Call: 8556
                   borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text("Print & Save", style: AppTextStyles.button),
-          )
+          ),
         ],
       ),
     );
