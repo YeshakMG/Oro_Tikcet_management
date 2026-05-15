@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
 import 'package:oro_ticket_app/app/modules/sync/view/sync_view.dart';
+import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/widgets/app_scafold.dart';
@@ -69,7 +70,7 @@ class HomeView extends StatelessWidget {
                           ),
                         ],
                       ),
-                      // Sync Button
+                      // Action Buttons
                       Row(
                         children: [
                           ElevatedButton(
@@ -87,6 +88,23 @@ class HomeView extends StatelessWidget {
                               textStyle: AppTextStyles.button,
                             ),
                             child: const Text('Sync'),
+                          ),
+                          SizedBox(width: paddingHorizontal * 0.5),
+                          ElevatedButton(
+                            onPressed: () {
+                              Get.toNamed(Routes.BACKUP);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.3),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: paddingHorizontal, vertical: paddingVertical),
+                              textStyle: AppTextStyles.button,
+                            ),
+                            child: const Text('Backup'),
                           ),
                         ],
                       ),

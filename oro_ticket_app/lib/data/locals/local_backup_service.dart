@@ -59,7 +59,7 @@ class LocalBackupService {
   /// Request MANAGE_EXTERNAL_STORAGE permission
   static Future<bool> requestStoragePermission() async {
     // Check if we have the permission
-    if (Platform.isAndroid) {
+    if (Platform.isAndroid) { 
       try {
         // On Android 11+, we need to request MANAGE_EXTERNAL_STORAGE
         // This requires the permission to be declared in manifest and user to grant it
