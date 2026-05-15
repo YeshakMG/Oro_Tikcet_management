@@ -61,4 +61,17 @@ class UserModel {
         'logo_url': logoUrl,
         'phone_no': companyPhoneNo,
       };
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: json['id'] ?? '',
+      email: json['email'] ?? '',
+      fullName: json['full_name'] ?? '',
+      roleId: json['role_id'] ?? '',
+      companyId: json['company_id'] ?? '',
+      companyName: json['name'],
+      logoUrl: json['logo_url'],
+      companyPhoneNo: json['phone_no'],
+    );
+  }
 }

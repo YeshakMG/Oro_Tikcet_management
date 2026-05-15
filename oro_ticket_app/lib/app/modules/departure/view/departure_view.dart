@@ -14,20 +14,32 @@ class DepartureView extends GetView<DepartureControllers> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return AppScaffold(
       title: 'Departure',
       userName: 'Employee Name',
       showBottomNavBar: true,
       actions: [
         IconButton(
-            onPressed: () {},
-            icon: Icon(
-              Icons.more_horiz,
-              color: AppColors.background,
-            ))
+          icon: const Icon(Icons.refresh, color: Colors.white),
+          onPressed: () async {
+            await controller.refreshTerminal();
+            Get.snackbar(
+              "Refreshed",
+              "Departure terminal data refreshed",
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.green.withValues(alpha: 0.8),
+              colorText: Colors.white,
+            );
+          },
+        ),
+        SizedBox(width: paddingHorizontal),
       ],
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(paddingHorizontal),
         child: Column(
           children: [
             Expanded(
@@ -43,27 +55,27 @@ class DepartureView extends GetView<DepartureControllers> {
                   child: terminal == null
                       ? ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          children: const [
-                            SizedBox(height: 120),
-                            Center(child: Text('No terminal found')),
+                          children: [
+                            SizedBox(height: size.height * 0.15), // Responsive height
+                            const Center(child: Text('No terminal found')),
                           ],
                         )
                       : ListView(
                           children: [
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 12, horizontal: 16),
+                              padding: EdgeInsets.symmetric(
+                                  vertical: paddingVertical, horizontal: paddingHorizontal),
                               color: AppColors.cardAlt,
                               child: const Text(
                                 'Departure Terminal Name',
                                 style: AppTextStyles.buttonMedium,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: size.height * 0.01), // Responsive spacing
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 12, horizontal: 16),
+                              padding: EdgeInsets.symmetric(
+                                  vertical: paddingVertical, horizontal: paddingHorizontal),
                               color: AppColors.card,
                               child: Text(
                                 terminal.name,

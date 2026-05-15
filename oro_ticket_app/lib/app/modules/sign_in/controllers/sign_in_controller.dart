@@ -18,6 +18,10 @@ class SignInController extends GetxController {
   final isLoading = false.obs;
   final loginError = ''.obs;
 
+  // Field-specific error messages
+  final emailError = ''.obs;
+  final passwordError = ''.obs;
+
   // Form key
   final formKey = GlobalKey<FormState>();
 
@@ -39,6 +43,18 @@ class SignInController extends GetxController {
     isPasswordVisible.value = !isPasswordVisible.value;
   }
 
+  // Clear field errors
+  void clearErrors() {
+    emailError.value = '';
+    passwordError.value = '';
+    loginError.value = '';
+  }
+
+  // Validate email format (simple check)
+  bool isValidEmail(String email) {
+    return email.contains('@') && email.contains('.');
+  }
+
   // Validate and submit login
   Future<void> login() async {
     final email = emailController.text.trim();
@@ -48,6 +64,11 @@ class SignInController extends GetxController {
 
     try {
       final result = await _authService.login(email: email, password: password);
+
+      // Print API response to console
+      print('=== LOGIN API RESPONSE ===');
+      print(result);
+      print('=========================');
 
       if (result['success'] == true) {
         final homeController = Get.find<HomeController>();
@@ -72,7 +93,9 @@ class SignInController extends GetxController {
         _handleLoginError(result);
       }
     } catch (e) {
-      print("Error:$e");
+      // Handle network errors
+      String errorMessage = _getNetworkErrorMessage(e);
+      loginError.value = errorMessage;
       Get.snackbar(
         'Login Error',
         'Network error occurred. Please check your connection and try again.',
@@ -84,6 +107,32 @@ class SignInController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  // Get user-friendly network error message
+  String _getNetworkErrorMessage(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    
+    if (errorString.contains('socketexception') || 
+        errorString.contains('connection refused') ||
+        errorString.contains('connection timeout') ||
+        errorString.contains('no internet')) {
+      return 'No internet connection. Please check your network.';
+    }
+    
+    if (errorString.contains('timeout') || errorString.contains('timeoutexception')) {
+      return 'Request timed out. Please try again.';
+    }
+    
+    if (errorString.contains('handshakexception') || errorString.contains('ssl')) {
+      return 'Secure connection failed. Please try again.';
+    }
+    
+    if (errorString.contains('formatexception') || errorString.contains('json')) {
+      return 'Server error. Please contact support.';
+    }
+    
+    return 'Unable to connect to server. Please try again later.';
   }
 
   void _handleLoginError(Map<String, dynamic> result) {

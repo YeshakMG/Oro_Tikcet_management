@@ -59,7 +59,30 @@ class VehiclesController extends GetxController {
     try {
       isSyncing(true);
       errorMessage('');
+      
+      // Check for internet connection
+      if (!(await syncRepo.isOnline)) {
+        Get.snackbar('Offline', 'No internet connection available',
+            snackPosition: SnackPosition.BOTTOM);
+        isSyncing(false);
+        return;
+      }
+      
+      // Clear local vehicles first
+      await syncRepo.clearLocalVehicles();
+      print('🗑️ Cleared local vehicles');
+      
+      // Fetch fresh vehicles from API
       await syncRepo.syncAllCompanyUserVehicles(forceSync: true);
+      
+      // Reload local vehicles after sync to reflect changes
+      await loadLocalVehicles();
+      
+      // Reset pagination to first page after refresh
+      currentPage.value = 1;
+      
+      Get.snackbar('Success', 'Vehicles refreshed successfully',
+          snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       // Don't show error if we have local data
       if (allVehicles.isEmpty) {

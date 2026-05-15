@@ -24,7 +24,8 @@ class AuthService {
 
   AuthService() {
     // Initialize cleanup timer for rate limits (runs every hour)
-    Timer.periodic(const Duration(microseconds: 1000), (_) async => await SecurityUtils.cleanupRateLimits());
+    Timer.periodic(const Duration(microseconds: 1000),
+        (_) async => await SecurityUtils.cleanupRateLimits());
   }
 
   // Initialize secure client
@@ -55,26 +56,28 @@ class AuthService {
     }
 
     // Check rate limiting - max 5 attempts per minute
-    final isAllowed = await SecurityUtils.checkRateLimit(
-      _loginRateLimitKey,
-      maxRequests: 5,
-      window: const Duration(minutes: 1)
-    );
+    final isAllowed = await SecurityUtils.checkRateLimit(_loginRateLimitKey,
+        maxRequests: 5, window: const Duration(minutes: 1));
 
     if (!isAllowed) {
       return {
         'success': false,
-        'message': 'Too many login attempts. Please wait 1 minute before trying again.',
+        'message':
+            'Too many login attempts. Please wait 1 minute before trying again.',
         'rate_limited': true,
         'snackbar_title': 'Rate Limit Exceeded',
-        'snackbar_message': 'For security reasons, login attempts are limited. Please wait 1 minute before trying again.'
+        'snackbar_message':
+            'For security reasons, login attempts are limited. Please wait 1 minute before trying again.'
       };
     }
 
     try {
       final url = Uri.parse('$baseUrl/auth/company-user/login');
       print('🌐 API Request: POST $url');
-      print('📤 Request Body: ${jsonEncode({'email': email, 'password': '***'})}');
+      print('📤 Request Body: ${jsonEncode({
+            'email': email,
+            'password': '***'
+          })}');
 
       final response = await _secureClient
           .post(
@@ -165,12 +168,14 @@ class AuthService {
       final unsyncedTrips = _getUnsyncedTrips();
       final unsyncedServiceCharges = _getUnsyncedServiceCharges();
 
-      print('🔍 Step 3: Found ${unsyncedTrips.length} unsynced trips and ${unsyncedServiceCharges.length} unsynced service charges');
+      print(
+          '🔍 Step 3: Found ${unsyncedTrips.length} unsynced trips and ${unsyncedServiceCharges.length} unsynced service charges');
 
       if (unsyncedTrips.isNotEmpty || unsyncedServiceCharges.isNotEmpty) {
         print('❌ Step 4: Unsynced data detected - aborting logout');
         print('   - Unsynced trips: ${unsyncedTrips.length}');
-        print('   - Unsynced service charges: ${unsyncedServiceCharges.length}');
+        print(
+            '   - Unsynced service charges: ${unsyncedServiceCharges.length}');
         print('❌ Logout aborted due to unsynced data');
         return false; // Don't logout if unsynced data exists
       }
@@ -198,7 +203,6 @@ class AuthService {
 
       print('🎉 Step 10: Logout process completed successfully');
       return true;
-
     } catch (e) {
       print('❌ Logout error in step processing: $e');
       return false;
@@ -221,7 +225,6 @@ class AuthService {
       print('⚠️ Server logout failed (local logout still successful): $e');
     }
   }
-
 
   /// Helper method to get unsynced trips
   List<TripModel> _getUnsyncedTrips() {
@@ -336,9 +339,9 @@ class AuthService {
       print('🌐 API Request: PUT $url');
       print('🔑 Using stored token for authentication');
       print('📤 Request Body: ${jsonEncode({
-        'current_password': '***',
-        'new_password': '***',
-      })}');
+            'current_password': '***',
+            'new_password': '***',
+          })}');
 
       final response = await _secureClient
           .put(

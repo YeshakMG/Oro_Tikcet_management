@@ -9,6 +9,9 @@ class SplashScreenView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -24,7 +27,7 @@ class SplashScreenView extends StatelessWidget {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
+              padding: EdgeInsets.only(bottom: paddingVertical),
               child: Text(
                 controller.copywrite,
               ),

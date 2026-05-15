@@ -15,6 +15,10 @@ class LocalReportView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ScrollController _scrollController = ScrollController();
+    final size = MediaQuery.of(context).size;
+    final paddingHorizontal = size.width * 0.04; // 4% of screen width
+    final paddingVertical = size.height * 0.02; // 2% of screen height
+
     return AppScaffold(
       title: 'Local Report',
       userName: 'Employee Name',
@@ -23,7 +27,7 @@ class LocalReportView extends StatelessWidget {
         children: [
           // 🔍 Full-width search bar
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: EdgeInsets.all(paddingHorizontal),
             child: Row(
               children: [
                 Expanded(
@@ -204,15 +208,6 @@ class LocalReportView extends StatelessWidget {
           ),
         ],
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(
-            Icons.download,
-            color: AppColors.background,
-          ),
-          onPressed: () => controller.generatePDFReport(),
-        ),
-      ],
     );
   }
 }

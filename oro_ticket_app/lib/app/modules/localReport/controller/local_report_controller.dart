@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:collection/collection.dart';
@@ -6,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:oro_ticket_app/data/locals/models/trip_model.dart';
 import 'package:oro_ticket_app/data/locals/models/vehicle_model.dart';
@@ -136,52 +139,170 @@ class LocalReportController extends GetxController {
   }
 
   Future<void> generatePDFReport() async {
-    final pdf = pw.Document();
+    try {
+      final pdf = pw.Document();
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
-        build: (context) {
-          return [
-            pw.Header(level: 0, child: pw.Text("Local Trip Report")),
-            pw.Table.fromTextArray(
-              headers: [
-                'Departure',
-                'Arrival',
-                'Plate Number',
-                'Region',
-                'Level',
-                'Association',
-                'Price',
-                'Service Charge',
-                'Total Price',
+      // Add title page
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Oromia Transport Agency',
+                    style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 20),
+                pw.Text('Local Trip Report',
+                    style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 20),
+                pw.Text('Generated on: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())}',
+                    style: const pw.TextStyle(fontSize: 12)),
+                pw.SizedBox(height: 10),
+                pw.Text('Total Records: ${filteredTrips.length}',
+                    style: const pw.TextStyle(fontSize: 12)),
               ],
-              data: filteredTrips.map((trip) {
-                return [
-                  trip.departureName,
-                  trip.arrivalName,
-                  trip.plateNumber,
-                  trip.plateRegion,
-                  trip.vehicleLevel,
-                  trip.associationName,
-                  trip.price.toStringAsFixed(2),
-                  trip.serviceCharge.toStringAsFixed(2),
-                  trip.totalPrice.toStringAsFixed(2),
-                ];
-              }).toList(),
-            ),
-          ];
-        },
+            );
+          },
+        ),
+      );
+
+      // Add data table
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(24),
+          build: (context) {
+            return [
+              pw.Table.fromTextArray(
+                headers: [
+                  'Departure',
+                  'Arrival',
+                  'Plate Number',
+                  'Region',
+                  'Level',
+                  'Association',
+                  'Price (ETB)',
+                  'Service Charge (ETB)',
+                  'Total Price (ETB)',
+                ],
+                data: filteredTrips.map((trip) {
+                  return [
+                    trip.departureName,
+                    trip.arrivalName,
+                    trip.plateNumber,
+                    trip.plateRegion,
+                    trip.vehicleLevel,
+                    trip.associationName,
+                    trip.price.toStringAsFixed(2),
+                    trip.serviceCharge.toStringAsFixed(2),
+                    trip.totalPrice.toStringAsFixed(2),
+                  ];
+                }).toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                cellStyle: const pw.TextStyle(fontSize: 9),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                cellAlignment: pw.Alignment.centerLeft,
+                headerAlignment: pw.Alignment.centerLeft,
+              ),
+            ];
+          },
+        ),
+      );
+
+      final outputDir = await getApplicationDocumentsDirectory();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final fileName = 'local_trip_report_$timestamp.pdf';
+      final file = File('${outputDir.path}/$fileName');
+      await file.writeAsBytes(await pdf.save());
+
+      print('✅ PDF generated at: ${file.path}');
+
+      // Show success dialog with options
+      await _showPDFFeedbackDialog(file);
+
+    } catch (e) {
+      print('❌ Error generating PDF: $e');
+      Get.snackbar(
+        "Error",
+        "Failed to generate PDF report: $e",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> _showPDFFeedbackDialog(File pdfFile) async {
+    final result = await Get.dialog(
+      AlertDialog(
+        title: const Text('PDF Report Generated'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Report saved to:'),
+            Text(pdfFile.path, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+            const SizedBox(height: 16),
+            const Text('What would you like to do?'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: 'open'),
+            child: const Text('Open PDF'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: 'share'),
+            child: const Text('Share PDF'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: 'close'),
+            child: const Text('Close'),
+          ),
+        ],
       ),
+      barrierDismissible: false,
     );
 
-    final outputDir = await getApplicationDocumentsDirectory();
-    final file = File(
-        '\${outputDir.path}/local_trip_report_\${DateTime.now().millisecondsSinceEpoch}.pdf');
-    await file.writeAsBytes(await pdf.save());
+    if (result == 'open') {
+      await _openPDF(pdfFile);
+    } else if (result == 'share') {
+      await _sharePDF(pdfFile);
+    }
+  }
 
-    print('✅ PDF generated at: \${file.path}');
-    Get.snackbar("Success", "PDF report generated at:\n\${file.path}");
+  Future<void> _openPDF(File pdfFile) async {
+    try {
+      final result = await OpenFile.open(pdfFile.path);
+      if (result.type != ResultType.done) {
+        Get.snackbar(
+          "Warning",
+          "Could not open PDF automatically. File saved at: ${pdfFile.path}",
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Failed to open PDF: $e",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> _sharePDF(File pdfFile) async {
+    try {
+      await Share.shareXFiles(
+        [XFile(pdfFile.path)],
+        text: 'Trip Report - ${DateFormat('yyyy-MM-dd').format(DateTime.now())}',
+        subject: 'Oromia Transport Agency - Trip Report',
+      );
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Failed to share PDF: $e",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
   }
 }

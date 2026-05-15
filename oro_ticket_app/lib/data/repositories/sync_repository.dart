@@ -614,7 +614,7 @@ class SyncRepository {
   }
 
   Future<void> syncServiceChargeToServer() async {
-     if (!_secureClientInitialized) {
+    if (!_secureClientInitialized) {
       await _initSecureClient();
       _secureClientInitialized = true;
     }

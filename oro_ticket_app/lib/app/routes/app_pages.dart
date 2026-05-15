@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oro_ticket_app/app/modules/backup/bindings/backup_binding.dart';
+import 'package:oro_ticket_app/app/modules/backup/views/backup_view.dart';
 import 'package:oro_ticket_app/app/modules/departure/bindings/departure_bindings.dart';
 import 'package:oro_ticket_app/app/modules/departure/view/departure_view.dart';
 import 'package:oro_ticket_app/app/modules/localReport/bindings/local_report_binding.dart';
@@ -11,6 +13,8 @@ import 'package:oro_ticket_app/app/modules/ticket/view/ticket_view.dart';
 
 import '../modules/arrivals/bindings/arrival_bindings.dart';
 import '../modules/arrivals/views/arrival_view.dart';
+import '../modules/change_password/binding/change_password_binding.dart';
+import '../modules/change_password/view/change_password_view.dart';
 import '../modules/fleettype/bindings/fleettype_bindings.dart';
 import '../modules/fleettype/views/fleettype_view.dart';
 import '../modules/home/bindings/home_binding.dart';
@@ -27,7 +31,6 @@ import '../modules/reset_password/binding/reset_password_binding.dart';
 import '../modules/reset_password/view/reset_password_view.dart';
 import '../modules/change_password/binding/change_password_binding.dart';
 import '../modules/change_password/view/change_password_view.dart';
-
 
 part 'app_routes.dart';
 
@@ -94,6 +97,11 @@ class AppPages {
       binding: SyncBinding(),
     ),
     GetPage(
+      name: _Paths.BACKUP,
+      page: () => BackupView(),
+      binding: BackupBinding(),
+    ),
+    GetPage(
       name: _Paths.RESET_PASSWORD,
       page: () => const ResetPasswordView(),
       binding: ResetPasswordBinding(),
@@ -103,6 +111,5 @@ class AppPages {
       page: () => const ChangePasswordView(),
       binding: ChangePasswordBinding(),
     ),
-
   ];
 }

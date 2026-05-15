@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive/hive.dart';
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
+import 'package:oro_ticket_app/app/modules/home/views/home_view.dart';
 import 'package:oro_ticket_app/app/modules/reset_password/view/reset_password_view.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/views/sign_in_view.dart';
 import 'package:oro_ticket_app/app/modules/sign_in/services/auth_service.dart';
+import 'package:oro_ticket_app/app/modules/utils/device_security_checker.dart';
 import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 import 'package:oro_ticket_app/core/theme/app_theme.dart';
@@ -16,10 +18,31 @@ import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/data/locals/service/connectivity_service.dart';
 import 'package:oro_ticket_app/data/repositories/enhanced_sync_repository.dart';
+import 'package:oro_ticket_app/data/locals/offline_tracking_service.dart';
+import 'package:oro_ticket_app/data/locals/local_backup_service.dart';
+import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  debugPrint('========================================');
+  debugPrint('🚀 APP STARTING - Oro Ticket App');
+  debugPrint('========================================');
+  
+  // Check device security before starting the app
+  final isSecure = await DeviceSecurityChecker.isDeviceSecure();
+  if (!isSecure) {
+    DeviceSecurityChecker.showSecurityErrorAndExit(
+      DeviceSecurityChecker.blockedReason,
+    );
+    return;
+  }
+  
+  debugPrint('✅ Device security check passed');
+  
   await HiveBoxes.init();
+  debugPrint('✅ Hive boxes initialized');
+  
   await Hive.openBox('appState');
   await dotenv.load(fileName: ".env");
 
@@ -27,6 +50,7 @@ void main() async {
   // await _initializeSecurity();
 
   Get.put(AuthService());
+  Get.put(SyncRepository()); // Register SyncRepository for server sync fallback
   Get.put(HomeController());
   Get.put(ResetPasswordController());
   Get.put(ConnectivityService());
@@ -39,45 +63,186 @@ void main() async {
     interval: Duration(minutes: 5), // Check every 5 minutes
   );
 
-  runApp(const MyApp());
+  // Check if user is already logged in (token should be restored if backup existed)
+  final authService = Get.find<AuthService>();
+  
+  // Check token specifically
+  final token = await authService.getToken();
+  debugPrint('🔐 Token check: ${token != null ? "Token exists" : "Token is null"}');
+  
+  // Check both token and user for isLoggedIn
+  final user = await authService.getUser();
+  final isLoggedIn = token != null && user != null;
+
+  debugPrint('🔐 Is logged in after auth restore: $isLoggedIn (token: ${token != null}, user: ${user != null})');
+  debugPrint('');
+
+  // If auth was restored (token exists), restore other data in background
+  if (token != null) {
+    debugPrint('========================================');
+    debugPrint('🔄 STARTING BACKGROUND DATA RESTORE');
+    debugPrint('========================================');
+    _restoreOtherDataInBackground();
+  }
+
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
-Future<void> _initializeSecurity() async {
+// Try to restore auth data from backup
+Future<bool> _tryRestoreAuthFromBackup() async {
   try {
-    // Check for emulator/simulator
-    final isEmulator = await SecurityUtils.isRunningOnEmulator();
-    if (isEmulator) {
-      print('🚫 SECURITY ALERT: App cannot run on emulator/simulator');
-      // Show error and exit
-      runApp(const SecurityErrorApp(
-          message:
-              'This application cannot run on emulators or simulators for security reasons.\n\nPlease use a physical device.'));
-      return;
+    debugPrint('🔍 Starting auth restoration check...');
+    
+    // Check if backup has auth data
+    final hasAuth = await LocalBackupService.hasAuthData();
+    debugPrint('🔍 hasAuth result: $hasAuth');
+    
+    if (!hasAuth) {
+      debugPrint('ℹ️ No auth data in backup');
+      return false;
     }
-
-    // Check for rooted/jailbroken devices
-    final isRooted = await SecurityUtils.isDeviceRooted();
-    if (isRooted) {
-      print('🚫 SECURITY ALERT: Device appears to be rooted/jailbroken');
-      // Show error and exit
-      runApp(const SecurityErrorApp(
-          message:
-              'This application cannot run on rooted or jailbroken devices for security reasons.\n\nPlease use a standard device.'));
-      return;
-    }
-
-    // Initialize rate limiting cleanup
-    SecurityUtils.cleanupRateLimits();
-
-    print('✅ Security initialization completed');
-  } catch (e) {
-    print('❌ Security initialization failed: $e');
-    // Continue even if security check fails to avoid breaking the app
+    
+    debugPrint('🔐 Found auth data in backup, restoring...');
+    final result = await LocalBackupService.restoreAuthData();
+    debugPrint('🔐 restoreAuthData result: $result');
+    return result;
+  } catch (e, stackTrace) {
+    debugPrint('❌ Error restoring auth: $e');
+    debugPrint('Stack trace: $stackTrace');
+    return false;
   }
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+// Restore other data in background (non-blocking)
+void _restoreOtherDataInBackground() {
+  debugPrint('🔄 _restoreOtherDataInBackground() called');
+  
+  Future.delayed(const Duration(seconds: 3), () async {
+    try {
+      debugPrint('');
+      debugPrint('========================================');
+      debugPrint('🔄 STARTING BACKGROUND DATA RESTORATION');
+      debugPrint('========================================');
+      
+      // Since auth was restored, we need to restore other data from backup
+      // The boxes are already open after auth restore, so we can directly restore
+      debugPrint('📥 RESTORING ALL DATA FROM BACKUP FILE...');
+      
+      final restored = await LocalBackupService.restoreFromBackup();
+      debugPrint('📥 Restore result: $restored');
+      
+      if (restored) {
+        debugPrint('✅ ✅ ✅ DATA RESTORED SUCCESSFULLY!');
+        debugPrint('========================================');
+        
+        // Show success message
+        Get.snackbar(
+          "Data Restored",
+          "Your data has been restored from backup!",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+        );
+      } else {
+        debugPrint('⚠️ Backup restore returned false');
+        // Try server sync as fallback
+        _syncDataFromServer();
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error restoring other data: $e');
+      debugPrint('Stack trace: $stackTrace');
+      // Try syncing from server as fallback
+      _syncDataFromServer();
+    }
+  });
+}
+
+// Sync data from server as fallback
+void _syncDataFromServer() {
+  debugPrint('🔄 Syncing data from server...');
+  try {
+    final syncRepo = Get.find<SyncRepository>();
+    
+    // Sync vehicles from server
+    syncRepo.syncAllCompanyUserVehicles(forceSync: true);
+    
+    // Sync arrival terminals from server
+    syncRepo.syncCompanyUserArrivalTerminals();
+    
+    // Sync commission rules from server
+    syncRepo.syncCommissionRules();
+    
+    // Note: Departure terminal is set manually by user in Departure settings
+    // It cannot be fetched from server automatically
+    debugPrint('✅ Server sync initiated for vehicles, arrival terminals, and commission rules');
+    debugPrint('⚠️ Note: Departure terminal must be set manually in Departure settings');
+    
+    // Show message to user about departure terminal
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.snackbar(
+        "Data Sync",
+        "Syncing data from server. Please set your departure terminal in Departure settings if not already set.",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
+      );
+    });
+  } catch (e) {
+    debugPrint('❌ Error syncing from server: $e');
+  }
+}
+
+// Create backup in background (non-blocking)
+void _createBackupInBackground() {
+  Future.delayed(const Duration(seconds: 5), () async {
+    // First request storage permission
+    await LocalBackupService.requestStoragePermission();
+    
+    LocalBackupService.createBackup().then((success) {
+      if (success) {
+        debugPrint('✅ Auto-backup created successfully');
+      } else {
+        debugPrint('⚠️ Auto-backup failed or no data to backup');
+      }
+    });
+  });
+}
+
+class MyApp extends StatefulWidget {
+  final bool isLoggedIn;
+
+  const MyApp({super.key, required this.isLoggedIn});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // Create backup when app goes to background
+      LocalBackupService.createBackup().then((success) {
+        if (success) {
+          debugPrint('✅ Backup created when app paused');
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -14,6 +14,7 @@ abstract class Routes {
   static const TICKET = _Paths.TICKET;
   static const HISTORY = _Paths.HISTORY;
   static const SYNC = _Paths.SYNC;
+  static const BACKUP = _Paths.BACKUP;
   static const RESET_PASSWORD = _Paths.RESET_PASSWORD;
   static const CHANGE_PASSWORD = _Paths.CHANGE_PASSWORD;
 }
@@ -32,6 +33,7 @@ abstract class _Paths {
   static const DEPARTURE = '/departure';
   static const HISTORY = '/LocalReportView';
   static const SYNC = '/SyncView';
+  static const BACKUP = '/backup';
   static const RESET_PASSWORD = '/reset-password';
   static const CHANGE_PASSWORD = '/change-password';
 }

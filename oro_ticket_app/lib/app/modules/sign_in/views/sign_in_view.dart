@@ -95,11 +95,14 @@ class SignInView extends StatelessWidget {
                       decoration: InputDecoration(
                         labelText: 'Password',
                         border: const OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(12))),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(12))),
                         hoverColor: AppColors.primary,
                         focusedBorder: const OutlineInputBorder(
-                            borderSide: BorderSide(color: AppColors.primaryHover),
-                            borderRadius: BorderRadius.all(Radius.circular(12))),
+                            borderSide:
+                                BorderSide(color: AppColors.primaryHover),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(12))),
                         suffixIcon: IconButton(
                           icon: Icon(controller.isPasswordVisible.value
                               ? Icons.visibility
@@ -120,14 +123,17 @@ class SignInView extends StatelessWidget {
                             : () {
                                 print('🔘 Login button pressed');
                                 // Trigger form validation to show field errors
-                                final isValid = controller.formKey.currentState?.validate() ?? false;
+                                final isValid = controller.formKey.currentState
+                                        ?.validate() ??
+                                    false;
                                 print('✅ Form validation result: $isValid');
 
                                 if (isValid) {
                                   print('🚀 Calling controller.login()');
                                   controller.login();
                                 } else {
-                                  print('❌ Form validation failed - showing snackbar');
+                                  print(
+                                      '❌ Form validation failed - showing snackbar');
                                   // Validation errors are already shown on fields
                                   // Optional: Show snackbar for additional feedback
                                   Get.snackbar(
@@ -143,8 +149,8 @@ class SignInView extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppDimensions.borderRadius),
+                            borderRadius: BorderRadius.circular(
+                                AppDimensions.borderRadius),
                           ),
                         ),
                         child: controller.isLoading.value

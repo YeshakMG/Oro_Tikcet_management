@@ -43,7 +43,6 @@ class TripModel extends HiveObject {
   @HiveField(12)
   bool isSynced;
 
-
   TripModel({
     required this.vehicleId,
     required this.dateAndTime,
@@ -87,12 +86,10 @@ class TripModel extends HiveObject {
       arrivalTerminalId: json['arrival_terminal_id'],
       companyId: json['company_id'],
       employeeId: json['employee_id'],
-      departureName: json['departure_name'] ??
-          json['departureTerminal']?['name'] ??
-          '', 
-      arrivalName: json['arrival_name'] ??
-          json['arrivalTerminal']?['name'] ??
-          '',
+      departureName:
+          json['departure_name'] ?? json['departureTerminal']?['name'] ?? '',
+      arrivalName:
+          json['arrival_name'] ?? json['arrivalTerminal']?['name'] ?? '',
     );
   }
 }

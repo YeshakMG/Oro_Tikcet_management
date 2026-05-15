@@ -84,9 +84,10 @@ class VehicleModel extends HiveObject {
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
     // Parse the current route if vehicle has destinations
     VehicleRoute? route;
-    if (json['vehicleTerminalDestinations'] != null && 
+    if (json['vehicleTerminalDestinations'] != null &&
         (json['vehicleTerminalDestinations'] as List).isNotEmpty) {
-      final firstDestination = (json['vehicleTerminalDestinations'] as List).first;
+      final firstDestination =
+          (json['vehicleTerminalDestinations'] as List).first;
       route = VehicleRoute.fromJson(firstDestination);
     }
 
@@ -104,7 +105,8 @@ class VehicleModel extends HiveObject {
       updatedBy: json['updated_by'],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
-      arrivalTerminals: (json['arrival_terminals'] as List?)?.cast<String>() ?? [],
+      arrivalTerminals:
+          (json['arrival_terminals'] as List?)?.cast<String>() ?? [],
       tariffs: (json['tariffs'] as List?)?.cast<String>() ?? [],
       vehicleLevelId: json['vehicle_level_id'] ?? json['vehicleLevel']?['id'],
       fleetTypeId: json['fleet_type_id'] ?? json['fleetType']?['id'],
@@ -130,5 +132,5 @@ class VehicleModel extends HiveObject {
         'tariffs': tariffs ?? [],
         'vehicle_level_id': vehicleLevelId,
         'fleet_type_id': fleetTypeId,
-  };
+      };
 }

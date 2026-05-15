@@ -5,12 +5,18 @@ import 'package:oro_ticket_app/data/locals/service/departure_terminal_storage_se
 import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 
 class DepartureControllers extends GetxController {
-  final SyncRepository syncRepo = SyncRepository();
+  late final SyncRepository syncRepo;
   Rx<DepartureTerminalModel?> terminal = Rx<DepartureTerminalModel?>(null);
 
   @override
   void onInit() {
     super.onInit();
+    // Try to get existing SyncRepository or create new one
+    if (Get.isRegistered<SyncRepository>()) {
+      syncRepo = Get.find<SyncRepository>();
+    } else {
+      syncRepo = Get.put(SyncRepository());
+    }
     loadTerminal();
   }
 
@@ -27,7 +33,13 @@ class DepartureControllers extends GetxController {
     }
   }
 
+  Future<void> refreshTerminal() async {
+    // Just reload from local storage (don't clear)
+    loadTerminal();
+  }
+
   Future<void> syncTerminalFromApi(Map<String, dynamic> json) async {
+    // Save terminal (this will clear old data and save new)
     await syncRepo.syncDepartureTerminal(json);
     loadTerminal();
   }

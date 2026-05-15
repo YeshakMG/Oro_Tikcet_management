@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 
 import 'package:oro_ticket_app/app/modules/home/controllers/home_controller.dart';
 import 'package:oro_ticket_app/app/modules/sync/view/sync_view.dart';
+import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:oro_ticket_app/core/constants/colors.dart';
 import 'package:oro_ticket_app/core/constants/typography.dart';
 import 'package:oro_ticket_app/data/locals/models/service_charge_model.dart';
@@ -23,6 +24,9 @@ class HomeView extends StatelessWidget {
     return Obx(() {
       final user = homeController.user.value;
       final companyName = homeController.companyName.value;
+      final size = MediaQuery.of(context).size;
+      final paddingHorizontal = size.width * 0.04; // 4% of screen width
+      final paddingVertical = size.height * 0.02;
 
       return PopScope(
         child: AppScaffold(
@@ -82,6 +86,23 @@ class HomeView extends StatelessWidget {
                               textStyle: AppTextStyles.button,
                             ),
                             child: const Text('Sync'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              Get.toNamed(Routes.BACKUP);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.3),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: paddingHorizontal,
+                                  vertical: paddingVertical),
+                              textStyle: AppTextStyles.button,
+                            ),
+                            child: const Text('Backup'),
                           ),
                           IconButton(
                             onPressed: () async {

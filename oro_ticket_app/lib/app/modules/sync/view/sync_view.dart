@@ -53,7 +53,7 @@ class SyncView extends StatelessWidget {
               return RefreshIndicator(
                 onRefresh: controller.refreshTickets,
                 child: VsScrollbar(
-                 controller: _scrollController,
+                  controller: _scrollController,
                   showTrackOnHover: true,
                   isAlwaysShown: true,
                   scrollbarFadeDuration: Duration(milliseconds: 500),
