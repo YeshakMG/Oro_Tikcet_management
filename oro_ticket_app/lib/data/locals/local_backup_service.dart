@@ -19,18 +19,19 @@ import 'package:permission_handler/permission_handler.dart';
 class LocalBackupService {
   static const String _backupFileName = 'backup_data.json';
   static const String _backupFolderName = '.sys_cache';
-  
+
   // Secure storage for backup purposes
   static const _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
+    iOptions: IOSOptions(
+        accessibility: KeychainAccessibility.first_unlock_this_device),
   );
   static const _tokenKey = 'auth_token';
   static const _userKey = 'auth_user';
-  
+
   // Encryption key name in HiveBoxes
   static const String _encryptionKeyName = 'oro_ticket_encryption_key';
-  
+
   /// Get the backup directory - uses root of external storage
   static Future<Directory?> _getBackupDirectory() async {
     if (Platform.isAndroid) {
@@ -46,7 +47,7 @@ class LocalBackupService {
         debugPrint('❌ Error getting backup directory: $e');
       }
     }
-    
+
     // Fallback to app's documents directory
     final appDir = await getApplicationDocumentsDirectory();
     final backupDir = Directory('${appDir.path}/backup');
@@ -55,7 +56,7 @@ class LocalBackupService {
     }
     return backupDir;
   }
-  
+
   /// Request MANAGE_EXTERNAL_STORAGE permission
   static Future<bool> requestStoragePermission() async {
     // Check if we have the permission
@@ -65,20 +66,21 @@ class LocalBackupService {
         // This requires the permission to be declared in manifest and user to grant it
         final status = await Permission.manageExternalStorage.status;
         debugPrint('🔐 Storage permission status: $status');
-        
+
         if (status.isDenied) {
           debugPrint('🔐 Requesting storage permission...');
           final result = await Permission.manageExternalStorage.request();
           debugPrint('🔐 Storage permission result: $result');
           return result.isGranted;
         }
-        
+
         if (status.isPermanentlyDenied) {
-          debugPrint('⚠️ Storage permission permanently denied - opening settings');
+          debugPrint(
+              '⚠️ Storage permission permanently denied - opening settings');
           await openAppSettings();
           return false;
         }
-        
+
         return status.isGranted;
       } catch (e) {
         debugPrint('❌ Error requesting storage permission: $e');
@@ -87,12 +89,12 @@ class LocalBackupService {
     }
     return true;
   }
-  
+
   /// Create a backup of all critical data to external storage
   static Future<bool> createBackup() async {
     try {
       debugPrint('📦 Creating local backup...');
-      
+
       final Map<String, dynamic> backupData = {
         'timestamp': DateTime.now().toIso8601String(),
         'version': '1.0.0',
@@ -101,7 +103,8 @@ class LocalBackupService {
 
       // Backup encryption key FIRST - this is critical for restoring encrypted data
       try {
-        final encryptionKey = await _secureStorage.read(key: _encryptionKeyName);
+        final encryptionKey =
+            await _secureStorage.read(key: _encryptionKeyName);
         if (encryptionKey != null && encryptionKey.isNotEmpty) {
           backupData['data']['encryptionKey'] = encryptionKey;
           debugPrint('📦 Backed up encryption key');
@@ -137,8 +140,10 @@ class LocalBackupService {
 
       // Backup vehicles
       try {
-        final vehicleBox = await HiveBoxes.getBox<VehicleModel>(HiveBoxes.vehiclesBox);
-        backupData['data']['vehicles'] = vehicleBox.values.map((v) => v.toJson()).toList();
+        final vehicleBox =
+            await HiveBoxes.getBox<VehicleModel>(HiveBoxes.vehiclesBox);
+        backupData['data']['vehicles'] =
+            vehicleBox.values.map((v) => v.toJson()).toList();
         debugPrint('📦 Backed up ${vehicleBox.length} vehicles');
       } catch (e) {
         debugPrint('❌ Error backing up vehicles: $e');
@@ -147,8 +152,10 @@ class LocalBackupService {
 
       // Backup departure terminals
       try {
-        final departureBox = await HiveBoxes.getBox<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
-        backupData['data']['departureTerminals'] = departureBox.values.map((t) => t.toJson()).toList();
+        final departureBox = await HiveBoxes.getBox<DepartureTerminalModel>(
+            HiveBoxes.departureTerminalsBox);
+        backupData['data']['departureTerminals'] =
+            departureBox.values.map((t) => t.toJson()).toList();
         debugPrint('📦 Backed up ${departureBox.length} departure terminals');
       } catch (e) {
         debugPrint('❌ Error backing up departure terminals: $e');
@@ -157,8 +164,10 @@ class LocalBackupService {
 
       // Backup arrival terminals
       try {
-        final arrivalBox = await HiveBoxes.getBox<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
-        backupData['data']['arrivalTerminals'] = arrivalBox.values.map((t) => t.toJson()).toList();
+        final arrivalBox = await HiveBoxes.getBox<ArrivalTerminalModel>(
+            HiveBoxes.arrivalTerminalsBox);
+        backupData['data']['arrivalTerminals'] =
+            arrivalBox.values.map((t) => t.toJson()).toList();
         debugPrint('📦 Backed up ${arrivalBox.length} arrival terminals');
       } catch (e) {
         debugPrint('❌ Error backing up arrival terminals: $e');
@@ -167,8 +176,10 @@ class LocalBackupService {
 
       // Backup commission rules
       try {
-        final commissionBox = await HiveBoxes.getBox<CommissionRuleModel>(HiveBoxes.commissionRulesBox);
-        backupData['data']['commissionRules'] = commissionBox.values.map((r) => r.toJson()).toList();
+        final commissionBox = await HiveBoxes.getBox<CommissionRuleModel>(
+            HiveBoxes.commissionRulesBox);
+        backupData['data']['commissionRules'] =
+            commissionBox.values.map((r) => r.toJson()).toList();
         debugPrint('📦 Backed up ${commissionBox.length} commission rules');
       } catch (e) {
         debugPrint('❌ Error backing up commission rules: $e');
@@ -178,7 +189,8 @@ class LocalBackupService {
       // Backup trips
       try {
         final tripBox = await HiveBoxes.getBox<TripModel>(HiveBoxes.tripBox);
-        backupData['data']['trips'] = tripBox.values.map((t) => t.toJson()).toList();
+        backupData['data']['trips'] =
+            tripBox.values.map((t) => t.toJson()).toList();
         debugPrint('📦 Backed up ${tripBox.length} trips');
       } catch (e) {
         debugPrint('❌ Error backing up trips: $e');
@@ -187,8 +199,10 @@ class LocalBackupService {
 
       // Backup service charges
       try {
-        final serviceChargeBox = await HiveBoxes.getBox<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
-        backupData['data']['serviceCharges'] = serviceChargeBox.values.map((s) => s.toJson()).toList();
+        final serviceChargeBox = await HiveBoxes.getBox<ServiceChargeModel>(
+            HiveBoxes.serviceChargeBox);
+        backupData['data']['serviceCharges'] =
+            serviceChargeBox.values.map((s) => s.toJson()).toList();
         debugPrint('📦 Backed up ${serviceChargeBox.length} service charges');
       } catch (e) {
         debugPrint('❌ Error backing up service charges: $e');
@@ -201,16 +215,16 @@ class LocalBackupService {
         debugPrint('❌ Backup storage not available');
         return false;
       }
-      
+
       // Use shared backup folder
       final backupPath = '${directory.path}/$_backupFileName';
       final file = File(backupPath);
-      
+
       await file.writeAsString(
         const JsonEncoder.withIndent('  ').convert(backupData),
         flush: true,
       );
-      
+
       debugPrint('✅ Backup saved to: $backupPath');
       return true;
     } catch (e, stackTrace) {
@@ -225,17 +239,17 @@ class LocalBackupService {
   static Future<bool> restoreFromBackup() async {
     try {
       debugPrint('🔄 Checking for local backup...');
-      
+
       // Use the backup directory
       final directory = await _getBackupDirectory();
       if (directory == null) {
         debugPrint('❌ Backup storage not available');
         return false;
       }
-      
+
       final backupPath = '${directory.path}/$_backupFileName';
       final file = File(backupPath);
-      
+
       if (!await file.exists()) {
         debugPrint('ℹ️ No backup file found');
         return false;
@@ -243,22 +257,25 @@ class LocalBackupService {
 
       final jsonContent = await file.readAsString();
       final backupData = jsonDecode(jsonContent) as Map<String, dynamic>;
-      
+
       debugPrint('📥 Found backup from: ${backupData['timestamp']}');
-      
+
       // Check what's in the backup
       final vehicles = backupData['data']['vehicles'] as List?;
-      final departureTerminals = backupData['data']['departureTerminals'] as List?;
+      final departureTerminals =
+          backupData['data']['departureTerminals'] as List?;
       final arrivalTerminals = backupData['data']['arrivalTerminals'] as List?;
       final commissionRules = backupData['data']['commissionRules'] as List?;
-      
-      debugPrint('📋 Backup contents: vehicles=${vehicles?.length ?? 0}, departureTerminals=${departureTerminals?.length ?? 0}, arrivalTerminals=${arrivalTerminals?.length ?? 0}, commissionRules=${commissionRules?.length ?? 0}');
-      
+
+      debugPrint(
+          '📋 Backup contents: vehicles=${vehicles?.length ?? 0}, departureTerminals=${departureTerminals?.length ?? 0}, arrivalTerminals=${arrivalTerminals?.length ?? 0}, commissionRules=${commissionRules?.length ?? 0}');
+
       int restoredCount = 0;
 
       // First restore auth token and user (if present)
       bool authRestored = false;
-      if (backupData['data']['authToken'] != null || backupData['data']['user'] != null) {
+      if (backupData['data']['authToken'] != null ||
+          backupData['data']['user'] != null) {
         authRestored = await _restoreAuthData(backupData);
         if (authRestored) {
           restoredCount++;
@@ -271,9 +288,10 @@ class LocalBackupService {
           final vehiclesList = (backupData['data']['vehicles'] as List)
               .map((v) => VehicleModel.fromJson(v as Map<String, dynamic>))
               .toList();
-          
+
           if (vehiclesList.isNotEmpty) {
-            final vehicleBox = await HiveBoxes.getBox<VehicleModel>(HiveBoxes.vehiclesBox);
+            final vehicleBox =
+                await HiveBoxes.getBox<VehicleModel>(HiveBoxes.vehiclesBox);
             await vehicleBox.clear();
             for (final vehicle in vehiclesList) {
               try {
@@ -293,17 +311,21 @@ class LocalBackupService {
       // Restore departure terminals
       if (backupData['data']['departureTerminals'] != null) {
         try {
-          final terminalsList = (backupData['data']['departureTerminals'] as List)
-              .map((t) => DepartureTerminalModel.fromJson(t as Map<String, dynamic>))
+          final terminalsList = (backupData['data']['departureTerminals']
+                  as List)
+              .map((t) =>
+                  DepartureTerminalModel.fromJson(t as Map<String, dynamic>))
               .toList();
-          
-          debugPrint('🔍 Departure terminals in backup: ${terminalsList.length}');
+
+          debugPrint(
+              '🔍 Departure terminals in backup: ${terminalsList.length}');
           for (var t in terminalsList) {
             debugPrint('🔍 Terminal: ${t.toJson()}');
           }
-          
+
           if (terminalsList.isNotEmpty) {
-            final terminalBox = await HiveBoxes.getBox<DepartureTerminalModel>(HiveBoxes.departureTerminalsBox);
+            final terminalBox = await HiveBoxes.getBox<DepartureTerminalModel>(
+                HiveBoxes.departureTerminalsBox);
             await terminalBox.clear();
             for (final terminal in terminalsList) {
               try {
@@ -313,7 +335,8 @@ class LocalBackupService {
               }
             }
             restoredCount += terminalsList.length;
-            debugPrint('✅ Restored ${terminalsList.length} departure terminals');
+            debugPrint(
+                '✅ Restored ${terminalsList.length} departure terminals');
           } else {
             debugPrint('⚠️ Departure terminals list is empty in backup');
           }
@@ -327,11 +350,13 @@ class LocalBackupService {
       // Restore arrival terminals
       if (backupData['data']['arrivalTerminals'] != null) {
         final terminals = (backupData['data']['arrivalTerminals'] as List)
-            .map((t) => ArrivalTerminalModel.fromJson(t as Map<String, dynamic>))
+            .map(
+                (t) => ArrivalTerminalModel.fromJson(t as Map<String, dynamic>))
             .toList();
-        
+
         if (terminals.isNotEmpty) {
-          final arrivalBox = await HiveBoxes.getBox<ArrivalTerminalModel>(HiveBoxes.arrivalTerminalsBox);
+          final arrivalBox = await HiveBoxes.getBox<ArrivalTerminalModel>(
+              HiveBoxes.arrivalTerminalsBox);
           await arrivalBox.clear();
           for (final terminal in terminals) {
             await arrivalBox.add(terminal);
@@ -346,9 +371,10 @@ class LocalBackupService {
         final rules = (backupData['data']['commissionRules'] as List)
             .map((r) => CommissionRuleModel.fromJson(r as Map<String, dynamic>))
             .toList();
-        
+
         if (rules.isNotEmpty) {
-          final commissionBox = await HiveBoxes.getBox<CommissionRuleModel>(HiveBoxes.commissionRulesBox);
+          final commissionBox = await HiveBoxes.getBox<CommissionRuleModel>(
+              HiveBoxes.commissionRulesBox);
           await commissionBox.clear();
           for (final rule in rules) {
             await commissionBox.add(rule);
@@ -363,7 +389,7 @@ class LocalBackupService {
         final trips = (backupData['data']['trips'] as List)
             .map((t) => TripModel.fromJson(t as Map<String, dynamic>))
             .toList();
-        
+
         if (trips.isNotEmpty) {
           final tripBox = await HiveBoxes.getBox<TripModel>(HiveBoxes.tripBox);
           await tripBox.clear();
@@ -380,9 +406,10 @@ class LocalBackupService {
         final serviceCharges = (backupData['data']['serviceCharges'] as List)
             .map((s) => ServiceChargeModel.fromJson(s as Map<String, dynamic>))
             .toList();
-        
+
         if (serviceCharges.isNotEmpty) {
-          final serviceChargeBox = await HiveBoxes.getBox<ServiceChargeModel>(HiveBoxes.serviceChargeBox);
+          final serviceChargeBox = await HiveBoxes.getBox<ServiceChargeModel>(
+              HiveBoxes.serviceChargeBox);
           await serviceChargeBox.clear();
           for (final serviceCharge in serviceCharges) {
             await serviceChargeBox.add(serviceCharge);
@@ -406,10 +433,10 @@ class LocalBackupService {
     try {
       final directory = await _getBackupDirectory();
       if (directory == null) return false;
-      
+
       final backupPath = '${directory.path}/$_backupFileName';
       final file = File(backupPath);
-      
+
       return await file.exists();
     } catch (e) {
       return false;
@@ -421,10 +448,10 @@ class LocalBackupService {
     try {
       final directory = await _getBackupDirectory();
       if (directory == null) return false;
-      
+
       final backupPath = '${directory.path}/$_backupFileName';
       final file = File(backupPath);
-      
+
       if (await file.exists()) {
         await file.delete();
         debugPrint('🗑️ Backup deleted');
@@ -435,55 +462,51 @@ class LocalBackupService {
       return false;
     }
   }
-  
+
   /// Check if backup has auth token
   static Future<bool> hasAuthData() async {
     try {
       final directory = await _getBackupDirectory();
-      if (directory == null) {
-        debugPrint('❌ Backup directory not available');
-        return false;
-      }
-      
+      if (directory == null) return false;
+
       final backupPath = '${directory.path}/$_backupFileName';
       final file = File(backupPath);
-      
-      if (!await file.exists()) {
-        debugPrint('❌ Backup file does not exist');
-        return false;
-      }
-      
+
+      if (!await file.exists()) return false;
+
       final jsonContent = await file.readAsString();
       final backupData = jsonDecode(jsonContent) as Map<String, dynamic>;
-      
-      final hasToken = backupData['data']['authToken'] != null;
-      final hasUser = backupData['data']['user'] != null;
-      final hasEncryptionKey = backupData['data']['encryptionKey'] != null;
-      
-      debugPrint('📋 Backup check - Token: $hasToken, User: $hasUser, EncryptionKey: $hasEncryptionKey');
-      
-      return hasToken || hasUser || hasEncryptionKey;
+
+      final hasToken = backupData['data']?['authToken'] != null;
+      final hasUser = backupData['data']?['user'] != null;
+      final hasEncryptionKey = backupData['data']?['encryptionKey'] != null;
+
+      debugPrint(
+          '📋 Backup check - Token: $hasToken, User: $hasUser, EncryptionKey: $hasEncryptionKey');
+
+      // Require token AND user — encryption key alone is not enough to restore a session
+      return hasToken && hasUser;
     } catch (e) {
       debugPrint('❌ Error checking auth data: $e');
       return false;
     }
   }
-  
+
   /// Restore auth token and user data from backup
   /// This should be called BEFORE restoring other data
   static Future<bool> restoreAuthData() async {
     try {
       debugPrint('🔐 Restoring auth data from backup...');
-      
+
       final directory = await _getBackupDirectory();
       if (directory == null) {
         debugPrint('❌ Backup storage not available');
         return false;
       }
-      
+
       final backupPath = '${directory.path}/$_backupFileName';
       final file = File(backupPath);
-      
+
       if (!await file.exists()) {
         debugPrint('ℹ️ No backup file found');
         return false;
@@ -491,7 +514,7 @@ class LocalBackupService {
 
       final jsonContent = await file.readAsString();
       final backupData = jsonDecode(jsonContent) as Map<String, dynamic>;
-      
+
       return await _restoreAuthData(backupData);
     } catch (e, stackTrace) {
       debugPrint('❌ Auth data restoration failed: $e');
@@ -499,45 +522,50 @@ class LocalBackupService {
       return false;
     }
   }
-  
+
   /// Internal method to restore auth data
   static Future<bool> _restoreAuthData(Map<String, dynamic> backupData) async {
     try {
       bool restored = false;
-      
-      // FIRST: Restore encryption key - this is critical for encrypted Hive boxes
-      if (backupData['data']['encryptionKey'] != null) {
+
+      // Restore encryption key to secure storage ONLY
+      // Do NOT re-open boxes here — HiveBoxes.init() already ran
+      // The restored key will be used on the next app start
+      if (backupData['data']?['encryptionKey'] != null) {
         final encryptionKey = backupData['data']['encryptionKey'] as String;
-        await _secureStorage.write(key: _encryptionKeyName, value: encryptionKey);
-        // Reset the cached key so it re-reads from secure storage
-        HiveBoxes.resetEncryptionKey();
-        // Re-open boxes with restored key so they can decrypt the backup data
-        await HiveBoxes.reOpenBoxesWithRestoredKey();
-        debugPrint('✅ Restored encryption key and re-opened boxes');
+        await _secureStorage.write(
+            key: _encryptionKeyName, value: encryptionKey);
+        debugPrint(
+            '✅ Restored encryption key to secure storage (will take effect on next start)');
+        // DO NOT call HiveBoxes.resetEncryptionKey() or reOpenBoxesWithRestoredKey() here
       }
-      
-      // Restore auth token to secure storage
-      if (backupData['data']['authToken'] != null) {
+
+      // Restore auth token
+      if (backupData['data']?['authToken'] != null) {
         final token = backupData['data']['authToken'] as String;
         await _secureStorage.write(key: _tokenKey, value: token);
         debugPrint('✅ Restored auth token');
         restored = true;
       }
-      
-      // Restore user data to Hive
-      if (backupData['data']['user'] != null) {
-        final userJson = backupData['data']['user'] as Map<String, dynamic>;
-        final user = UserModel.fromJson(userJson);
-        
-        final userBox = Hive.box<UserModel>('userData');
-        await userBox.put('currentUser', user);
-        debugPrint('✅ Restored user data');
-        restored = true;
+
+      // Restore user data — boxes are already open so this is safe
+      if (backupData['data']?['user'] != null) {
+        try {
+          final userJson = backupData['data']['user'] as Map<String, dynamic>;
+          final user = UserModel.fromJson(userJson);
+          final userBox = Hive.box<UserModel>('userData');
+          await userBox.put('currentUser', user);
+          debugPrint('✅ Restored user data');
+          restored = true;
+        } catch (e) {
+          debugPrint('❌ Error restoring user to Hive: $e');
+          // Don't fail entirely — token was already restored
+        }
       }
-      
+
       return restored;
     } catch (e) {
-      debugPrint('❌ Error restoring auth data: $e');
+      debugPrint('❌ Error in _restoreAuthData: $e');
       return false;
     }
   }

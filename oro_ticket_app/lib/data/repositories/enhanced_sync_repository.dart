@@ -16,7 +16,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class EnhancedSyncRepository {
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-  final ConnectivityService _connectivityService =
+  ConnectivityService get _connectivityService =>
       Get.find<ConnectivityService>();
   final SyncQueueService _syncQueueService = SyncQueueService();
 

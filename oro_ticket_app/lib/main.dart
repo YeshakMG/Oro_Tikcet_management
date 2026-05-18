@@ -24,11 +24,11 @@ import 'package:oro_ticket_app/data/repositories/sync_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   debugPrint('========================================');
   debugPrint('🚀 APP STARTING - Oro Ticket App');
   debugPrint('========================================');
-  
+
   // Check device security before starting the app
   final isSecure = await DeviceSecurityChecker.isDeviceSecure();
   if (!isSecure) {
@@ -37,15 +37,32 @@ void main() async {
     );
     return;
   }
-  
+
   debugPrint('✅ Device security check passed');
-  
+
   await HiveBoxes.init();
   debugPrint('✅ Hive boxes initialized');
-  
+
   await Hive.openBox('appState');
   await dotenv.load(fileName: ".env");
+  await LocalBackupService.requestStoragePermission();
+  debugPrint('');
+  debugPrint('========================================');
+  debugPrint('🔄 CHECKING FOR BACKUP...');
+  debugPrint('========================================');
 
+  // Try to restore auth data from backup BEFORE checking isLoggedIn
+  // This ensures the user doesn't need to login again after clearing data
+  final authRestored = await _tryRestoreAuthFromBackup();
+  debugPrint('🔐 Auth restoration result: $authRestored');
+
+  // Check and update connectivity status on app start
+  await OfflineTrackingService.checkConnectivity();
+  // Start listening for connectivity changes
+  OfflineTrackingService.startConnectivityListener();
+
+  // Create initial backup on app start
+  _createBackupInBackground();
   // Initialize security utilities
   // await _initializeSecurity();
 
@@ -65,16 +82,18 @@ void main() async {
 
   // Check if user is already logged in (token should be restored if backup existed)
   final authService = Get.find<AuthService>();
-  
+
   // Check token specifically
   final token = await authService.getToken();
-  debugPrint('🔐 Token check: ${token != null ? "Token exists" : "Token is null"}');
-  
+  debugPrint(
+      '🔐 Token check: ${token != null ? "Token exists" : "Token is null"}');
+
   // Check both token and user for isLoggedIn
   final user = await authService.getUser();
   final isLoggedIn = token != null && user != null;
 
-  debugPrint('🔐 Is logged in after auth restore: $isLoggedIn (token: ${token != null}, user: ${user != null})');
+  debugPrint(
+      '🔐 Is logged in after auth restore: $isLoggedIn (token: ${token != null}, user: ${user != null})');
   debugPrint('');
 
   // If auth was restored (token exists), restore other data in background
@@ -88,27 +107,30 @@ void main() async {
   runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
-// Try to restore auth data from backup
 Future<bool> _tryRestoreAuthFromBackup() async {
   try {
-    debugPrint('🔍 Starting auth restoration check...');
-    
-    // Check if backup has auth data
-    final hasAuth = await LocalBackupService.hasAuthData();
-    debugPrint('🔍 hasAuth result: $hasAuth');
-    
-    if (!hasAuth) {
-      debugPrint('ℹ️ No auth data in backup');
+    debugPrint('🔍 Checking hasAuthData...');
+
+    final hasAuth = await LocalBackupService.hasAuthData()
+        .timeout(const Duration(seconds: 4), onTimeout: () {
+      debugPrint('❌ HUNG INSIDE: LocalBackupService.hasAuthData()');
+      return false; // ← this is where it's probably dying
+    });
+
+    debugPrint('🔍 hasAuth: $hasAuth');
+    if (!hasAuth) return false;
+
+    debugPrint('🔐 Restoring auth data...');
+    final result = await LocalBackupService.restoreAuthData()
+        .timeout(const Duration(seconds: 4), onTimeout: () {
+      debugPrint('❌ HUNG INSIDE: LocalBackupService.restoreAuthData()');
       return false;
-    }
-    
-    debugPrint('🔐 Found auth data in backup, restoring...');
-    final result = await LocalBackupService.restoreAuthData();
-    debugPrint('🔐 restoreAuthData result: $result');
+    });
+
+    debugPrint('🔐 restoreAuthData: $result');
     return result;
   } catch (e, stackTrace) {
-    debugPrint('❌ Error restoring auth: $e');
-    debugPrint('Stack trace: $stackTrace');
+    debugPrint('❌ Error: $e\n$stackTrace');
     return false;
   }
 }
@@ -116,25 +138,25 @@ Future<bool> _tryRestoreAuthFromBackup() async {
 // Restore other data in background (non-blocking)
 void _restoreOtherDataInBackground() {
   debugPrint('🔄 _restoreOtherDataInBackground() called');
-  
+
   Future.delayed(const Duration(seconds: 3), () async {
     try {
       debugPrint('');
       debugPrint('========================================');
       debugPrint('🔄 STARTING BACKGROUND DATA RESTORATION');
       debugPrint('========================================');
-      
+
       // Since auth was restored, we need to restore other data from backup
       // The boxes are already open after auth restore, so we can directly restore
       debugPrint('📥 RESTORING ALL DATA FROM BACKUP FILE...');
-      
+
       final restored = await LocalBackupService.restoreFromBackup();
       debugPrint('📥 Restore result: $restored');
-      
+
       if (restored) {
         debugPrint('✅ ✅ ✅ DATA RESTORED SUCCESSFULLY!');
         debugPrint('========================================');
-        
+
         // Show success message
         Get.snackbar(
           "Data Restored",
@@ -163,21 +185,23 @@ void _syncDataFromServer() {
   debugPrint('🔄 Syncing data from server...');
   try {
     final syncRepo = Get.find<SyncRepository>();
-    
+
     // Sync vehicles from server
     syncRepo.syncAllCompanyUserVehicles(forceSync: true);
-    
+
     // Sync arrival terminals from server
     syncRepo.syncCompanyUserArrivalTerminals();
-    
+
     // Sync commission rules from server
     syncRepo.syncCommissionRules();
-    
+
     // Note: Departure terminal is set manually by user in Departure settings
     // It cannot be fetched from server automatically
-    debugPrint('✅ Server sync initiated for vehicles, arrival terminals, and commission rules');
-    debugPrint('⚠️ Note: Departure terminal must be set manually in Departure settings');
-    
+    debugPrint(
+        '✅ Server sync initiated for vehicles, arrival terminals, and commission rules');
+    debugPrint(
+        '⚠️ Note: Departure terminal must be set manually in Departure settings');
+
     // Show message to user about departure terminal
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Get.snackbar(
@@ -199,7 +223,7 @@ void _createBackupInBackground() {
   Future.delayed(const Duration(seconds: 5), () async {
     // First request storage permission
     await LocalBackupService.requestStoragePermission();
-    
+
     LocalBackupService.createBackup().then((success) {
       if (success) {
         debugPrint('✅ Auto-backup created successfully');
@@ -234,7 +258,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       // Create backup when app goes to background
       LocalBackupService.createBackup().then((success) {
         if (success) {

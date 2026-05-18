@@ -18,10 +18,6 @@ class SignInController extends GetxController {
   final isLoading = false.obs;
   final loginError = ''.obs;
 
-  // Field-specific error messages
-  final emailError = ''.obs;
-  final passwordError = ''.obs;
-
   // Form key
   final formKey = GlobalKey<FormState>();
 
@@ -43,18 +39,6 @@ class SignInController extends GetxController {
     isPasswordVisible.value = !isPasswordVisible.value;
   }
 
-  // Clear field errors
-  void clearErrors() {
-    emailError.value = '';
-    passwordError.value = '';
-    loginError.value = '';
-  }
-
-  // Validate email format (simple check)
-  bool isValidEmail(String email) {
-    return email.contains('@') && email.contains('.');
-  }
-
   // Validate and submit login
   Future<void> login() async {
     final email = emailController.text.trim();
@@ -64,11 +48,6 @@ class SignInController extends GetxController {
 
     try {
       final result = await _authService.login(email: email, password: password);
-
-      // Print API response to console
-      print('=== LOGIN API RESPONSE ===');
-      print(result);
-      print('=========================');
 
       if (result['success'] == true) {
         final homeController = Get.find<HomeController>();
@@ -93,9 +72,7 @@ class SignInController extends GetxController {
         _handleLoginError(result);
       }
     } catch (e) {
-      // Handle network errors
-      String errorMessage = _getNetworkErrorMessage(e);
-      loginError.value = errorMessage;
+      print("Error:$e");
       Get.snackbar(
         'Login Error',
         'Network error occurred. Please check your connection and try again.',
@@ -109,32 +86,6 @@ class SignInController extends GetxController {
     }
   }
 
-  // Get user-friendly network error message
-  String _getNetworkErrorMessage(dynamic error) {
-    final errorString = error.toString().toLowerCase();
-    
-    if (errorString.contains('socketexception') || 
-        errorString.contains('connection refused') ||
-        errorString.contains('connection timeout') ||
-        errorString.contains('no internet')) {
-      return 'No internet connection. Please check your network.';
-    }
-    
-    if (errorString.contains('timeout') || errorString.contains('timeoutexception')) {
-      return 'Request timed out. Please try again.';
-    }
-    
-    if (errorString.contains('handshakexception') || errorString.contains('ssl')) {
-      return 'Secure connection failed. Please try again.';
-    }
-    
-    if (errorString.contains('formatexception') || errorString.contains('json')) {
-      return 'Server error. Please contact support.';
-    }
-    
-    return 'Unable to connect to server. Please try again later.';
-  }
-
   void _handleLoginError(Map<String, dynamic> result) {
     String title = 'Login Failed';
     String message = 'An error occurred during login';
@@ -142,7 +93,8 @@ class SignInController extends GetxController {
     // 1. Check for rate limiting (handled before server request)
     if (result['rate_limited'] == true) {
       title = result['snackbar_title'] ?? 'Rate Limit Exceeded';
-      message = result['snackbar_message'] ?? 'For security reasons, login attempts are limited. Please wait before trying again.';
+      message = result['snackbar_message'] ??
+          'For security reasons, login attempts are limited. Please wait before trying again.';
     }
     // 2. Handle HTTP status code based errors
     else if (result['statusCode'] != null) {
@@ -207,8 +159,7 @@ class SignInController extends GetxController {
     else if (result['error_type'] == 'config') {
       title = 'Configuration Error';
       message = result['message'] ?? 'App configuration issue detected';
-    }
-    else if (result['error_type'] == 'network') {
+    } else if (result['error_type'] == 'network') {
       title = 'Connection Error';
       message = result['message'] ?? 'Network connection failed';
     }

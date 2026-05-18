@@ -3,62 +3,67 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 Future<void> requestBluetoothPermissions() async {
-  // Request Bluetooth permissions for Android 12+ (API 31+)
-  
-  // Check and request bluetooth permission
-  var bluetoothStatus = await Permission.bluetooth.status;
-  if (bluetoothStatus.isDenied) {
-    bluetoothStatus = await Permission.bluetooth.request();
-  }
-  
-  // Check and request bluetoothScan permission
-  var bluetoothScanStatus = await Permission.bluetoothScan.status;
-  if (bluetoothScanStatus.isDenied) {
-    bluetoothScanStatus = await Permission.bluetoothScan.request();
-  }
-  
-  // Check and request bluetoothConnect permission
-  var bluetoothConnectStatus = await Permission.bluetoothConnect.status;
-  if (bluetoothConnectStatus.isDenied) {
-    bluetoothConnectStatus = await Permission.bluetoothConnect.request();
-  }
-  
-  // Check and request location permission (required for Bluetooth scanning on older Android versions)
-  var locationStatus = await Permission.location.status;
-  if (locationStatus.isDenied) {
-    locationStatus = await Permission.location.request();
-  }
-  
-  // Check if any permissions are permanently denied
-  if (bluetoothStatus.isPermanentlyDenied || 
-      bluetoothScanStatus.isPermanentlyDenied || 
-      bluetoothConnectStatus.isPermanentlyDenied ||
-      locationStatus.isPermanentlyDenied) {
-    
-    // Show dialog to guide user to settings
-    Get.dialog(
-      AlertDialog(
-        title: Text('Permission Required'),
-        content: Text(
-          'Bluetooth and Location permissions are required for printing tickets. '
-          'Please enable them in app settings.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              openAppSettings();
-            },
-            child: Text('Open Settings'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
+  try {
+    // Request all permissions in parallel — much faster
+    final statuses = await [
+      Permission.bluetooth,
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.location,
+    ].request().timeout(
+      const Duration(seconds: 6),
+      onTimeout: () {
+        debugPrint('⚠️ Permission requests timed out');
+        return {};
+      },
     );
+
+    final anyPermanentlyDenied =
+        statuses.values.any((status) => status.isPermanentlyDenied);
+
+    if (anyPermanentlyDenied) {
+      // Delay dialog until Navigator is ready
+      // Never use barrierDismissible: false at startup — it can hang
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Check Get.context is available before showing dialog
+      if (Get.context == null) {
+        debugPrint('⚠️ No context for permission dialog — skipping');
+        return;
+      }
+
+      Get.dialog(
+        AlertDialog(
+          title: const Text('Permission Required'),
+          content: const Text(
+            'Bluetooth and Location permissions are required for printing tickets. '
+            'Please enable them in app settings.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Get.back();
+                openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
+        // Never set barrierDismissible: false at startup
+        barrierDismissible: true,
+      );
+    }
+  } catch (e) {
+    // Never let permission errors block the app
+    debugPrint('⚠️ Permission request error (non-fatal): $e');
   }
 }

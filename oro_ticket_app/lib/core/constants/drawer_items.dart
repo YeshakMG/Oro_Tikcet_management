@@ -16,12 +16,8 @@ class DrawerItems {
       'icon': Icons.directions_car,
     },
     {
-      'title': 'Change password',
-      'icon': Icons.password,
-    },
-    {
       'title': 'Change Password',
-      'icon': Icons.lock,
+      'icon': Icons.password,
     },
     {
       'title': 'Logout',

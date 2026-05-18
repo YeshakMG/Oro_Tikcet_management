@@ -1,12 +1,13 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:oro_ticket_app/app/modules/utils/permission_util.dart';
+import 'package:oro_ticket_app/app/routes/app_pages.dart';
 import 'package:oro_ticket_app/data/locals/hive_boxes.dart';
 
 class SplashScreenController extends GetxController {
-
-  final String copywrite = "Oro Ticket App 2025. All rights reserved".tr;
+  final String copywrite =
+      "Oro Ticket App ${DateTime.now().year}. All rights reserved".tr;
 
   @override
   void onInit() {
@@ -14,44 +15,36 @@ class SplashScreenController extends GetxController {
     showSplash();
   }
 
-  void showSplash() async {
-    // Request permissions on first install
-    await _requestPermissionsOnFirstInstall();
-    
-    Future.delayed(const Duration(seconds: 5), () {
-      Get.offAllNamed(
-        Routes.SIGN_IN,
-      );
+  void showSplash() {
+    // 1. Start the navigation timer immediately — do NOT await permissions
+    Future.delayed(const Duration(seconds: 3), () {
+      if (Get.currentRoute != Routes.SIGN_IN) {
+        Get.offAllNamed(Routes.SIGN_IN);
+      }
     });
+
+    // 2. Fire-and-forget — permissions run in parallel, never block navigation
+    _requestPermissionsOnFirstInstall();
   }
 
   Future<void> _requestPermissionsOnFirstInstall() async {
     try {
       final settingsBox = Hive.box<dynamic>(HiveBoxes.appSettingsBox);
-      final permissionsRequested = settingsBox.get('permissionsRequested', defaultValue: false);
-      
+      final permissionsRequested =
+          settingsBox.get('permissionsRequested', defaultValue: false);
+
       if (!permissionsRequested) {
-        // Request Bluetooth and Location permissions on first install
-        await requestBluetoothPermissions();
-        
-        // Mark permissions as requested
+        await requestBluetoothPermissions().timeout(const Duration(seconds: 4),
+            onTimeout: () {
+          debugPrint('⚠️ Bluetooth permission timed out');
+        });
         await settingsBox.put('permissionsRequested', true);
-        print('DEBUG: Permissions requested on first install');
+        debugPrint('DEBUG: Permissions requested');
       } else {
-        print('DEBUG: Permissions already requested previously');
+        debugPrint('DEBUG: Permissions already requested');
       }
     } catch (e) {
-      print('DEBUG: Error requesting permissions on first install: $e');
+      debugPrint('DEBUG: Permission error (non-fatal): $e');
     }
-  }
-
-  @override
-  void onReady() {
-    super.onReady();
-  }
-
-  @override
-  void onClose() {
-    super.onClose();
   }
 }

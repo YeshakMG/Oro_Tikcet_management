@@ -17,16 +17,32 @@ class _SessionCheckViewState extends State<SessionCheckView> {
   @override
   void initState() {
     super.initState();
+    debugPrint('🔍 SessionCheckView: initState called');
     _checkSession();
   }
 
   Future<void> _checkSession() async {
-    await Future.delayed(
-        const Duration(milliseconds: 300)); // small splash delay
-    bool loggedIn = await _authService.isLoggedIn();
+    debugPrint('🔍 SessionCheckView: _checkSession started');
+    await Future.delayed(const Duration(milliseconds: 300));
+    debugPrint('🔍 SessionCheckView: delay done, calling isLoggedIn...');
+
+    bool loggedIn = false;
+    try {
+      loggedIn = await _authService.isLoggedIn().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint(
+              '❌ SessionCheckView: isLoggedIn() TIMED OUT — AuthService is hanging');
+          return false;
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ SessionCheckView: isLoggedIn() threw: $e');
+    }
+
+    debugPrint('🔍 SessionCheckView: loggedIn = $loggedIn, navigating...');
 
     if (loggedIn) {
-      // Optional: get last route from Hive
       String? lastRoute = Hive.box('appState').get('lastRoute');
       if (lastRoute != null && lastRoute != '/session-check') {
         Get.offNamed(lastRoute);

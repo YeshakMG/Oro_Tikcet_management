@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
@@ -22,18 +23,45 @@ class AuthService {
   late final http.Client _secureClient;
   bool _secureClientInitialized = false;
 
+  // Add a lock to prevent concurrent initialization
+  final Completer<void> _clientInitCompleter = Completer<void>();
+
   AuthService() {
     // Initialize cleanup timer for rate limits (runs every hour)
-    Timer.periodic(const Duration(microseconds: 1000),
+    Timer.periodic(const Duration(minutes: 60),
         (_) async => await SecurityUtils.cleanupRateLimits());
   }
 
-  // Initialize secure client
+  // Initialize secure client with proper locking
   Future<void> _initSecureClient() async {
-    _secureClient = await SecurityUtils.createSecureHttpClient();
+    // If already initialized, return immediately
+    if (_secureClientInitialized) {
+      return;
+    }
+
+    // If initialization is in progress, wait for it
+    if (!_clientInitCompleter.isCompleted) {
+      await _clientInitCompleter.future;
+      return;
+    }
+
+    try {
+      _secureClient = await SecurityUtils.createSecureHttpClient();
+      _secureClientInitialized = true;
+      _clientInitCompleter.complete();
+    } catch (e) {
+      _clientInitCompleter.completeError(e);
+      rethrow;
+    }
   }
 
-  static const String baseUrl = 'https://admin.ota.gov.et/api';
+  // Helper method to ensure client is initialized before making requests
+  Future<http.Client> _getSecureClient() async {
+    await _initSecureClient();
+    return _secureClient;
+  }
+
+  static String baseUrl = dotenv.env['API_BASE_URL'] ?? '';
   static const _loginRateLimitKey = 'login_rate_limit';
 
   Future<Map<String, dynamic>> login({
@@ -49,11 +77,8 @@ class AuthService {
       };
     }
 
-    // Initialize secure client if not already done
-    if (!_secureClientInitialized) {
-      await _initSecureClient();
-      _secureClientInitialized = true;
-    }
+    // Get secure client (handles initialization with locking)
+    final client = await _getSecureClient();
 
     // Check rate limiting - max 5 attempts per minute
     final isAllowed = await SecurityUtils.checkRateLimit(_loginRateLimitKey,
@@ -79,7 +104,7 @@ class AuthService {
             'password': '***'
           })}');
 
-      final response = await _secureClient
+      final response = await client
           .post(
             url,
             headers: {'Content-Type': 'application/json'},
@@ -211,15 +236,7 @@ class AuthService {
 
   Future<void> _performServerLogout() async {
     try {
-      // Initialize secure client if needed
-      if (!_secureClientInitialized) {
-        await _initSecureClient();
-        _secureClientInitialized = true;
-      }
-
-      // Note: We don't have a stored token anymore since we cleared storage
-      // If server logout is needed, we'd need to call it before clearing storage
-      // For now, just local logout is sufficient
+      // Just log, no need to initialize client for logout
       print('✅ Local logout completed');
     } catch (e) {
       print('⚠️ Server logout failed (local logout still successful): $e');
@@ -249,22 +266,16 @@ class AuthService {
   }
 
   Future<String?> getToken() async {
-    // Ensure secure client is initialized for any subsequent API calls
-    if (!_secureClientInitialized) {
-      await _initSecureClient();
-      _secureClientInitialized = true;
-    }
+    // Get secure client (handles initialization with locking)
+    await _getSecureClient();
     final token = await TokenStorageService.getToken();
     return token;
   }
 
   Future<UserModel?> getUser() async {
     try {
-      // Initialize secure client if needed
-      if (!_secureClientInitialized) {
-        await _initSecureClient();
-        _secureClientInitialized = true;
-      }
+      // Get secure client (handles initialization with locking)
+      await _getSecureClient();
 
       // Try to get fresh data if online
       if (await syncRepo.isOnline) {
@@ -274,7 +285,8 @@ class AuthService {
           print('🌐 API Request: GET $url');
           print('🔑 Using stored token for authentication');
 
-          final response = await _secureClient.get(
+          final client = await _getSecureClient();
+          final response = await client.get(
             url,
             headers: {'Authorization': 'Bearer $token'},
           ).timeout(const Duration(seconds: 5));
@@ -320,11 +332,8 @@ class AuthService {
       };
     }
 
-    // Initialize secure client if not already done
-    if (!_secureClientInitialized) {
-      await _initSecureClient();
-      _secureClientInitialized = true;
-    }
+    // Get secure client (handles initialization with locking)
+    final client = await _getSecureClient();
 
     try {
       final token = await getToken();
@@ -343,7 +352,7 @@ class AuthService {
             'new_password': '***',
           })}');
 
-      final response = await _secureClient
+      final response = await client
           .put(
             url,
             headers: {
@@ -386,11 +395,13 @@ class AuthService {
     final token = await TokenStorageService.getToken();
     if (token == null) return;
 
+    final client = await _getSecureClient();
+
     final url = Uri.parse('$baseUrl/auth/company-user/profile');
     print('🌐 API Request: GET $url (fetchAndStoreProfileData)');
     print('🔑 Using stored token for authentication');
 
-    final response = await _secureClient.get(
+    final response = await client.get(
       url,
       headers: {
         'Authorization': 'Bearer $token',
